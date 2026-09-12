@@ -125,10 +125,27 @@ export function facadeLights(opts) {
     for (let b = 0; b < BAYS; b++) {
       if (rand() > density) continue;
       const x0 = b * PX + (PX - bw) / 2;
+      const wx = x0 + (ribbon ? -PX * 0.1 : 0);
+      const ww = bw + (ribbon ? PX * 0.2 : 0);
       const v = 150 + Math.floor(rand() * 95);
-      x.fillStyle = `rgb(${v},${Math.round(v * 0.85)},${Math.round(v * 0.6)})`;
-      x.fillRect(x0 + (ribbon ? -PX * 0.1 : 0), y0,
-                 bw + (ribbon ? PX * 0.2 : 0), bh);
+      const tone = (k) => `rgb(${Math.round(v * k)},` +
+        `${Math.round(v * 0.85 * k)},${Math.round(v * 0.6 * k)})`;
+      // A lit window is not a flat panel. The light comes off the ceiling, so
+      // it falls away towards the sill, and the bay is divided. Filled flat,
+      // these read from the pavement as luminous stickers.
+      const grad = x.createLinearGradient(0, y0, 0, y0 + bh);
+      grad.addColorStop(0, tone(1.0));
+      grad.addColorStop(0.5, tone(0.82));
+      grad.addColorStop(1, tone(0.44));
+      x.fillStyle = grad;
+      x.fillRect(wx, y0, ww, bh);
+      // Mullions, dark rather than black: with no mipmaps a distant window is
+      // point-sampled, and a black bar would punch random holes in the skyline.
+      x.fillStyle = tone(0.22);
+      const panes = ribbon ? 3 : 2;
+      for (let i = 1; i < panes; i++) {
+        x.fillRect(Math.round(wx + (ww * i) / panes), y0, 1, bh);
+      }
     }
   }
   const t = finish(c, 1 / (BAYS * bayW), 1 / (FLOORS * floorH), 2);

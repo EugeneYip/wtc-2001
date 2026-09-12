@@ -34,5 +34,9 @@ dimensions and historic site plans, and any error in them is mine:
 - Height and massing corrections for the World Financial Center, the
   Woolworth Building and the Barclay-Vesey Building
 
-Roof clutter, street trees, traffic and the harbour vessels are procedurally
-placed for plausibility and are not survey data.
+Roof clutter, street trees, street lamps, traffic and the harbour vessels are
+procedurally placed for plausibility and are not survey data. The night sky
+and the city's light on the water are rendering models, not observations: the
+sky is a hand-written gradient with a skyglow term, and the light on the
+rivers is painted from a blurred mask of where the buildings are, not
+reflected from them.

@@ -97,6 +97,27 @@ export const DETAIL_MATS = {
   car: new THREE.MeshStandardMaterial({
     color: 0xffffff, roughness: 0.42, metalness: 0.35,
   }),
+  // This was missing, so 400-odd car cabins fell back to three's default
+  // unlit white material: flat white blocks that ignored the sun in daylight
+  // and were the brightest things in the street after dark.
+  cabin: new THREE.MeshStandardMaterial({
+    color: 0x2b3138, roughness: 0.22, metalness: 0.30,
+  }),
+  headlight: new THREE.MeshStandardMaterial({
+    color: 0xe8e4d8, roughness: 0.3, metalness: 0.1,
+    emissive: new THREE.Color(0xfff0cf), emissiveIntensity: 0,
+  }),
+  tail: new THREE.MeshStandardMaterial({
+    color: 0x5e1a15, roughness: 0.35, metalness: 0.1,
+    emissive: new THREE.Color(0xff2a12), emissiveIntensity: 0,
+  }),
+  lampPost: new THREE.MeshStandardMaterial({
+    color: 0x33383d, roughness: 0.58, metalness: 0.42,
+  }),
+  lampHead: new THREE.MeshStandardMaterial({
+    color: 0x2a2d31, roughness: 0.4, metalness: 0.3,
+    emissive: new THREE.Color(0xffbe6a), emissiveIntensity: 0,
+  }),
 };
 
 // ---------------------------------------------------------------------------
@@ -281,6 +302,14 @@ export function traffic(roads, limit = 420, avoid, deck = 0) {
   geo.translate(0, 0.52, 0);
   const cabGeo = new THREE.BoxGeometry(2.3, 0.85, 1.62);
   cabGeo.translate(-0.25, 1.42, 0);
+  // Lamps as a pair each, merged so they cost one instanced mesh per colour.
+  const lampPair = (x, w, h, y) => mergeGeometries([-1, 1].map((s) => {
+    const g = new THREE.BoxGeometry(w, h, 0.42);
+    g.translate(x, y, s * 0.62);
+    return norm(g);
+  }));
+  const headGeo = lampPair(2.22, 0.16, 0.34, 0.62);
+  const tailGeo = lampPair(-2.22, 0.14, 0.26, 0.66);
 
   const picks = [];
   for (const r of roads) {
@@ -303,6 +332,8 @@ export function traffic(roads, limit = 420, avoid, deck = 0) {
 
   const mesh = new THREE.InstancedMesh(geo, DETAIL_MATS.car, chosen.length);
   const cabs = new THREE.InstancedMesh(cabGeo, DETAIL_MATS.cabin, chosen.length);
+  const heads = new THREE.InstancedMesh(headGeo, DETAIL_MATS.headlight, chosen.length);
+  const tails = new THREE.InstancedMesh(tailGeo, DETAIL_MATS.tail, chosen.length);
   mesh.castShadow = true;
   cabs.castShadow = true;
   const m = new THREE.Matrix4();
@@ -326,19 +357,163 @@ export function traffic(roads, limit = 420, avoid, deck = 0) {
     m.compose(pos, q, scl);
     mesh.setMatrixAt(placed, m);
     cabs.setMatrixAt(placed, m);
+    heads.setMatrixAt(placed, m);
+    tails.setMatrixAt(placed, m);
     col.setHex(CAR_COLORS[Math.floor(rand() * CAR_COLORS.length)]);
     mesh.setColorAt(placed, col);
     placed++;
   });
-  mesh.count = placed;
-  cabs.count = placed;
+  mesh.count = cabs.count = heads.count = tails.count = placed;
 
-  mesh.instanceMatrix.needsUpdate = true;
-  cabs.instanceMatrix.needsUpdate = true;
+  for (const im of [mesh, cabs, heads, tails]) im.instanceMatrix.needsUpdate = true;
   if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   mesh.name = 'traffic';
   cabs.name = 'traffic-cabins';
-  return [mesh, cabs];
+  heads.name = 'traffic-headlights';
+  tails.name = 'traffic-tails';
+  return [mesh, cabs, heads, tails];
+}
+
+// ---------------------------------------------------------------------------
+// Street lighting
+// ---------------------------------------------------------------------------
+
+/**
+ * Lamp standards down both sides of the street, alternating.
+ *
+ * These carry the night scene at ground level. The sodium cast on the road
+ * surface itself is done in the material (see city.js) because thousands of
+ * real lights would be out of the question; what the posts add is the thing a
+ * material cannot fake — discrete points of light receding down a street, and
+ * the silhouette of the standards against a lit facade.
+ *
+ * Placed only near the site: beyond a kilometre they are a pixel each, and the
+ * road emissive already reads as lit streets from the air.
+ */
+export function streetLamps(roads, limit = 700, avoid, extra = [], reach = 1150) {
+  const rand = rng(6431);
+  const post = [];
+  {
+    const pole = new THREE.CylinderGeometry(0.10, 0.14, 8.6, 6);
+    pole.translate(0, 4.3, 0);
+    post.push(norm(pole));
+    const arm = new THREE.BoxGeometry(0.16, 0.16, 1.9);
+    arm.translate(0, 8.45, 0.95);
+    post.push(norm(arm));
+  }
+  const postGeo = mergeGeometries(post);
+  const headGeo = norm(new THREE.BoxGeometry(0.34, 0.20, 0.86));
+  headGeo.translate(0, 8.3, 1.82);
+
+  // Candidate positions: one lamp every SPACING metres of kerb, sides
+  // alternating, skipping anything too narrow to have had street lighting.
+  const SPACING = 38;
+  const picks = [];
+  for (const r of roads) {
+    if (r.w < 9) continue;
+    let side = 1;
+    for (let i = 0; i < r.p.length - 1; i++) {
+      const [x0, z0] = r.p[i], [x1, z1] = r.p[i + 1];
+      const dx = x1 - x0, dz = z1 - z0;
+      const len = Math.hypot(dx, dz);
+      if (len < 12) continue;
+      const ang = Math.atan2(dz, dx);
+      // The road's left-hand normal, matching the rotation used below.
+      const nx = -Math.sin(ang), nz = Math.cos(ang);
+      const off = Math.min(r.w * 0.5 - 0.9, 11);
+      if (off < 3) continue;
+      for (let d = SPACING * 0.5; d < len; d += SPACING) {
+        const t = d / len;
+        const cx = x0 + dx * t, cz = z0 + dz * t;
+        if (Math.hypot(cx, cz) > reach) continue;
+        const s = (side = -side);
+        const x = cx + nx * off * s, z = cz + nz * off * s;
+        if (avoid && avoid.blocked(x, z)) continue;
+        picks.push([x, z, -ang + (s > 0 ? Math.PI : 0)]);
+      }
+    }
+  }
+  if (!picks.length && !extra.length) return [];
+
+  // Thin evenly rather than by truncation, so the coverage stays spread.
+  const step = Math.max(1, picks.length / limit);
+  const chosen = [];
+  for (let i = 0; i < picks.length && chosen.length < limit; i += step) {
+    chosen.push(picks[Math.floor(i)]);
+  }
+  // Sites given explicitly — the plaza deck — are never thinned away.
+  for (const e of extra) chosen.push(e);
+
+  const posts = new THREE.InstancedMesh(postGeo, DETAIL_MATS.lampPost, chosen.length);
+  const heads = new THREE.InstancedMesh(headGeo, DETAIL_MATS.lampHead, chosen.length);
+  posts.castShadow = true;
+  const m = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const pos = new THREE.Vector3();
+  const scl = new THREE.Vector3(1, 1, 1);
+  const up = new THREE.Vector3(0, 1, 0);
+
+  chosen.forEach(([x, z, rot, y], i) => {
+    q.setFromAxisAngle(up, rot);
+    // A little variation in height, or a long street reads as a picket fence.
+    scl.set(1, 0.92 + rand() * 0.16, 1);
+    pos.set(x, y === undefined ? -0.26 : y, z);
+    m.compose(pos, q, scl);
+    posts.setMatrixAt(i, m);
+    heads.setMatrixAt(i, m);
+  });
+  posts.instanceMatrix.needsUpdate = true;
+  heads.instanceMatrix.needsUpdate = true;
+  posts.name = 'street-lamps';
+  heads.name = 'street-lamp-heads';
+  posts.userData.sites = chosen;
+  return [posts, heads];
+}
+
+/**
+ * Where the lamps actually put light on the ground, as a world-space texture.
+ *
+ * Ramping a flat emissive on the road and pavement makes the streets read from
+ * the air, but at eye level it is unmistakably wrong: the pavement comes out an
+ * even sheet of pale grey from kerb to building line, with no idea where the
+ * lamps are. Real street lighting is pools with darkness between them, and
+ * nothing about the overall level fixes that — only the variation does.
+ *
+ * Seven hundred point lights are out of the question, so the pools are painted
+ * once into a texture the ground materials read in world coordinates.
+ */
+export function lampPoolTexture(sites, span, px = 1024) {
+  const c = document.createElement('canvas');
+  c.width = c.height = px;
+  const x = c.getContext('2d');
+  x.fillStyle = '#000';
+  x.fillRect(0, 0, px, px);
+
+  const k = px / span;
+  const radius = 13 * k;                            // about a 13 m pool
+  x.globalCompositeOperation = 'lighter';
+  for (const [wx, wz] of sites) {
+    const cx = wx * k + px / 2;
+    const cz = wz * k + px / 2;
+    if (cx < -radius || cz < -radius || cx > px + radius || cz > px + radius) continue;
+    const g = x.createRadialGradient(cx, cz, 0, cx, cz, radius);
+    g.addColorStop(0, 'rgba(255,255,255,0.95)');
+    g.addColorStop(0.35, 'rgba(255,255,255,0.45)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    x.fillStyle = g;
+    x.beginPath();
+    x.arc(cx, cz, radius, 0, Math.PI * 2);
+    x.fill();
+  }
+  x.globalCompositeOperation = 'source-over';
+
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.magFilter = THREE.LinearFilter;
+  t.flipY = false;                                  // painted with +z downward
+  return t;
 }
 
 

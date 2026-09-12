@@ -43,12 +43,15 @@ export const CITY_MATS = {
   park: new THREE.MeshStandardMaterial({
     color: 0x3d5130, roughness: 0.95, metalness: 0.0 }),
   water: makeWater(),
-  // The shelf off every shoreline: same water, lighter and choppier.
+  // The shelf off every shoreline: same water, lighter and choppier. It also
+  // sits exactly where the shore reflection is strongest, so it carries a
+  // little of it after dark.
   shallows: new THREE.MeshStandardMaterial({
     color: 0x2c4d58, metalness: 0.02, roughness: 0.42,
     normalMap: waterNormal(4451),
     normalScale: new THREE.Vector2(0.9, 0.9),
     envMapIntensity: 1.0,
+    emissive: new THREE.Color(0xff9e4c), emissiveIntensity: 0,
   }),
 };
 
@@ -85,17 +88,64 @@ function makeWater() {
 
   m.onBeforeCompile = (shader) => {
     shader.uniforms.normalMap2 = { value: far };
+    // How rough distant water ends up. Daylight wants it wide (see below);
+    // after dark the only thing left to reflect is the shoreline, and a wide
+    // lobe smears that away to nothing, leaving the river a black void.
+    shader.uniforms.farRough = { value: 0.66 };
     // vNormalMapUv is world metres / 60, so this ratio puts the second layer
     // on a ~150 m swell under the ~60 m chop of the first.
     shader.uniforms.normalMap2Scale = { value: 60 / 150 };
     shader.uniforms.normalMap2Offset = { value: new THREE.Vector2() };
+    // buildCity bakes these before the first frame, which is when
+    // onBeforeCompile runs.
+    shader.uniforms.shoreMap = { value: m.userData.shoreMap || null };
+    shader.uniforms.shoreAmt = { value: m.userData.shoreAmt || 0 };
+    shader.uniforms.shoreColor = { value: new THREE.Color(0xffa955) };
+    shader.uniforms.shoreScale = { value: 1 / GLOW_SPAN };
+
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', `
+        #include <common>
+        varying vec3 vWorldPos;
+      `)
+      .replace('#include <project_vertex>', `
+        #include <project_vertex>
+        vWorldPos = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;
+      `);
 
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <normalmap_pars_fragment>', `
         #include <normalmap_pars_fragment>
+        uniform float farRough;
         uniform sampler2D normalMap2;
         uniform float normalMap2Scale;
         uniform vec2 normalMap2Offset;
+        uniform sampler2D shoreMap;
+        uniform float shoreAmt;
+        uniform vec3 shoreColor;
+        uniform float shoreScale;
+        varying vec3 vWorldPos;
+      `)
+      .replace('#include <emissivemap_fragment>', `
+        #include <emissivemap_fragment>
+        if ( shoreAmt > 0.0 ) {
+          vec2 suv = vWorldPos.xz * shoreScale + 0.5;
+          float raw = texture2D( shoreMap, suv ).r;
+          // A basin ringed by lit buildings really is far brighter than the
+          // middle of the Hudson, but not sixty times brighter. This rolls the
+          // top end off and leaves the bottom alone. The obvious raw/(raw+c)
+          // does the opposite — it lifts everything under c by up to sevenfold,
+          // which lit the whole harbour out to the horizon.
+          float shore = raw / ( 1.0 + raw * 3.0 );
+          // Reflections stretch towards the eye, so the glow builds up as the
+          // surface turns away; and the chop cuts it into moving bands rather
+          // than leaving a painted-on sheet.
+          vec3 V = normalize( vViewPosition );
+          float graze = pow( 1.0 - clamp( dot( V, normal ), 0.0, 1.0 ), 3.0 );
+          float band = clamp( ( normal.x + normal.z ) * 5.0 + 0.5, 0.0, 1.0 );
+          totalEmissiveRadiance += shoreColor * shore * shoreAmt *
+            mix( 0.50, 1.0, graze ) * mix( 0.35, 1.25, band );
+        }
       `)
       .replace('#include <roughnessmap_fragment>', `
         #include <roughnessmap_fragment>
@@ -104,7 +154,7 @@ function makeWater() {
         // aliasing but turns distant water into a mirror, which at a low sun
         // blows out into one huge white blob. Widening roughness to match is
         // what the lost detail would actually have done.
-        roughnessFactor = mix( roughnessFactor, 0.66,
+        roughnessFactor = mix( roughnessFactor, farRough,
           smoothstep( 300.0, 3000.0, length( vViewPosition ) ) );
       `)
       .replace('#include <normal_fragment_maps>', `
@@ -180,6 +230,55 @@ function shallows(landPolys, width = 26) {
   return geos.length ? mergeGeometries(geos) : null;
 }
 
+/**
+ * Make a ground material read the lamp-pool mask.
+ *
+ * The emissive already carries the street lighting; this shapes it, so the
+ * light sits under the lamps instead of lying evenly over every paved surface.
+ * A floor is kept under it because a city's streets do glow as a continuous
+ * network from the air, where the individual pools are far below a pixel.
+ */
+export function lampPoolShading(mat, tex, span) {
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms.poolMap = { value: tex };
+    shader.uniforms.poolScale = { value: 1 / span };
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', `
+        #include <common>
+        varying vec3 vWorldPos;
+      `)
+      .replace('#include <project_vertex>', `
+        #include <project_vertex>
+        vWorldPos = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;
+      `);
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `
+        #include <common>
+        uniform sampler2D poolMap;
+        uniform float poolScale;
+        varying vec3 vWorldPos;
+      `)
+      .replace('#include <emissivemap_fragment>', `
+        #include <emissivemap_fragment>
+        totalEmissiveRadiance *= 0.18 + 3.4 *
+          texture2D( poolMap, vWorldPos.xz * poolScale + 0.5 ).r;
+      `);
+  };
+  mat.needsUpdate = true;
+}
+
+/**
+ * How strongly the city lies on the water. Ramped with the window lights.
+ * Kept on userData as well as the uniform: applyTime runs before the water
+ * shader has been compiled.
+ */
+export function setShoreGlow(amt) {
+  const m = CITY_MATS.water;
+  m.userData.shoreAmt = amt;
+  const sh = m.userData.shader;
+  if (sh) sh.uniforms.shoreAmt.value = amt;
+}
+
 /** Drift the two wave layers. Called once a frame. */
 export function animateWater(t) {
   const m = CITY_MATS.water;
@@ -196,6 +295,116 @@ for (const k of WALL_CLASSES) {
   CITY_MATS[k].emissiveMap = FACADE[k].lights;
   CITY_MATS[k].emissive = new THREE.Color(0xffd6a4);
   CITY_MATS[k].emissiveIntensity = 0;
+}
+
+// Street lighting, as a property of the ground rather than of lamps: sodium on
+// the roadway, a cooler mercury cast on the pavement. Each surface lights
+// through its own map, so the lane markings come up brightest — which is what
+// paint under a street lamp actually does. main.js ramps the intensity.
+for (const [k, hex] of [['road', 0xffb45c], ['roadMinor', 0xffab4e],
+                        ['sidewalk', 0xcfd2d0], ['ground', 0xffb87a]]) {
+  CITY_MATS[k].emissiveMap = CITY_MATS[k].map;
+  CITY_MATS[k].emissive = new THREE.Color(hex);
+  CITY_MATS[k].emissiveIntensity = 0;
+}
+
+
+// ---------------------------------------------------------------------------
+// Shore glow
+// ---------------------------------------------------------------------------
+
+const GLOW_SPAN = 12000;      // world metres covered by the mask, centred on 0
+const GLOW_PX = 512;
+
+/**
+ * How much city light falls on the water at a given point, baked into one
+ * small world-space texture.
+ *
+ * A river at night is mostly the city lying on it, and none of that survives
+ * the reflection probe: the probe is a 256 px cube run through a PMREM
+ * convolution, and a skyline of lit windows averages down that far into
+ * nothing at all. Raising the water's envMapIntensity to six only tinted it
+ * faintly blue — it is the sky in that probe, not the city.
+ *
+ * So the glow is painted instead. Footprints are drawn bright and bare land
+ * dim, then the whole thing is blurred, which gives the Manhattan bank a
+ * strong wash and the far shore a faint one without anyone deciding that by
+ * hand. The water shader reads it in world coordinates and breaks it up on
+ * the chop.
+ */
+function shoreGlow(landPolys, buildings) {
+  const c = document.createElement('canvas');
+  c.width = c.height = GLOW_PX;
+  const x = c.getContext('2d');
+  const k = GLOW_PX / GLOW_SPAN;
+  const px = (v) => v * k + GLOW_PX / 2;
+
+  x.fillStyle = '#000';
+  x.fillRect(0, 0, GLOW_PX, GLOW_PX);
+
+  const paint = (polys, style) => {
+    x.fillStyle = style;
+    for (const p of polys) {
+      const poly = p.p || p;
+      if (!poly || poly.length < 3) continue;
+      x.beginPath();
+      x.moveTo(px(poly[0][0]), px(poly[0][1]));
+      for (let i = 1; i < poly.length; i++) x.lineTo(px(poly[i][0]), px(poly[i][1]));
+      x.closePath();
+      x.fill();
+    }
+  };
+
+  // Bare land first, then the built-up blocks over it.
+  paint(landPolys, 'rgba(255,255,255,0.16)');
+  x.globalCompositeOperation = 'lighter';
+  paint(buildings, 'rgba(255,255,255,0.55)');
+  x.globalCompositeOperation = 'source-over';
+
+  // Spread it out over the water. Two passes: a tight one that keeps the
+  // shoreline legible, and a wide one for the general lift further out.
+  const blur = (radius, alpha) => {
+    const t = document.createElement('canvas');
+    t.width = t.height = GLOW_PX;
+    const tx = t.getContext('2d');
+    tx.filter = `blur(${radius}px)`;
+    tx.drawImage(c, 0, 0);
+    x.globalAlpha = alpha;
+    x.drawImage(t, 0, 0);
+    x.globalAlpha = 1;
+  };
+  // 4 px is about 95 m and 12 px about 280 m at this scale. The first pass
+  // tried 22 px, which spread Manhattan's light evenly over the whole harbour
+  // and left the rivers a uniform brown sheet.
+  blur(4, 1.0);
+  blur(12, 0.55);
+
+  // The mask must fall to nothing at its edge, or clamping smears the last
+  // row of pixels out across the whole harbour.
+  const fade = x.createRadialGradient(
+    GLOW_PX / 2, GLOW_PX / 2, GLOW_PX * 0.34,
+    GLOW_PX / 2, GLOW_PX / 2, GLOW_PX * 0.5);
+  fade.addColorStop(0, 'rgba(0,0,0,0)');
+  fade.addColorStop(1, 'rgba(0,0,0,1)');
+  x.globalCompositeOperation = 'destination-out';
+  x.fillStyle = fade;
+  x.fillRect(0, 0, GLOW_PX, GLOW_PX);
+  x.globalCompositeOperation = 'source-over';
+
+  const t = new THREE.CanvasTexture(c);
+  // Data, not colour. Tagged sRGB the GPU decodes it on the way in, and the
+  // decode crushes exactly the range that matters: mid-river went to three
+  // ten-thousandths while North Cove stayed at a twentieth, a spread of nearly
+  // two hundred to one that left the open water black and the enclosed basins
+  // blown out.
+  t.colorSpace = THREE.NoColorSpace;
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.magFilter = THREE.LinearFilter;
+  // The canvas is painted with +z downward, and the shader reads it that way.
+  // Left flipped, the glow came out mirrored about the Battery.
+  t.flipY = false;
+  return t;
 }
 
 // ---------------------------------------------------------------------------
@@ -376,6 +585,9 @@ export function buildCity(data) {
   // ShapeGeometry gives these world-scale UVs, so the land texture tiles in
   // metres without any plane-size fudge.
   CITY_MATS.ground.map.repeat.setScalar(1 / LAND_TILE_M);
+
+  CITY_MATS.water.userData.shoreMap =
+    shoreGlow(data.land || [], data.buildings || []);
 
   const shelf = shallows(data.land || []);
   if (shelf) {

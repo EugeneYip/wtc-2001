@@ -17,21 +17,26 @@ import { EffectComposer } from 'EffectComposer';
 import { RenderPass } from 'RenderPass';
 import { UnrealBloomPass } from 'UnrealBloomPass';
 import { OutputPass } from 'OutputPass';
-import { buildCity, cityLabels, animateWater, CITY_MATS, WALL_CLASSES } from './city.js';
-import { buildComplex, MATS as WTC_MATS, PLAZA_TREE_SITES } from './wtc.js';
-import { roofClutter, trees, traffic, vessels, obstacleIndex } from './details.js';
+import { buildCity, cityLabels, animateWater, setShoreGlow, lampPoolShading,
+         CITY_MATS, WALL_CLASSES } from './city.js';
+import { buildComplex, MATS as WTC_MATS, PLAZA_TREE_SITES,
+         PLAZA_LAMP_SITES } from './wtc.js';
+import { roofClutter, trees, traffic, vessels, streetLamps, lampPoolTexture,
+         obstacleIndex, DETAIL_MATS } from './details.js';
+import { makeNightSky } from './nightsky.js';
 
 const DEG = Math.PI / 180;
+const LAMP_SPAN = 2600;   // world metres covered by the lamp-pool mask
 const GRID_ROT = 29.11 * DEG;       // Manhattan grid offset from true north
 const LAT = 40.7116 * DEG;
 const DECL = 4.5 * DEG;             // solar declination, mid-September
 
-let renderer, scene, camera, controls, sky, sun, hemi, fill, pmrem;
+let renderer, scene, camera, controls, sky, nightSky, sun, hemi, fill, pmrem;
 let composer, bloom, cubeCam, cubeRT;
 let shadowSpan = 1050;
 let labels = [], labelLayer, data, waterMesh;
-let warningLight = null;
 let showLabels = true;
+let beaconLevel = 0;
 let timeOfDay = 17.0;
 let quality = 'high';
 const clock = new THREE.Clock();
@@ -41,9 +46,9 @@ const clock = new THREE.Clock();
 // ---------------------------------------------------------------------------
 
 const TIERS = {
-  low:    { dpr: 1.5,  shadow: 1024, bloom: false, probe: 128, cars: 140, boats: 8,  shadowSpan: 800 },
-  medium: { dpr: 1.75, shadow: 2048, bloom: true,  probe: 192, cars: 300, boats: 14, shadowSpan: 950 },
-  high:   { dpr: 2.0,  shadow: 4096, bloom: true,  probe: 256, cars: 460, boats: 18, shadowSpan: 1050 },
+  low:    { dpr: 1.5,  shadow: 1024, bloom: false, probe: 128, cars: 140, boats: 8,  lamps: 260, pool: 512,  shadowSpan: 800 },
+  medium: { dpr: 1.75, shadow: 2048, bloom: true,  probe: 192, cars: 300, boats: 14, lamps: 480, pool: 1024, shadowSpan: 950 },
+  high:   { dpr: 2.0,  shadow: 4096, bloom: true,  probe: 256, cars: 460, boats: 18, lamps: 700, pool: 1024, shadowSpan: 1050 },
 };
 
 function detectQuality() {
@@ -78,24 +83,38 @@ function sunVector(hour) {
 
 const SKY_DAY = new THREE.Color(0x9dbdd8);
 const SKY_DUSK = new THREE.Color(0xd9793a);
-const SKY_NIGHT = new THREE.Color(0x0a1120);
-const NIGHT_BG = new THREE.Color(0x070c17);
-const NIGHT_FILL = new THREE.Color(0x3a4f7a);
-const MOON = new THREE.Color(0xaebfe4);
+const NIGHT_SKY_FILL = new THREE.Color(0x222c48);
+const MOON = new THREE.Color(0xa8bae0);
 const FILL_DAY = new THREE.Color(0xc8d8ff);
 const SUN_HIGH = new THREE.Color(0xfff2df);
 const SUN_LOW = new THREE.Color(0xff8c3c);
 const WHITE = new THREE.Color(0xffffff);
+const GROUND_DAY = new THREE.Color(0x3a332a);
+const GROUND_NIGHT = new THREE.Color(0x46310f);
+const FOG_NIGHT = new THREE.Color(0x171b2c);
+const WATER_DAY = new THREE.Color(0x16303f);
+const WATER_NIGHT = new THREE.Color(0x090f1a);
 const _c = new THREE.Color();
 const _fog = new THREE.Color();
+
+const smooth = THREE.MathUtils.smoothstep;
+const mix = THREE.MathUtils.lerp;
 
 function applyTime(hour) {
   timeOfDay = hour;
   const { elev, dir } = sunVector(hour);
-  const up = Math.max(0, Math.sin(elev));            // 0 at horizon, 1 overhead
-  const night = elev < -1.5 * DEG;
+  const e = elev / DEG;                               // degrees above horizon
+  const up = Math.max(0, Math.sin(elev));             // 0 at horizon, 1 overhead
   // Warmth ramps in through the whole last 25 degrees, not just at the horizon.
   const warm = THREE.MathUtils.clamp(1 - elev / (25 * DEG), 0, 1);
+
+  // Two continuous curves replace what used to be a single boolean. Direct
+  // sunlight is extinguished through the last couple of degrees rather than
+  // switching off at the horizon, and `dusk` crossfades every night setting
+  // across civil twilight. Both used to happen at once, at elev = -1.5, which
+  // turned sunset into a hard cut: a full sky one frame, a dead one the next.
+  const direct = smooth(e, -1.0, 2.0);
+  const dusk = 1 - smooth(e, -6.0, 0.5);
 
   sun.position.copy(dir).multiplyScalar(2600);
   sun.target.position.set(0, 80, 0);
@@ -112,14 +131,17 @@ function applyTime(hour) {
     cam.left = -reach; cam.right = reach; cam.top = reach; cam.bottom = -reach;
     cam.updateProjectionMatrix();
   }
-  sun.intensity = night ? 0.0 : 1.1 + 3.8 * Math.pow(up, 0.45);
+  // No floor under this: the old `1.1 + ...` meant a sun below the horizon
+  // still lit the city at better than a quarter strength right up to the
+  // moment it was switched off.
+  sun.intensity = direct * 5.2 * Math.pow(up, 0.42);
   sun.color.copy(SUN_HIGH).lerp(SUN_LOW, warm * warm);
-  sun.visible = !night;
+  sun.visible = direct > 0.002;
 
-  // The Preetham sky model goes muddy brown once the sun is below the
-  // horizon, so night gets a flat deep-navy background instead.
-  sky.visible = !night;
-  scene.background = night ? NIGHT_BG : null;
+  // The Preetham sky is only defined for a sun above the horizon, so the night
+  // dome fades in over it and is opaque well before it turns muddy.
+  sky.visible = dusk < 0.995;
+  nightSky.visible = dusk > 0.001;
   const u = sky.material.uniforms;
   u.sunPosition.value.copy(dir);
   u.turbidity.value = 2.2 + warm * 6.0;
@@ -127,48 +149,115 @@ function applyTime(hour) {
   u.mieCoefficient.value = 0.003 + warm * 0.013;
   u.mieDirectionalG.value = 0.82;
 
+  const n = nightSky.material.uniforms;
+  n.uSunDir.value.copy(dir);
+  n.uOpacity.value = dusk;
+  // These are radiance added to a sky whose own horizon is about 0.04, so a
+  // little goes a very long way; the first pass at 0.78 put a bar of daylight
+  // right round the horizon and swallowed the city whole.
+  n.uGlowAmt.value = dusk * 0.036;
+  // The sunset arch outlives the sunset itself, then goes with the last light.
+  n.uTwilightAmt.value = dusk * (1 - smooth(e, -13.0, -3.5)) * 0.13;
+  // Stars only once the twilight has drained out of the sky.
+  n.uStars.value = smooth(e, -11.0, -6.0) * 0.42;
+
   _c.copy(SKY_DAY).lerp(SKY_DUSK, warm * 0.85);
-  // Sky glow and moonlight at night. With neither, the buildings vanish and
+  // Sky glow and moonlight after dark. With neither, the buildings vanish and
   // the windows read as grids floating in a void; ACES crushes the low end
   // hard, so this needs a good deal more than it looks like it should.
-  hemi.intensity = night ? 1.5 : 0.22 + 0.38 * up;
-  hemi.color.copy(night ? NIGHT_FILL : _c);
-  hemi.groundColor.setHex(night ? 0x05080e : 0x3a332a);
+  // A hemisphere light gives an up-facing surface its sky colour alone and a
+  // wall the average of sky and ground, so the ground colour is the lever for
+  // the walls. Warm and not too dark: after dark a city wall is lit from the
+  // street below, which is why a flat blue ambient left every facade reading
+  // as a grid of windows floating in a void.
+  hemi.intensity = mix(0.22 + 0.38 * up, 1.75, dusk);
+  hemi.color.copy(_c).lerp(NIGHT_SKY_FILL, dusk);
+  hemi.groundColor.copy(GROUND_DAY).lerp(GROUND_NIGHT, dusk);
   // The fill doubles as moonlight after dark, so facades get some modelling
-  // rather than flat ambient.
-  fill.intensity = night ? 0.55 : 0.06 + 0.20 * up;
-  fill.color.copy(night ? MOON : FILL_DAY);
+  // rather than flat ambient. Kept low: on water it is a specular glade, and
+  // at 0.55 it blew the whole river out to white.
+  fill.intensity = mix(0.06 + 0.20 * up, 0.33, dusk);
+  fill.color.copy(FILL_DAY).lerp(MOON, dusk);
 
-  _fog.copy(night ? SKY_NIGHT : _c);
-  if (!night) _fog.lerp(WHITE, 0.22 * (1 - warm * 0.7));
+  _fog.copy(_c).lerp(WHITE, 0.22 * (1 - warm * 0.7));
+  // Haze approaches the radiance of the sky behind it, and at sunset that sky
+  // is dim. Taking the fog straight from the sunset colour made the far water
+  // more than twice as bright as the sky immediately above it, which put a
+  // hard-edged orange bar right along the horizon. Shaped to bite only in the
+  // last few degrees, so the daylight haze is untouched.
+  _fog.multiplyScalar(1 - 0.68 * Math.pow(warm, 4));
+  _fog.lerp(FOG_NIGHT, dusk);
   scene.fog.color.copy(_fog);
-  scene.fog.near = night ? 1600 : 2200;
-  scene.fog.far = night ? 9000 : 11500;
+  scene.fog.near = mix(2200, 1700, dusk);
+  scene.fog.far = mix(11500, 9500, dusk);
 
-  renderer.toneMappingExposure = night ? 0.85 : 0.50 + 0.16 * warm;
+  renderer.toneMappingExposure = mix(0.50 + 0.16 * warm, 0.86, dusk);
 
   // Windows come on as the sun goes down. The towers need far more emissive
   // than the city: only the narrow glass slots between the columns can glow,
   // so the same intensity reads as almost unlit next to a plain curtain wall.
-  const lit = THREE.MathUtils.clamp((elev / DEG + 6) / -10 + 1, 0, 1);
+  const lit = 1 - smooth(e, -5.5, 5.0);
   WTC_MATS.glass.emissiveIntensity = lit * 2.6;
-  WTC_MATS.lowrise.emissiveIntensity = lit * 0.9;
-  WTC_MATS.wtc7.emissiveIntensity = lit * 0.9;
-  for (const k of WALL_CLASSES) CITY_MATS[k].emissiveIntensity = lit * 0.9;
-  CITY_MATS.water.color.setHex(night ? 0x08131f : 0x16303f);
+  WTC_MATS.lowrise.emissiveIntensity = lit * 0.95;
+  WTC_MATS.wtc7.emissiveIntensity = lit * 0.95;
+  for (const k of WALL_CLASSES) CITY_MATS[k].emissiveIntensity = lit * 0.95;
+  setNightGround(lit);
+  beaconLevel = 0.35 + lit * 2.4;
+  WTC_MATS.beacon.emissiveIntensity = beaconLevel;
+  DETAIL_MATS.lampHead.emissiveIntensity = lit * 2.2;
+  DETAIL_MATS.headlight.emissiveIntensity = lit * 2.4;
+  DETAIL_MATS.tail.emissiveIntensity = lit * 1.5;
+
+  CITY_MATS.water.color.copy(WATER_DAY).lerp(WATER_NIGHT, dusk);
+  // Distant water holds a mirror after dark instead of the wide, hazy lobe
+  // daylight wants: at night the only thing to reflect is the shoreline, and
+  // roughening it away leaves the river a void.
+  const ws = CITY_MATS.water.userData.shader;
+  if (ws) ws.uniforms.farRough.value = mix(0.66, 0.34, dusk);
+  // The mask holds fractions of full white, so this is larger than it looks.
+  // Scaled for the rolled-off linear mask: about 0.02 of radiance in the
+  // channel off the Battery Park City bank, six times that in North Cove, and
+  // next to nothing three kilometres out.
+  setShoreGlow(lit * 0.8);
+  // The shelf has no map, so its emissive is flat: any more than a whisper and
+  // it reads as a neon strip pinned along the coast.
+  CITY_MATS.shallows.emissiveIntensity = lit * 0.05;
 
   if (bloom) {
-    bloom.strength = night ? 0.62 : 0.20 + warm * 0.22;
-    bloom.threshold = night ? 0.30 : 0.80;
+    bloom.strength = mix(0.20 + warm * 0.22, 0.56, dusk);
+    // 0.30 caught the walls around each lit window and wrapped every tower in
+    // a halo; the lit windows themselves are well clear of this.
+    bloom.threshold = mix(0.80, 0.46, dusk);
   }
 
   refreshEnv();
 
   const h = Math.floor(hour), m = Math.round((hour - h) * 60);
-  const phase = night ? 'night' : warm > 0.72 ? 'golden hour' : 'daylight';
+  const phase = dusk > 0.97 ? 'night'
+    : dusk > 0.03 ? 'twilight'
+    : warm > 0.72 ? 'golden hour' : 'daylight';
   document.getElementById('clock').textContent =
     `${String(h).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}` +
-    `  ·  sun ${(elev / DEG).toFixed(0)}°  ·  ${phase}`;
+    `  ·  sun ${e.toFixed(0)}°  ·  ${phase}`;
+}
+
+/**
+ * Street lighting. Lower Manhattan at night is not a black floor with lit
+ * towers standing on it — the streets are the brightest thing at ground level.
+ * The lamp heads give the points of light; a little emissive on the road and
+ * pavement gives the pools they stand in, which no amount of ambient will,
+ * and which is what the streets read as from above.
+ */
+function setNightGround(lit) {
+  CITY_MATS.road.emissiveIntensity = lit * 0.11;
+  CITY_MATS.roadMinor.emissiveIntensity = lit * 0.10;
+  CITY_MATS.sidewalk.emissiveIntensity = lit * 0.07;
+  CITY_MATS.ground.emissiveIntensity = lit * 0.03;
+  // Tobin Plaza was lit, and its granite is pale, so it is legitimately the
+  // brightest ground here — but only if it reads warm. Lit by sky alone it
+  // came out a flat blue-white and looked like snow.
+  WTC_MATS.plaza.emissiveIntensity = lit * 0.16;
+  WTC_MATS.plazaWall.emissiveIntensity = lit * 0.10;
 }
 
 // ---------------------------------------------------------------------------
@@ -397,7 +486,10 @@ async function init() {
 
   sky = new Sky();
   sky.scale.setScalar(20000);
+  sky.renderOrder = -2;
   scene.add(sky);
+  nightSky = makeNightSky();
+  scene.add(nightSky);
   pmrem = new THREE.PMREMGenerator(renderer);
 
   sun = new THREE.DirectionalLight(0xffffff, 2.6);
@@ -428,7 +520,6 @@ async function init() {
   await tick();
   const complex = buildComplex(data);
   scene.add(complex);
-  complex.traverse((o) => { if (o.name === 'warningLight') warningLight = o; });
 
   status.textContent = 'Roofs, trees and traffic…';
   await tick();
@@ -443,6 +534,15 @@ async function init() {
   }
   // Sit them on the carriageway, not on the pavement level.
   for (const m of traffic(data.roads, tier.cars, footprints, -0.20)) detail.add(m);
+  const lamps = streetLamps(data.roads, tier.lamps, footprints,
+                            PLAZA_LAMP_SITES(data));
+  for (const m of lamps) detail.add(m);
+  // Paint where those lamps land, and let the paved materials read it.
+  const pool = lampPoolTexture(lamps[0].userData.sites, LAMP_SPAN, tier.pool);
+  for (const m of [CITY_MATS.road, CITY_MATS.roadMinor, CITY_MATS.sidewalk,
+                   WTC_MATS.plaza, WTC_MATS.plazaWall]) {
+    lampPoolShading(m, pool, LAMP_SPAN);
+  }
   for (const m of vessels(data.land || [], tier.boats)) detail.add(m);
   scene.add(detail);
 
@@ -596,10 +696,9 @@ function render() {
 
   const t = clock.getElapsedTime();
   animateWater(t);
-  if (warningLight) {
-    const on = (t % 2.0) < 0.55;
-    warningLight.material.color.setHex(on ? 0xff2a1a : 0x3a0c06);
-  }
+  // The mast tip flashed; the roof corner lights did not.
+  const on = (t % 2.0) < 0.55;
+  WTC_MATS.beaconFlash.emissiveIntensity = beaconLevel * (on ? 2.2 : 0.10);
 
   updateLabels();
   if (composer) composer.render();

@@ -76,7 +76,8 @@ on the line Greenwich Street would take through the site.
 narrowed and the remainder becomes pavement either side, with lane markings
 down the middle and a gutter line at the kerb. A wide avenue is often several
 parallel ways in the data, so asphalt is laid over pavement rather than beside
-it — otherwise each way's pavement buries its neighbour's roadway.
+it — otherwise each way's pavement buries its neighbour's roadway. Lamp
+standards line both sides, alternating, with a few more around the plaza deck.
 
 **Around it.** 814 building footprints, the street grid, the Hudson and East
 rivers and the harbour out to about fifteen kilometres, and the parks. Cesar Pelli's World Financial Center
@@ -98,6 +99,12 @@ actually had. Reflections come from a cube probe rendered over the site, so
 the towers' aluminium and the surface of the river pick up the actual skyline
 rather than just the sky.
 
+Nothing switches at sunset. Direct sunlight is extinguished through the last
+couple of degrees above the horizon rather than being turned off at it, and
+every night setting — sky, ambient, exposure, haze, bloom, the colour of the
+water — crossfades across civil twilight. Drag the slider through 19:07 and
+the light goes out the way it goes out.
+
 The rivers are modelled as a dielectric rather than a metal, which is what
 gives water its behaviour: its own dark blue-green looking down, turning to a
 sky mirror at grazing angles. Two normal maps drift across each other at
@@ -106,6 +113,25 @@ against each other read as chop — over a varying roughness map, because real
 water is never uniformly glassy. A paler shelf runs off every shoreline, and
 a handful of tugs, ferries and barges work the harbour with wakes behind
 them.
+
+![The Twin Towers at twilight from the East River](assets/night.jpg)
+
+**After dark.** The night sky is a second dome that fades in over the daytime
+one, which the Preetham model cannot do: push its sun below the horizon and it
+turns a muddy brown. This one carries a gradient darkest overhead, the sodium
+dome of the city's own light hugging the horizon the whole way round, the warm
+arch left in the sun's quarter of the sky, and about as many stars as Lower
+Manhattan actually shows.
+
+Lit windows fall off from ceiling to sill and are divided by mullions, because
+a flat rectangle of colour reads from the pavement as a luminous sticker
+rather than a room. Street lighting is two things at once: the lamp heads
+themselves, and the pools they throw, painted once into a world-space texture
+the road, pavement and plaza materials read. An even glow over every paved
+surface gets the streets right from the air and is unmistakably wrong at eye
+level, where light comes in pools with darkness between them. Cars carry
+headlights and tail lamps; both towers carry red obstruction lights at their
+roof corners, and the mast tip flashes.
 
 ## Accuracy notes
 
@@ -117,7 +143,7 @@ out offset diagonally by 67.0 m east and 103.8 m south, which leaves the
 documented ~130 ft gap between their facing walls as an independent check
 that was never fed into the calculation.
 
-Four things are deliberately not raw OpenStreetMap:
+Five things are deliberately not raw OpenStreetMap:
 
 1. **Post-2001 buildings are removed** — the modern WTC site, and the towers
    that filled in the Financial District and Battery Park City between 2002
@@ -132,14 +158,23 @@ Four things are deliberately not raw OpenStreetMap:
    placed and proportioned to read correctly, and this model holds every
    street at one level, where Lower Manhattan in fact slopes — the grade at
    the north-east of the site was not the grade at Liberty Street.
-4. **Roof clutter, street trees, traffic and harbour vessels are invented.**
-   They are placed from a fixed seed for plausibility, not from survey, and
-   tested against every building footprint, or against the coastline, so
-   nothing grows through a wall, parks inside one, or runs aground. Water tanks, stair bulkheads and plane trees are what those roofs and
-   streets had; their exact positions are not claimed. The land across the
-   rivers is generic mottling for the same reason — there is no data behind
-   it, so it stays deliberately vague rather than inventing a Jersey City
-   skyline.
+4. **Roof clutter, street trees, street lamps, traffic and harbour vessels are
+   invented.** They are placed from a fixed seed for plausibility, not from
+   survey, and tested against every building footprint, or against the
+   coastline, so nothing grows through a wall, parks inside one, or runs
+   aground. Water tanks, stair bulkheads, plane trees and lamp standards are
+   what those roofs and streets had; their exact positions are not claimed.
+   The land across the rivers is generic mottling for the same reason — there
+   is no data behind it, so it stays deliberately vague rather than inventing
+   a Jersey City skyline.
+5. **The city's light on the water is painted, not reflected.** None of it
+   survives the reflection probe: a skyline of lit windows averages away to
+   nothing in a 256 px cube run through a blur. So building footprints and
+   land are rasterised into a small world-space mask, blurred, and read by the
+   water shader, which breaks the result up on the chop. The Manhattan bank
+   comes out bright and the far shore faint because of where the buildings
+   are, not because anyone decided it — but it is an approximation of a
+   reflection, not one. It carries no image of what is above it.
 
 Background buildings with no height in OSM get a deterministic estimate from
 their id and footprint area, so the fabric varies instead of reading as one
@@ -147,10 +182,13 @@ uniform slab. Those are massing, not survey.
 
 ## Performance
 
-The scene is about 117 draw calls and 474k triangles, and renders in about a
-third of a millisecond a frame on an M2 at 1078 × 1674 once shaders are warm. Detail
-scales automatically: phones get a smaller shadow map, no bloom and fewer
-cars; desktops get the full set. The preset in use is shown in the panel.
+About 144 draw calls and 557k triangles in daylight, rendering in well under a
+millisecond a frame on an M2 at 2800 × 1800 once shaders are warm — measured
+with a GPU sync, since a browser will otherwise report its own compositor.
+Night is cheaper in draw calls than day: with the sun below the horizon there
+is no shadow pass. Detail scales automatically: phones get a smaller shadow
+map, no bloom, fewer cars and fewer lamps; desktops get the full set. The
+preset in use is shown in the panel.
 
 ## Layout
 
@@ -161,8 +199,9 @@ src/
   main.js             renderer, sun, camera rig, UI
   wtc.js              the towers, the complex, the plaza
   city.js             footprint extrusion, crowns, streets, water
+  nightsky.js         the twilight and night dome
   textures.js         procedural facade, roof, plaza and water textures
-  details.js          roof clutter, trees, traffic
+  details.js          roof clutter, trees, traffic, street lamps
   geo.js              shared geometry helpers
 build/
   fetch_osm.py        re-download the OSM extracts
@@ -177,7 +216,9 @@ raw/                  cached Overpass responses
   mem.json              memorial-area feature dump, for reference
 data/city.json        generated scene data
 vendor/               three.js r160
-assets/preview.jpg    social preview image
+assets/
+  preview.jpg           social preview image
+  night.jpg             the same skyline after dark
 ```
 
 Rebuild after editing the curation tables or the viewer:

@@ -137,6 +137,8 @@ const WTC7_SPEC = {
   glass: '#2e2822', winW: 0.80, winH: 0.62, ribbon: true,
 };
 
+const PLAZA_MAP = plazaTexture();
+
 export const MATS = {
   column: new THREE.MeshStandardMaterial({
     color: 0xb4b8bd, metalness: 0.62, roughness: 0.38, name: 'wtc-aluminium',
@@ -153,10 +155,26 @@ export const MATS = {
     color: 0x9aa0a6, metalness: 0.7, roughness: 0.45,
   }),
   plaza: new THREE.MeshStandardMaterial({
-    map: plazaTexture(), metalness: 0.02, roughness: 0.88,
+    map: PLAZA_MAP, emissiveMap: PLAZA_MAP,
+    metalness: 0.02, roughness: 0.88,
+    emissive: new THREE.Color(0xffcb92), emissiveIntensity: 0,
+  }),
+  // Red obstruction lighting: the roof corners of both towers and the top of
+  // the mast. Emissive rather than unlit, so they sit in the frame in daylight
+  // instead of being four red dots painted over it.
+  beacon: new THREE.MeshStandardMaterial({
+    color: 0x51120c, roughness: 0.45, metalness: 0.1,
+    emissive: new THREE.Color(0xff2a12), emissiveIntensity: 0,
+  }),
+  // The tip of the mast flashed while the corner lights burned steadily, so
+  // it needs a material of its own.
+  beaconFlash: new THREE.MeshStandardMaterial({
+    color: 0x51120c, roughness: 0.45, metalness: 0.1,
+    emissive: new THREE.Color(0xff3a1c), emissiveIntensity: 0,
   }),
   plazaWall: new THREE.MeshStandardMaterial({
     color: 0x9c9282, metalness: 0.02, roughness: 0.82,
+    emissive: new THREE.Color(0xffcb92), emissiveIntensity: 0,
   }),
   escalator: new THREE.MeshStandardMaterial({
     color: 0x8d9296, metalness: 0.55, roughness: 0.38,
@@ -315,6 +333,14 @@ function roofDeck(side, roofY) {
   deck.receiveShadow = true;
   g.add(deck);
 
+  // Steady red obstruction lights at the roof corners, as both towers carried.
+  const q = inner / 2 - 1.4;
+  for (const [cx, cz] of [[-q, -q], [q, -q], [q, q], [-q, q]]) {
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.55, 8, 6), MATS.beacon);
+    b.position.set(cx, roofY + 1.5, cz);
+    g.add(b);
+  }
+
   // Mechanical penthouses and cooling plant.
   const boxes = [
     [-14, -10, 17, 5.5, 12], [9, 8, 14, 4.2, 16], [12, -14, 9, 3.0, 9],
@@ -360,12 +386,10 @@ function antennaMast(roofY, height) {
     c.castShadow = true;
     g.add(c);
   }
-  // Aircraft warning light.
-  const lamp = new THREE.Mesh(
-    new THREE.SphereGeometry(0.9, 10, 8),
-    new THREE.MeshBasicMaterial({ color: 0xff3322 }));
+  // Aircraft warning light, at the tip. main.js flashes it.
+  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.9, 10, 8), MATS.beaconFlash);
   lamp.position.y = roofY + 1.2 + height;
-  lamp.name = 'warningLight';
+  lamp.name = 'mast-beacon';
   g.add(lamp);
   return g;
 }
@@ -593,6 +617,45 @@ export const PLAZA_TREE_SITES = (data, obstacleIndex) => {
     margin: 7,
     avoid: obstacleIndex(footprints),
   }];
+};
+
+/**
+ * Lamp standards on the deck itself.
+ *
+ * Tobin Plaza was lit; without these the deck is the one paved surface in the
+ * model with no light source over it, and after dark it reads as a pale slab
+ * of nothing. Placed around the deck edge, inside the parapet and clear of the
+ * tower bases and the low-rise frontages.
+ */
+export const PLAZA_LAMP_SITES = (data) => {
+  const poly = data.plaza.p;
+  const y = data.plaza.y;
+  const half = data.towers.side / 2 + 9;
+  const inset = 7;
+  const sites = [];
+  const near = (x, z) => ['wtc1', 'wtc2'].some((k) => {
+    const [cx, cz] = data.towers[k].c;
+    return Math.abs(x - cx) < half && Math.abs(z - cz) < half;
+  });
+  for (let i = 0; i < poly.length; i++) {
+    const [x0, z0] = poly[i];
+    const [x1, z1] = poly[(i + 1) % poly.length];
+    const dx = x1 - x0, dz = z1 - z0;
+    const len = Math.hypot(dx, dz);
+    if (len < 24) continue;
+    const ang = Math.atan2(dz, dx);
+    // Signed area is positive for this outline, so the inward normal is the
+    // right-hand one; the lamps stand just inside the parapet either way.
+    const nx = Math.sin(ang), nz = -Math.cos(ang);
+    for (let d = 14; d < len - 10; d += 30) {
+      const t = d / len;
+      const x = x0 + dx * t + nx * inset;
+      const z = z0 + dz * t + nz * inset;
+      if (near(x, z)) continue;
+      sites.push([x, z, -ang, y]);
+    }
+  }
+  return sites;
 };
 
 export function buildComplex(data) {

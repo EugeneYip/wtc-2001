@@ -57891,6 +57891,139 @@ function bounds(poly) {
 
 return { norm, shapeFrom, extrude, flat, bounds };
 });
+__def(["./nightsky.js"], function () {
+/**
+ * The sky after the sun has gone.
+ *
+ * The Preetham model the daytime sky uses is only defined for a sun above the
+ * horizon; push it below and it turns a muddy brown. The first version of this
+ * viewer dealt with that by switching the sky mesh off at a fixed elevation and
+ * painting a flat navy behind the city, which meant dusk ended in a hard cut —
+ * a full sunset one frame, a dead black field the next.
+ *
+ * So this is a second dome that fades in over the first. It carries the things
+ * that actually make a night sky over a city: a gradient that is darkest
+ * overhead, the sodium dome of the city's own light hugging the horizon all the
+ * way round, the warm twilight arch left in the sun's quarter of the sky, and
+ * a handful of stars faint enough to be washed out near the ground the way they
+ * really are here.
+ *
+ * It draws before everything else with no depth test, so it simply covers the
+ * daytime dome once it is opaque.
+ */
+
+const THREE = __req("three");
+
+const VERT = `
+  varying vec3 vDir;
+  void main() {
+    vDir = position;
+    vec4 mv = modelViewMatrix * vec4( position, 1.0 );
+    gl_Position = projectionMatrix * mv;
+  }
+`;
+
+const FRAG = `
+  varying vec3 vDir;
+
+  uniform vec3  uSunDir;      // may be below the horizon
+  uniform float uOpacity;     // 0 in daylight, 1 in full night
+  uniform vec3  uZenith;
+  uniform vec3  uHorizon;
+  uniform vec3  uGlow;        // the city's own light, all around the horizon
+  uniform float uGlowAmt;
+  uniform vec3  uTwilight;
+  uniform float uTwilightAmt;
+  uniform float uStars;
+
+  float hash( vec3 p ) {
+    p = fract( p * 0.3183099 + vec3( 0.71, 0.113, 0.419 ) );
+    p *= 17.0;
+    return fract( p.x * p.y * p.z * ( p.x + p.y + p.z ) );
+  }
+
+  // Sparse points on a cell grid, each with its own offset and magnitude.
+  float stars( vec3 d ) {
+    vec3 p = d * 190.0;
+    vec3 i = floor( p );
+    vec3 f = fract( p ) - 0.5;
+    float h = hash( i );
+    float here = step( 0.9928, h );
+    vec3 off = vec3( hash( i + 1.7 ), hash( i + 4.3 ), hash( i + 8.9 ) ) - 0.5;
+    float r = length( f - off * 0.7 );
+    float mag = 0.30 + 0.70 * fract( h * 311.0 );
+    return here * mag * exp( - r * r * 120.0 );
+  }
+
+  void main() {
+    vec3 d = normalize( vDir );
+    float up = d.y;
+
+    // Darkest overhead, lightest at the horizon, and falling away again below
+    // it — the dome shows under the horizon only past the far shore.
+    float t = pow( clamp( 1.0 - max( up, 0.0 ), 0.0, 1.0 ), 4.0 );
+    vec3 col = mix( uZenith, uHorizon, t );
+    col *= 1.0 - 0.55 * smoothstep( 0.0, -0.08, up );
+
+    // Stars, thinned out into the skyglow near the horizon.
+    col += vec3( 0.72, 0.78, 1.0 ) * stars( d ) * uStars *
+           smoothstep( 0.02, 0.38, up );
+
+    // The city's light dome. Tight to the horizon, and everywhere along it.
+    col += uGlow * uGlowAmt * exp( - max( up, 0.0 ) * 11.0 ) *
+           smoothstep( -0.12, 0.02, up );
+
+    // What is left of the sunset, in the sun's quarter of the sky.
+    vec3 sunAz = normalize( vec3( uSunDir.x, 0.0, uSunDir.z ) );
+    float az = max( dot( normalize( vec3( d.x, 0.0, d.z ) ), sunAz ), 0.0 );
+    float arch = pow( az, 3.5 ) * exp( - max( up, 0.0 ) * 7.0 ) *
+                 smoothstep( -0.10, 0.03, up );
+    col += uTwilight * uTwilightAmt * arch;
+
+    gl_FragColor = vec4( col, uOpacity );
+  }
+`;
+
+function makeNightSky(radius = 16000) {
+  const mat = new THREE.ShaderMaterial({
+    vertexShader: VERT,
+    fragmentShader: FRAG,
+    uniforms: {
+      uSunDir: { value: new THREE.Vector3(0, -1, 0) },
+      uOpacity: { value: 0 },
+      uZenith: { value: new THREE.Color(0x05070f) },
+      uHorizon: { value: new THREE.Color(0x14203a) },
+      uGlow: { value: new THREE.Color(0xff9b4a) },
+      uGlowAmt: { value: 0 },
+      uTwilight: { value: new THREE.Color(0xff7a33) },
+      uTwilightAmt: { value: 0 },
+      uStars: { value: 0 },
+    },
+    side: THREE.BackSide,
+    // Blended, but deliberately not `transparent`. A transparent material goes
+    // into the render list that is drawn after all the opaque geometry, so with
+    // the depth test off this dome painted straight over the city — which at
+    // full opacity meant an empty black frame. Custom blending keeps it in the
+    // opaque list, where renderOrder puts it between the daytime dome and
+    // everything else.
+    blending: THREE.CustomBlending,
+    blendEquation: THREE.AddEquation,
+    blendSrc: THREE.SrcAlphaFactor,
+    blendDst: THREE.OneMinusSrcAlphaFactor,
+    depthTest: false,
+    depthWrite: false,
+    fog: false,
+  });
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 32, 20), mat);
+  mesh.name = 'nightSky';
+  // After the daytime dome (which main.js puts at -2), before the city.
+  mesh.renderOrder = -1;
+  mesh.frustumCulled = false;
+  return mesh;
+}
+
+return { makeNightSky };
+});
 __def(["./textures.js"], function () {
 /**
  * Procedural textures.
@@ -58019,10 +58152,27 @@ function facadeLights(opts) {
     for (let b = 0; b < BAYS; b++) {
       if (rand() > density) continue;
       const x0 = b * PX + (PX - bw) / 2;
+      const wx = x0 + (ribbon ? -PX * 0.1 : 0);
+      const ww = bw + (ribbon ? PX * 0.2 : 0);
       const v = 150 + Math.floor(rand() * 95);
-      x.fillStyle = `rgb(${v},${Math.round(v * 0.85)},${Math.round(v * 0.6)})`;
-      x.fillRect(x0 + (ribbon ? -PX * 0.1 : 0), y0,
-                 bw + (ribbon ? PX * 0.2 : 0), bh);
+      const tone = (k) => `rgb(${Math.round(v * k)},` +
+        `${Math.round(v * 0.85 * k)},${Math.round(v * 0.6 * k)})`;
+      // A lit window is not a flat panel. The light comes off the ceiling, so
+      // it falls away towards the sill, and the bay is divided. Filled flat,
+      // these read from the pavement as luminous stickers.
+      const grad = x.createLinearGradient(0, y0, 0, y0 + bh);
+      grad.addColorStop(0, tone(1.0));
+      grad.addColorStop(0.5, tone(0.82));
+      grad.addColorStop(1, tone(0.44));
+      x.fillStyle = grad;
+      x.fillRect(wx, y0, ww, bh);
+      // Mullions, dark rather than black: with no mipmaps a distant window is
+      // point-sampled, and a black bar would punch random holes in the skyline.
+      x.fillStyle = tone(0.22);
+      const panes = ribbon ? 3 : 2;
+      for (let i = 1; i < panes; i++) {
+        x.fillRect(Math.round(wx + (ww * i) / panes), y0, 1, bh);
+      }
     }
   }
   const t = finish(c, 1 / (BAYS * bayW), 1 / (FLOORS * floorH), 2);
@@ -58442,6 +58592,27 @@ const DETAIL_MATS = {
   car: new THREE.MeshStandardMaterial({
     color: 0xffffff, roughness: 0.42, metalness: 0.35,
   }),
+  // This was missing, so 400-odd car cabins fell back to three's default
+  // unlit white material: flat white blocks that ignored the sun in daylight
+  // and were the brightest things in the street after dark.
+  cabin: new THREE.MeshStandardMaterial({
+    color: 0x2b3138, roughness: 0.22, metalness: 0.30,
+  }),
+  headlight: new THREE.MeshStandardMaterial({
+    color: 0xe8e4d8, roughness: 0.3, metalness: 0.1,
+    emissive: new THREE.Color(0xfff0cf), emissiveIntensity: 0,
+  }),
+  tail: new THREE.MeshStandardMaterial({
+    color: 0x5e1a15, roughness: 0.35, metalness: 0.1,
+    emissive: new THREE.Color(0xff2a12), emissiveIntensity: 0,
+  }),
+  lampPost: new THREE.MeshStandardMaterial({
+    color: 0x33383d, roughness: 0.58, metalness: 0.42,
+  }),
+  lampHead: new THREE.MeshStandardMaterial({
+    color: 0x2a2d31, roughness: 0.4, metalness: 0.3,
+    emissive: new THREE.Color(0xffbe6a), emissiveIntensity: 0,
+  }),
 };
 
 // ---------------------------------------------------------------------------
@@ -58626,6 +58797,14 @@ function traffic(roads, limit = 420, avoid, deck = 0) {
   geo.translate(0, 0.52, 0);
   const cabGeo = new THREE.BoxGeometry(2.3, 0.85, 1.62);
   cabGeo.translate(-0.25, 1.42, 0);
+  // Lamps as a pair each, merged so they cost one instanced mesh per colour.
+  const lampPair = (x, w, h, y) => mergeGeometries([-1, 1].map((s) => {
+    const g = new THREE.BoxGeometry(w, h, 0.42);
+    g.translate(x, y, s * 0.62);
+    return norm(g);
+  }));
+  const headGeo = lampPair(2.22, 0.16, 0.34, 0.62);
+  const tailGeo = lampPair(-2.22, 0.14, 0.26, 0.66);
 
   const picks = [];
   for (const r of roads) {
@@ -58648,6 +58827,8 @@ function traffic(roads, limit = 420, avoid, deck = 0) {
 
   const mesh = new THREE.InstancedMesh(geo, DETAIL_MATS.car, chosen.length);
   const cabs = new THREE.InstancedMesh(cabGeo, DETAIL_MATS.cabin, chosen.length);
+  const heads = new THREE.InstancedMesh(headGeo, DETAIL_MATS.headlight, chosen.length);
+  const tails = new THREE.InstancedMesh(tailGeo, DETAIL_MATS.tail, chosen.length);
   mesh.castShadow = true;
   cabs.castShadow = true;
   const m = new THREE.Matrix4();
@@ -58671,19 +58852,163 @@ function traffic(roads, limit = 420, avoid, deck = 0) {
     m.compose(pos, q, scl);
     mesh.setMatrixAt(placed, m);
     cabs.setMatrixAt(placed, m);
+    heads.setMatrixAt(placed, m);
+    tails.setMatrixAt(placed, m);
     col.setHex(CAR_COLORS[Math.floor(rand() * CAR_COLORS.length)]);
     mesh.setColorAt(placed, col);
     placed++;
   });
-  mesh.count = placed;
-  cabs.count = placed;
+  mesh.count = cabs.count = heads.count = tails.count = placed;
 
-  mesh.instanceMatrix.needsUpdate = true;
-  cabs.instanceMatrix.needsUpdate = true;
+  for (const im of [mesh, cabs, heads, tails]) im.instanceMatrix.needsUpdate = true;
   if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   mesh.name = 'traffic';
   cabs.name = 'traffic-cabins';
-  return [mesh, cabs];
+  heads.name = 'traffic-headlights';
+  tails.name = 'traffic-tails';
+  return [mesh, cabs, heads, tails];
+}
+
+// ---------------------------------------------------------------------------
+// Street lighting
+// ---------------------------------------------------------------------------
+
+/**
+ * Lamp standards down both sides of the street, alternating.
+ *
+ * These carry the night scene at ground level. The sodium cast on the road
+ * surface itself is done in the material (see city.js) because thousands of
+ * real lights would be out of the question; what the posts add is the thing a
+ * material cannot fake — discrete points of light receding down a street, and
+ * the silhouette of the standards against a lit facade.
+ *
+ * Placed only near the site: beyond a kilometre they are a pixel each, and the
+ * road emissive already reads as lit streets from the air.
+ */
+function streetLamps(roads, limit = 700, avoid, extra = [], reach = 1150) {
+  const rand = rng(6431);
+  const post = [];
+  {
+    const pole = new THREE.CylinderGeometry(0.10, 0.14, 8.6, 6);
+    pole.translate(0, 4.3, 0);
+    post.push(norm(pole));
+    const arm = new THREE.BoxGeometry(0.16, 0.16, 1.9);
+    arm.translate(0, 8.45, 0.95);
+    post.push(norm(arm));
+  }
+  const postGeo = mergeGeometries(post);
+  const headGeo = norm(new THREE.BoxGeometry(0.34, 0.20, 0.86));
+  headGeo.translate(0, 8.3, 1.82);
+
+  // Candidate positions: one lamp every SPACING metres of kerb, sides
+  // alternating, skipping anything too narrow to have had street lighting.
+  const SPACING = 38;
+  const picks = [];
+  for (const r of roads) {
+    if (r.w < 9) continue;
+    let side = 1;
+    for (let i = 0; i < r.p.length - 1; i++) {
+      const [x0, z0] = r.p[i], [x1, z1] = r.p[i + 1];
+      const dx = x1 - x0, dz = z1 - z0;
+      const len = Math.hypot(dx, dz);
+      if (len < 12) continue;
+      const ang = Math.atan2(dz, dx);
+      // The road's left-hand normal, matching the rotation used below.
+      const nx = -Math.sin(ang), nz = Math.cos(ang);
+      const off = Math.min(r.w * 0.5 - 0.9, 11);
+      if (off < 3) continue;
+      for (let d = SPACING * 0.5; d < len; d += SPACING) {
+        const t = d / len;
+        const cx = x0 + dx * t, cz = z0 + dz * t;
+        if (Math.hypot(cx, cz) > reach) continue;
+        const s = (side = -side);
+        const x = cx + nx * off * s, z = cz + nz * off * s;
+        if (avoid && avoid.blocked(x, z)) continue;
+        picks.push([x, z, -ang + (s > 0 ? Math.PI : 0)]);
+      }
+    }
+  }
+  if (!picks.length && !extra.length) return [];
+
+  // Thin evenly rather than by truncation, so the coverage stays spread.
+  const step = Math.max(1, picks.length / limit);
+  const chosen = [];
+  for (let i = 0; i < picks.length && chosen.length < limit; i += step) {
+    chosen.push(picks[Math.floor(i)]);
+  }
+  // Sites given explicitly — the plaza deck — are never thinned away.
+  for (const e of extra) chosen.push(e);
+
+  const posts = new THREE.InstancedMesh(postGeo, DETAIL_MATS.lampPost, chosen.length);
+  const heads = new THREE.InstancedMesh(headGeo, DETAIL_MATS.lampHead, chosen.length);
+  posts.castShadow = true;
+  const m = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const pos = new THREE.Vector3();
+  const scl = new THREE.Vector3(1, 1, 1);
+  const up = new THREE.Vector3(0, 1, 0);
+
+  chosen.forEach(([x, z, rot, y], i) => {
+    q.setFromAxisAngle(up, rot);
+    // A little variation in height, or a long street reads as a picket fence.
+    scl.set(1, 0.92 + rand() * 0.16, 1);
+    pos.set(x, y === undefined ? -0.26 : y, z);
+    m.compose(pos, q, scl);
+    posts.setMatrixAt(i, m);
+    heads.setMatrixAt(i, m);
+  });
+  posts.instanceMatrix.needsUpdate = true;
+  heads.instanceMatrix.needsUpdate = true;
+  posts.name = 'street-lamps';
+  heads.name = 'street-lamp-heads';
+  posts.userData.sites = chosen;
+  return [posts, heads];
+}
+
+/**
+ * Where the lamps actually put light on the ground, as a world-space texture.
+ *
+ * Ramping a flat emissive on the road and pavement makes the streets read from
+ * the air, but at eye level it is unmistakably wrong: the pavement comes out an
+ * even sheet of pale grey from kerb to building line, with no idea where the
+ * lamps are. Real street lighting is pools with darkness between them, and
+ * nothing about the overall level fixes that — only the variation does.
+ *
+ * Seven hundred point lights are out of the question, so the pools are painted
+ * once into a texture the ground materials read in world coordinates.
+ */
+function lampPoolTexture(sites, span, px = 1024) {
+  const c = document.createElement('canvas');
+  c.width = c.height = px;
+  const x = c.getContext('2d');
+  x.fillStyle = '#000';
+  x.fillRect(0, 0, px, px);
+
+  const k = px / span;
+  const radius = 13 * k;                            // about a 13 m pool
+  x.globalCompositeOperation = 'lighter';
+  for (const [wx, wz] of sites) {
+    const cx = wx * k + px / 2;
+    const cz = wz * k + px / 2;
+    if (cx < -radius || cz < -radius || cx > px + radius || cz > px + radius) continue;
+    const g = x.createRadialGradient(cx, cz, 0, cx, cz, radius);
+    g.addColorStop(0, 'rgba(255,255,255,0.95)');
+    g.addColorStop(0.35, 'rgba(255,255,255,0.45)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    x.fillStyle = g;
+    x.beginPath();
+    x.arc(cx, cz, radius, 0, Math.PI * 2);
+    x.fill();
+  }
+  x.globalCompositeOperation = 'source-over';
+
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.magFilter = THREE.LinearFilter;
+  t.flipY = false;                                  // painted with +z downward
+  return t;
 }
 
 
@@ -58816,7 +59141,7 @@ function paint(geo, colour) {
   return geo;
 }
 
-return { obstacleIndex, DETAIL_MATS, roofClutter, trees, traffic, VESSEL_MATS, vessels };
+return { obstacleIndex, DETAIL_MATS, roofClutter, trees, traffic, streetLamps, lampPoolTexture, VESSEL_MATS, vessels };
 });
 __def(["./city.js"], function () {
 /**
@@ -58863,12 +59188,15 @@ const CITY_MATS = {
   park: new THREE.MeshStandardMaterial({
     color: 0x3d5130, roughness: 0.95, metalness: 0.0 }),
   water: makeWater(),
-  // The shelf off every shoreline: same water, lighter and choppier.
+  // The shelf off every shoreline: same water, lighter and choppier. It also
+  // sits exactly where the shore reflection is strongest, so it carries a
+  // little of it after dark.
   shallows: new THREE.MeshStandardMaterial({
     color: 0x2c4d58, metalness: 0.02, roughness: 0.42,
     normalMap: waterNormal(4451),
     normalScale: new THREE.Vector2(0.9, 0.9),
     envMapIntensity: 1.0,
+    emissive: new THREE.Color(0xff9e4c), emissiveIntensity: 0,
   }),
 };
 
@@ -58905,17 +59233,64 @@ function makeWater() {
 
   m.onBeforeCompile = (shader) => {
     shader.uniforms.normalMap2 = { value: far };
+    // How rough distant water ends up. Daylight wants it wide (see below);
+    // after dark the only thing left to reflect is the shoreline, and a wide
+    // lobe smears that away to nothing, leaving the river a black void.
+    shader.uniforms.farRough = { value: 0.66 };
     // vNormalMapUv is world metres / 60, so this ratio puts the second layer
     // on a ~150 m swell under the ~60 m chop of the first.
     shader.uniforms.normalMap2Scale = { value: 60 / 150 };
     shader.uniforms.normalMap2Offset = { value: new THREE.Vector2() };
+    // buildCity bakes these before the first frame, which is when
+    // onBeforeCompile runs.
+    shader.uniforms.shoreMap = { value: m.userData.shoreMap || null };
+    shader.uniforms.shoreAmt = { value: m.userData.shoreAmt || 0 };
+    shader.uniforms.shoreColor = { value: new THREE.Color(0xffa955) };
+    shader.uniforms.shoreScale = { value: 1 / GLOW_SPAN };
+
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', `
+        #include <common>
+        varying vec3 vWorldPos;
+      `)
+      .replace('#include <project_vertex>', `
+        #include <project_vertex>
+        vWorldPos = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;
+      `);
 
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <normalmap_pars_fragment>', `
         #include <normalmap_pars_fragment>
+        uniform float farRough;
         uniform sampler2D normalMap2;
         uniform float normalMap2Scale;
         uniform vec2 normalMap2Offset;
+        uniform sampler2D shoreMap;
+        uniform float shoreAmt;
+        uniform vec3 shoreColor;
+        uniform float shoreScale;
+        varying vec3 vWorldPos;
+      `)
+      .replace('#include <emissivemap_fragment>', `
+        #include <emissivemap_fragment>
+        if ( shoreAmt > 0.0 ) {
+          vec2 suv = vWorldPos.xz * shoreScale + 0.5;
+          float raw = texture2D( shoreMap, suv ).r;
+          // A basin ringed by lit buildings really is far brighter than the
+          // middle of the Hudson, but not sixty times brighter. This rolls the
+          // top end off and leaves the bottom alone. The obvious raw/(raw+c)
+          // does the opposite — it lifts everything under c by up to sevenfold,
+          // which lit the whole harbour out to the horizon.
+          float shore = raw / ( 1.0 + raw * 3.0 );
+          // Reflections stretch towards the eye, so the glow builds up as the
+          // surface turns away; and the chop cuts it into moving bands rather
+          // than leaving a painted-on sheet.
+          vec3 V = normalize( vViewPosition );
+          float graze = pow( 1.0 - clamp( dot( V, normal ), 0.0, 1.0 ), 3.0 );
+          float band = clamp( ( normal.x + normal.z ) * 5.0 + 0.5, 0.0, 1.0 );
+          totalEmissiveRadiance += shoreColor * shore * shoreAmt *
+            mix( 0.50, 1.0, graze ) * mix( 0.35, 1.25, band );
+        }
       `)
       .replace('#include <roughnessmap_fragment>', `
         #include <roughnessmap_fragment>
@@ -58924,7 +59299,7 @@ function makeWater() {
         // aliasing but turns distant water into a mirror, which at a low sun
         // blows out into one huge white blob. Widening roughness to match is
         // what the lost detail would actually have done.
-        roughnessFactor = mix( roughnessFactor, 0.66,
+        roughnessFactor = mix( roughnessFactor, farRough,
           smoothstep( 300.0, 3000.0, length( vViewPosition ) ) );
       `)
       .replace('#include <normal_fragment_maps>', `
@@ -59000,6 +59375,55 @@ function shallows(landPolys, width = 26) {
   return geos.length ? mergeGeometries(geos) : null;
 }
 
+/**
+ * Make a ground material read the lamp-pool mask.
+ *
+ * The emissive already carries the street lighting; this shapes it, so the
+ * light sits under the lamps instead of lying evenly over every paved surface.
+ * A floor is kept under it because a city's streets do glow as a continuous
+ * network from the air, where the individual pools are far below a pixel.
+ */
+function lampPoolShading(mat, tex, span) {
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms.poolMap = { value: tex };
+    shader.uniforms.poolScale = { value: 1 / span };
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', `
+        #include <common>
+        varying vec3 vWorldPos;
+      `)
+      .replace('#include <project_vertex>', `
+        #include <project_vertex>
+        vWorldPos = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;
+      `);
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `
+        #include <common>
+        uniform sampler2D poolMap;
+        uniform float poolScale;
+        varying vec3 vWorldPos;
+      `)
+      .replace('#include <emissivemap_fragment>', `
+        #include <emissivemap_fragment>
+        totalEmissiveRadiance *= 0.18 + 3.4 *
+          texture2D( poolMap, vWorldPos.xz * poolScale + 0.5 ).r;
+      `);
+  };
+  mat.needsUpdate = true;
+}
+
+/**
+ * How strongly the city lies on the water. Ramped with the window lights.
+ * Kept on userData as well as the uniform: applyTime runs before the water
+ * shader has been compiled.
+ */
+function setShoreGlow(amt) {
+  const m = CITY_MATS.water;
+  m.userData.shoreAmt = amt;
+  const sh = m.userData.shader;
+  if (sh) sh.uniforms.shoreAmt.value = amt;
+}
+
 /** Drift the two wave layers. Called once a frame. */
 function animateWater(t) {
   const m = CITY_MATS.water;
@@ -59016,6 +59440,116 @@ for (const k of WALL_CLASSES) {
   CITY_MATS[k].emissiveMap = FACADE[k].lights;
   CITY_MATS[k].emissive = new THREE.Color(0xffd6a4);
   CITY_MATS[k].emissiveIntensity = 0;
+}
+
+// Street lighting, as a property of the ground rather than of lamps: sodium on
+// the roadway, a cooler mercury cast on the pavement. Each surface lights
+// through its own map, so the lane markings come up brightest — which is what
+// paint under a street lamp actually does. main.js ramps the intensity.
+for (const [k, hex] of [['road', 0xffb45c], ['roadMinor', 0xffab4e],
+                        ['sidewalk', 0xcfd2d0], ['ground', 0xffb87a]]) {
+  CITY_MATS[k].emissiveMap = CITY_MATS[k].map;
+  CITY_MATS[k].emissive = new THREE.Color(hex);
+  CITY_MATS[k].emissiveIntensity = 0;
+}
+
+
+// ---------------------------------------------------------------------------
+// Shore glow
+// ---------------------------------------------------------------------------
+
+const GLOW_SPAN = 12000;      // world metres covered by the mask, centred on 0
+const GLOW_PX = 512;
+
+/**
+ * How much city light falls on the water at a given point, baked into one
+ * small world-space texture.
+ *
+ * A river at night is mostly the city lying on it, and none of that survives
+ * the reflection probe: the probe is a 256 px cube run through a PMREM
+ * convolution, and a skyline of lit windows averages down that far into
+ * nothing at all. Raising the water's envMapIntensity to six only tinted it
+ * faintly blue — it is the sky in that probe, not the city.
+ *
+ * So the glow is painted instead. Footprints are drawn bright and bare land
+ * dim, then the whole thing is blurred, which gives the Manhattan bank a
+ * strong wash and the far shore a faint one without anyone deciding that by
+ * hand. The water shader reads it in world coordinates and breaks it up on
+ * the chop.
+ */
+function shoreGlow(landPolys, buildings) {
+  const c = document.createElement('canvas');
+  c.width = c.height = GLOW_PX;
+  const x = c.getContext('2d');
+  const k = GLOW_PX / GLOW_SPAN;
+  const px = (v) => v * k + GLOW_PX / 2;
+
+  x.fillStyle = '#000';
+  x.fillRect(0, 0, GLOW_PX, GLOW_PX);
+
+  const paint = (polys, style) => {
+    x.fillStyle = style;
+    for (const p of polys) {
+      const poly = p.p || p;
+      if (!poly || poly.length < 3) continue;
+      x.beginPath();
+      x.moveTo(px(poly[0][0]), px(poly[0][1]));
+      for (let i = 1; i < poly.length; i++) x.lineTo(px(poly[i][0]), px(poly[i][1]));
+      x.closePath();
+      x.fill();
+    }
+  };
+
+  // Bare land first, then the built-up blocks over it.
+  paint(landPolys, 'rgba(255,255,255,0.16)');
+  x.globalCompositeOperation = 'lighter';
+  paint(buildings, 'rgba(255,255,255,0.55)');
+  x.globalCompositeOperation = 'source-over';
+
+  // Spread it out over the water. Two passes: a tight one that keeps the
+  // shoreline legible, and a wide one for the general lift further out.
+  const blur = (radius, alpha) => {
+    const t = document.createElement('canvas');
+    t.width = t.height = GLOW_PX;
+    const tx = t.getContext('2d');
+    tx.filter = `blur(${radius}px)`;
+    tx.drawImage(c, 0, 0);
+    x.globalAlpha = alpha;
+    x.drawImage(t, 0, 0);
+    x.globalAlpha = 1;
+  };
+  // 4 px is about 95 m and 12 px about 280 m at this scale. The first pass
+  // tried 22 px, which spread Manhattan's light evenly over the whole harbour
+  // and left the rivers a uniform brown sheet.
+  blur(4, 1.0);
+  blur(12, 0.55);
+
+  // The mask must fall to nothing at its edge, or clamping smears the last
+  // row of pixels out across the whole harbour.
+  const fade = x.createRadialGradient(
+    GLOW_PX / 2, GLOW_PX / 2, GLOW_PX * 0.34,
+    GLOW_PX / 2, GLOW_PX / 2, GLOW_PX * 0.5);
+  fade.addColorStop(0, 'rgba(0,0,0,0)');
+  fade.addColorStop(1, 'rgba(0,0,0,1)');
+  x.globalCompositeOperation = 'destination-out';
+  x.fillStyle = fade;
+  x.fillRect(0, 0, GLOW_PX, GLOW_PX);
+  x.globalCompositeOperation = 'source-over';
+
+  const t = new THREE.CanvasTexture(c);
+  // Data, not colour. Tagged sRGB the GPU decodes it on the way in, and the
+  // decode crushes exactly the range that matters: mid-river went to three
+  // ten-thousandths while North Cove stayed at a twentieth, a spread of nearly
+  // two hundred to one that left the open water black and the enclosed basins
+  // blown out.
+  t.colorSpace = THREE.NoColorSpace;
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.magFilter = THREE.LinearFilter;
+  // The canvas is painted with +z downward, and the shader reads it that way.
+  // Left flipped, the glow came out mirrored about the Battery.
+  t.flipY = false;
+  return t;
 }
 
 // ---------------------------------------------------------------------------
@@ -59197,6 +59731,9 @@ function buildCity(data) {
   // metres without any plane-size fudge.
   CITY_MATS.ground.map.repeat.setScalar(1 / LAND_TILE_M);
 
+  CITY_MATS.water.userData.shoreMap =
+    shoreGlow(data.land || [], data.buildings || []);
+
   const shelf = shallows(data.land || []);
   if (shelf) {
     const m = new THREE.Mesh(shelf, CITY_MATS.shallows);
@@ -59337,7 +59874,7 @@ function cityLabels(data) {
   return out;
 }
 
-return { CITY_MATS, animateWater, WALL_CLASSES, shell, buildCity, cityLabels };
+return { CITY_MATS, lampPoolShading, setShoreGlow, animateWater, WALL_CLASSES, shell, buildCity, cityLabels };
 });
 __def(["./wtc.js"], function () {
 /**
@@ -59479,6 +60016,8 @@ const WTC7_SPEC = {
   glass: '#2e2822', winW: 0.80, winH: 0.62, ribbon: true,
 };
 
+const PLAZA_MAP = plazaTexture();
+
 const MATS = {
   column: new THREE.MeshStandardMaterial({
     color: 0xb4b8bd, metalness: 0.62, roughness: 0.38, name: 'wtc-aluminium',
@@ -59495,10 +60034,26 @@ const MATS = {
     color: 0x9aa0a6, metalness: 0.7, roughness: 0.45,
   }),
   plaza: new THREE.MeshStandardMaterial({
-    map: plazaTexture(), metalness: 0.02, roughness: 0.88,
+    map: PLAZA_MAP, emissiveMap: PLAZA_MAP,
+    metalness: 0.02, roughness: 0.88,
+    emissive: new THREE.Color(0xffcb92), emissiveIntensity: 0,
+  }),
+  // Red obstruction lighting: the roof corners of both towers and the top of
+  // the mast. Emissive rather than unlit, so they sit in the frame in daylight
+  // instead of being four red dots painted over it.
+  beacon: new THREE.MeshStandardMaterial({
+    color: 0x51120c, roughness: 0.45, metalness: 0.1,
+    emissive: new THREE.Color(0xff2a12), emissiveIntensity: 0,
+  }),
+  // The tip of the mast flashed while the corner lights burned steadily, so
+  // it needs a material of its own.
+  beaconFlash: new THREE.MeshStandardMaterial({
+    color: 0x51120c, roughness: 0.45, metalness: 0.1,
+    emissive: new THREE.Color(0xff3a1c), emissiveIntensity: 0,
   }),
   plazaWall: new THREE.MeshStandardMaterial({
     color: 0x9c9282, metalness: 0.02, roughness: 0.82,
+    emissive: new THREE.Color(0xffcb92), emissiveIntensity: 0,
   }),
   escalator: new THREE.MeshStandardMaterial({
     color: 0x8d9296, metalness: 0.55, roughness: 0.38,
@@ -59657,6 +60212,14 @@ function roofDeck(side, roofY) {
   deck.receiveShadow = true;
   g.add(deck);
 
+  // Steady red obstruction lights at the roof corners, as both towers carried.
+  const q = inner / 2 - 1.4;
+  for (const [cx, cz] of [[-q, -q], [q, -q], [q, q], [-q, q]]) {
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.55, 8, 6), MATS.beacon);
+    b.position.set(cx, roofY + 1.5, cz);
+    g.add(b);
+  }
+
   // Mechanical penthouses and cooling plant.
   const boxes = [
     [-14, -10, 17, 5.5, 12], [9, 8, 14, 4.2, 16], [12, -14, 9, 3.0, 9],
@@ -59702,12 +60265,10 @@ function antennaMast(roofY, height) {
     c.castShadow = true;
     g.add(c);
   }
-  // Aircraft warning light.
-  const lamp = new THREE.Mesh(
-    new THREE.SphereGeometry(0.9, 10, 8),
-    new THREE.MeshBasicMaterial({ color: 0xff3322 }));
+  // Aircraft warning light, at the tip. main.js flashes it.
+  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.9, 10, 8), MATS.beaconFlash);
   lamp.position.y = roofY + 1.2 + height;
-  lamp.name = 'warningLight';
+  lamp.name = 'mast-beacon';
   g.add(lamp);
   return g;
 }
@@ -59937,6 +60498,45 @@ const PLAZA_TREE_SITES = (data, obstacleIndex) => {
   }];
 };
 
+/**
+ * Lamp standards on the deck itself.
+ *
+ * Tobin Plaza was lit; without these the deck is the one paved surface in the
+ * model with no light source over it, and after dark it reads as a pale slab
+ * of nothing. Placed around the deck edge, inside the parapet and clear of the
+ * tower bases and the low-rise frontages.
+ */
+const PLAZA_LAMP_SITES = (data) => {
+  const poly = data.plaza.p;
+  const y = data.plaza.y;
+  const half = data.towers.side / 2 + 9;
+  const inset = 7;
+  const sites = [];
+  const near = (x, z) => ['wtc1', 'wtc2'].some((k) => {
+    const [cx, cz] = data.towers[k].c;
+    return Math.abs(x - cx) < half && Math.abs(z - cz) < half;
+  });
+  for (let i = 0; i < poly.length; i++) {
+    const [x0, z0] = poly[i];
+    const [x1, z1] = poly[(i + 1) % poly.length];
+    const dx = x1 - x0, dz = z1 - z0;
+    const len = Math.hypot(dx, dz);
+    if (len < 24) continue;
+    const ang = Math.atan2(dz, dx);
+    // Signed area is positive for this outline, so the inward normal is the
+    // right-hand one; the lamps stand just inside the parapet either way.
+    const nx = Math.sin(ang), nz = -Math.cos(ang);
+    for (let d = 14; d < len - 10; d += 30) {
+      const t = d / len;
+      const x = x0 + dx * t + nx * inset;
+      const z = z0 + dz * t + nz * inset;
+      if (near(x, z)) continue;
+      sites.push([x, z, -ang, y]);
+    }
+  }
+  return sites;
+};
+
 function buildComplex(data) {
   const g = new THREE.Group();
   g.name = 'WTC complex';
@@ -60004,7 +60604,7 @@ function buildComplex(data) {
   return g;
 }
 
-return { MATS, buildTower, PLAZA_TREE_SITES, buildComplex };
+return { MATS, buildTower, PLAZA_TREE_SITES, PLAZA_LAMP_SITES, buildComplex };
 });
 /* ---- entry ---- */
 /**
@@ -60026,21 +60626,23 @@ const { EffectComposer } = __req("EffectComposer");
 const { RenderPass } = __req("RenderPass");
 const { UnrealBloomPass } = __req("UnrealBloomPass");
 const { OutputPass } = __req("OutputPass");
-const { buildCity, cityLabels, animateWater, CITY_MATS, WALL_CLASSES } = __req("./city.js");
-const { buildComplex, MATS: WTC_MATS, PLAZA_TREE_SITES } = __req("./wtc.js");
-const { roofClutter, trees, traffic, vessels, obstacleIndex } = __req("./details.js");
+const { buildCity, cityLabels, animateWater, setShoreGlow, lampPoolShading, CITY_MATS, WALL_CLASSES } = __req("./city.js");
+const { buildComplex, MATS: WTC_MATS, PLAZA_TREE_SITES, PLAZA_LAMP_SITES } = __req("./wtc.js");
+const { roofClutter, trees, traffic, vessels, streetLamps, lampPoolTexture, obstacleIndex, DETAIL_MATS } = __req("./details.js");
+const { makeNightSky } = __req("./nightsky.js");
 
 const DEG = Math.PI / 180;
+const LAMP_SPAN = 2600;   // world metres covered by the lamp-pool mask
 const GRID_ROT = 29.11 * DEG;       // Manhattan grid offset from true north
 const LAT = 40.7116 * DEG;
 const DECL = 4.5 * DEG;             // solar declination, mid-September
 
-let renderer, scene, camera, controls, sky, sun, hemi, fill, pmrem;
+let renderer, scene, camera, controls, sky, nightSky, sun, hemi, fill, pmrem;
 let composer, bloom, cubeCam, cubeRT;
 let shadowSpan = 1050;
 let labels = [], labelLayer, data, waterMesh;
-let warningLight = null;
 let showLabels = true;
+let beaconLevel = 0;
 let timeOfDay = 17.0;
 let quality = 'high';
 const clock = new THREE.Clock();
@@ -60050,9 +60652,9 @@ const clock = new THREE.Clock();
 // ---------------------------------------------------------------------------
 
 const TIERS = {
-  low:    { dpr: 1.5,  shadow: 1024, bloom: false, probe: 128, cars: 140, boats: 8,  shadowSpan: 800 },
-  medium: { dpr: 1.75, shadow: 2048, bloom: true,  probe: 192, cars: 300, boats: 14, shadowSpan: 950 },
-  high:   { dpr: 2.0,  shadow: 4096, bloom: true,  probe: 256, cars: 460, boats: 18, shadowSpan: 1050 },
+  low:    { dpr: 1.5,  shadow: 1024, bloom: false, probe: 128, cars: 140, boats: 8,  lamps: 260, pool: 512,  shadowSpan: 800 },
+  medium: { dpr: 1.75, shadow: 2048, bloom: true,  probe: 192, cars: 300, boats: 14, lamps: 480, pool: 1024, shadowSpan: 950 },
+  high:   { dpr: 2.0,  shadow: 4096, bloom: true,  probe: 256, cars: 460, boats: 18, lamps: 700, pool: 1024, shadowSpan: 1050 },
 };
 
 function detectQuality() {
@@ -60087,24 +60689,38 @@ function sunVector(hour) {
 
 const SKY_DAY = new THREE.Color(0x9dbdd8);
 const SKY_DUSK = new THREE.Color(0xd9793a);
-const SKY_NIGHT = new THREE.Color(0x0a1120);
-const NIGHT_BG = new THREE.Color(0x070c17);
-const NIGHT_FILL = new THREE.Color(0x3a4f7a);
-const MOON = new THREE.Color(0xaebfe4);
+const NIGHT_SKY_FILL = new THREE.Color(0x222c48);
+const MOON = new THREE.Color(0xa8bae0);
 const FILL_DAY = new THREE.Color(0xc8d8ff);
 const SUN_HIGH = new THREE.Color(0xfff2df);
 const SUN_LOW = new THREE.Color(0xff8c3c);
 const WHITE = new THREE.Color(0xffffff);
+const GROUND_DAY = new THREE.Color(0x3a332a);
+const GROUND_NIGHT = new THREE.Color(0x46310f);
+const FOG_NIGHT = new THREE.Color(0x171b2c);
+const WATER_DAY = new THREE.Color(0x16303f);
+const WATER_NIGHT = new THREE.Color(0x090f1a);
 const _c = new THREE.Color();
 const _fog = new THREE.Color();
+
+const smooth = THREE.MathUtils.smoothstep;
+const mix = THREE.MathUtils.lerp;
 
 function applyTime(hour) {
   timeOfDay = hour;
   const { elev, dir } = sunVector(hour);
-  const up = Math.max(0, Math.sin(elev));            // 0 at horizon, 1 overhead
-  const night = elev < -1.5 * DEG;
+  const e = elev / DEG;                               // degrees above horizon
+  const up = Math.max(0, Math.sin(elev));             // 0 at horizon, 1 overhead
   // Warmth ramps in through the whole last 25 degrees, not just at the horizon.
   const warm = THREE.MathUtils.clamp(1 - elev / (25 * DEG), 0, 1);
+
+  // Two continuous curves replace what used to be a single boolean. Direct
+  // sunlight is extinguished through the last couple of degrees rather than
+  // switching off at the horizon, and `dusk` crossfades every night setting
+  // across civil twilight. Both used to happen at once, at elev = -1.5, which
+  // turned sunset into a hard cut: a full sky one frame, a dead one the next.
+  const direct = smooth(e, -1.0, 2.0);
+  const dusk = 1 - smooth(e, -6.0, 0.5);
 
   sun.position.copy(dir).multiplyScalar(2600);
   sun.target.position.set(0, 80, 0);
@@ -60121,14 +60737,17 @@ function applyTime(hour) {
     cam.left = -reach; cam.right = reach; cam.top = reach; cam.bottom = -reach;
     cam.updateProjectionMatrix();
   }
-  sun.intensity = night ? 0.0 : 1.1 + 3.8 * Math.pow(up, 0.45);
+  // No floor under this: the old `1.1 + ...` meant a sun below the horizon
+  // still lit the city at better than a quarter strength right up to the
+  // moment it was switched off.
+  sun.intensity = direct * 5.2 * Math.pow(up, 0.42);
   sun.color.copy(SUN_HIGH).lerp(SUN_LOW, warm * warm);
-  sun.visible = !night;
+  sun.visible = direct > 0.002;
 
-  // The Preetham sky model goes muddy brown once the sun is below the
-  // horizon, so night gets a flat deep-navy background instead.
-  sky.visible = !night;
-  scene.background = night ? NIGHT_BG : null;
+  // The Preetham sky is only defined for a sun above the horizon, so the night
+  // dome fades in over it and is opaque well before it turns muddy.
+  sky.visible = dusk < 0.995;
+  nightSky.visible = dusk > 0.001;
   const u = sky.material.uniforms;
   u.sunPosition.value.copy(dir);
   u.turbidity.value = 2.2 + warm * 6.0;
@@ -60136,48 +60755,115 @@ function applyTime(hour) {
   u.mieCoefficient.value = 0.003 + warm * 0.013;
   u.mieDirectionalG.value = 0.82;
 
+  const n = nightSky.material.uniforms;
+  n.uSunDir.value.copy(dir);
+  n.uOpacity.value = dusk;
+  // These are radiance added to a sky whose own horizon is about 0.04, so a
+  // little goes a very long way; the first pass at 0.78 put a bar of daylight
+  // right round the horizon and swallowed the city whole.
+  n.uGlowAmt.value = dusk * 0.036;
+  // The sunset arch outlives the sunset itself, then goes with the last light.
+  n.uTwilightAmt.value = dusk * (1 - smooth(e, -13.0, -3.5)) * 0.13;
+  // Stars only once the twilight has drained out of the sky.
+  n.uStars.value = smooth(e, -11.0, -6.0) * 0.42;
+
   _c.copy(SKY_DAY).lerp(SKY_DUSK, warm * 0.85);
-  // Sky glow and moonlight at night. With neither, the buildings vanish and
+  // Sky glow and moonlight after dark. With neither, the buildings vanish and
   // the windows read as grids floating in a void; ACES crushes the low end
   // hard, so this needs a good deal more than it looks like it should.
-  hemi.intensity = night ? 1.5 : 0.22 + 0.38 * up;
-  hemi.color.copy(night ? NIGHT_FILL : _c);
-  hemi.groundColor.setHex(night ? 0x05080e : 0x3a332a);
+  // A hemisphere light gives an up-facing surface its sky colour alone and a
+  // wall the average of sky and ground, so the ground colour is the lever for
+  // the walls. Warm and not too dark: after dark a city wall is lit from the
+  // street below, which is why a flat blue ambient left every facade reading
+  // as a grid of windows floating in a void.
+  hemi.intensity = mix(0.22 + 0.38 * up, 1.75, dusk);
+  hemi.color.copy(_c).lerp(NIGHT_SKY_FILL, dusk);
+  hemi.groundColor.copy(GROUND_DAY).lerp(GROUND_NIGHT, dusk);
   // The fill doubles as moonlight after dark, so facades get some modelling
-  // rather than flat ambient.
-  fill.intensity = night ? 0.55 : 0.06 + 0.20 * up;
-  fill.color.copy(night ? MOON : FILL_DAY);
+  // rather than flat ambient. Kept low: on water it is a specular glade, and
+  // at 0.55 it blew the whole river out to white.
+  fill.intensity = mix(0.06 + 0.20 * up, 0.33, dusk);
+  fill.color.copy(FILL_DAY).lerp(MOON, dusk);
 
-  _fog.copy(night ? SKY_NIGHT : _c);
-  if (!night) _fog.lerp(WHITE, 0.22 * (1 - warm * 0.7));
+  _fog.copy(_c).lerp(WHITE, 0.22 * (1 - warm * 0.7));
+  // Haze approaches the radiance of the sky behind it, and at sunset that sky
+  // is dim. Taking the fog straight from the sunset colour made the far water
+  // more than twice as bright as the sky immediately above it, which put a
+  // hard-edged orange bar right along the horizon. Shaped to bite only in the
+  // last few degrees, so the daylight haze is untouched.
+  _fog.multiplyScalar(1 - 0.68 * Math.pow(warm, 4));
+  _fog.lerp(FOG_NIGHT, dusk);
   scene.fog.color.copy(_fog);
-  scene.fog.near = night ? 1600 : 2200;
-  scene.fog.far = night ? 9000 : 11500;
+  scene.fog.near = mix(2200, 1700, dusk);
+  scene.fog.far = mix(11500, 9500, dusk);
 
-  renderer.toneMappingExposure = night ? 0.85 : 0.50 + 0.16 * warm;
+  renderer.toneMappingExposure = mix(0.50 + 0.16 * warm, 0.86, dusk);
 
   // Windows come on as the sun goes down. The towers need far more emissive
   // than the city: only the narrow glass slots between the columns can glow,
   // so the same intensity reads as almost unlit next to a plain curtain wall.
-  const lit = THREE.MathUtils.clamp((elev / DEG + 6) / -10 + 1, 0, 1);
+  const lit = 1 - smooth(e, -5.5, 5.0);
   WTC_MATS.glass.emissiveIntensity = lit * 2.6;
-  WTC_MATS.lowrise.emissiveIntensity = lit * 0.9;
-  WTC_MATS.wtc7.emissiveIntensity = lit * 0.9;
-  for (const k of WALL_CLASSES) CITY_MATS[k].emissiveIntensity = lit * 0.9;
-  CITY_MATS.water.color.setHex(night ? 0x08131f : 0x16303f);
+  WTC_MATS.lowrise.emissiveIntensity = lit * 0.95;
+  WTC_MATS.wtc7.emissiveIntensity = lit * 0.95;
+  for (const k of WALL_CLASSES) CITY_MATS[k].emissiveIntensity = lit * 0.95;
+  setNightGround(lit);
+  beaconLevel = 0.35 + lit * 2.4;
+  WTC_MATS.beacon.emissiveIntensity = beaconLevel;
+  DETAIL_MATS.lampHead.emissiveIntensity = lit * 2.2;
+  DETAIL_MATS.headlight.emissiveIntensity = lit * 2.4;
+  DETAIL_MATS.tail.emissiveIntensity = lit * 1.5;
+
+  CITY_MATS.water.color.copy(WATER_DAY).lerp(WATER_NIGHT, dusk);
+  // Distant water holds a mirror after dark instead of the wide, hazy lobe
+  // daylight wants: at night the only thing to reflect is the shoreline, and
+  // roughening it away leaves the river a void.
+  const ws = CITY_MATS.water.userData.shader;
+  if (ws) ws.uniforms.farRough.value = mix(0.66, 0.34, dusk);
+  // The mask holds fractions of full white, so this is larger than it looks.
+  // Scaled for the rolled-off linear mask: about 0.02 of radiance in the
+  // channel off the Battery Park City bank, six times that in North Cove, and
+  // next to nothing three kilometres out.
+  setShoreGlow(lit * 0.8);
+  // The shelf has no map, so its emissive is flat: any more than a whisper and
+  // it reads as a neon strip pinned along the coast.
+  CITY_MATS.shallows.emissiveIntensity = lit * 0.05;
 
   if (bloom) {
-    bloom.strength = night ? 0.62 : 0.20 + warm * 0.22;
-    bloom.threshold = night ? 0.30 : 0.80;
+    bloom.strength = mix(0.20 + warm * 0.22, 0.56, dusk);
+    // 0.30 caught the walls around each lit window and wrapped every tower in
+    // a halo; the lit windows themselves are well clear of this.
+    bloom.threshold = mix(0.80, 0.46, dusk);
   }
 
   refreshEnv();
 
   const h = Math.floor(hour), m = Math.round((hour - h) * 60);
-  const phase = night ? 'night' : warm > 0.72 ? 'golden hour' : 'daylight';
+  const phase = dusk > 0.97 ? 'night'
+    : dusk > 0.03 ? 'twilight'
+    : warm > 0.72 ? 'golden hour' : 'daylight';
   document.getElementById('clock').textContent =
     `${String(h).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}` +
-    `  ·  sun ${(elev / DEG).toFixed(0)}°  ·  ${phase}`;
+    `  ·  sun ${e.toFixed(0)}°  ·  ${phase}`;
+}
+
+/**
+ * Street lighting. Lower Manhattan at night is not a black floor with lit
+ * towers standing on it — the streets are the brightest thing at ground level.
+ * The lamp heads give the points of light; a little emissive on the road and
+ * pavement gives the pools they stand in, which no amount of ambient will,
+ * and which is what the streets read as from above.
+ */
+function setNightGround(lit) {
+  CITY_MATS.road.emissiveIntensity = lit * 0.11;
+  CITY_MATS.roadMinor.emissiveIntensity = lit * 0.10;
+  CITY_MATS.sidewalk.emissiveIntensity = lit * 0.07;
+  CITY_MATS.ground.emissiveIntensity = lit * 0.03;
+  // Tobin Plaza was lit, and its granite is pale, so it is legitimately the
+  // brightest ground here — but only if it reads warm. Lit by sky alone it
+  // came out a flat blue-white and looked like snow.
+  WTC_MATS.plaza.emissiveIntensity = lit * 0.16;
+  WTC_MATS.plazaWall.emissiveIntensity = lit * 0.10;
 }
 
 // ---------------------------------------------------------------------------
@@ -60406,7 +61092,10 @@ async function init() {
 
   sky = new Sky();
   sky.scale.setScalar(20000);
+  sky.renderOrder = -2;
   scene.add(sky);
+  nightSky = makeNightSky();
+  scene.add(nightSky);
   pmrem = new THREE.PMREMGenerator(renderer);
 
   sun = new THREE.DirectionalLight(0xffffff, 2.6);
@@ -60437,7 +61126,6 @@ async function init() {
   await tick();
   const complex = buildComplex(data);
   scene.add(complex);
-  complex.traverse((o) => { if (o.name === 'warningLight') warningLight = o; });
 
   status.textContent = 'Roofs, trees and traffic…';
   await tick();
@@ -60452,6 +61140,15 @@ async function init() {
   }
   // Sit them on the carriageway, not on the pavement level.
   for (const m of traffic(data.roads, tier.cars, footprints, -0.20)) detail.add(m);
+  const lamps = streetLamps(data.roads, tier.lamps, footprints,
+                            PLAZA_LAMP_SITES(data));
+  for (const m of lamps) detail.add(m);
+  // Paint where those lamps land, and let the paved materials read it.
+  const pool = lampPoolTexture(lamps[0].userData.sites, LAMP_SPAN, tier.pool);
+  for (const m of [CITY_MATS.road, CITY_MATS.roadMinor, CITY_MATS.sidewalk,
+                   WTC_MATS.plaza, WTC_MATS.plazaWall]) {
+    lampPoolShading(m, pool, LAMP_SPAN);
+  }
   for (const m of vessels(data.land || [], tier.boats)) detail.add(m);
   scene.add(detail);
 
@@ -60605,10 +61302,9 @@ function render() {
 
   const t = clock.getElapsedTime();
   animateWater(t);
-  if (warningLight) {
-    const on = (t % 2.0) < 0.55;
-    warningLight.material.color.setHex(on ? 0xff2a1a : 0x3a0c06);
-  }
+  // The mast tip flashed; the roof corner lights did not.
+  const on = (t % 2.0) < 0.55;
+  WTC_MATS.beaconFlash.emissiveIntensity = beaconLevel * (on ? 2.2 : 0.10);
 
   updateLabels();
   if (composer) composer.render();
