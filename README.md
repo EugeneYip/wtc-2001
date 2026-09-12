@@ -461,6 +461,43 @@ half the contrast small text needs. And a failure left a small grey line under
 two bars still cheerfully climbing, with nothing to do about it; it now says
 so plainly, stops the bars, and offers to try again.
 
+## On a phone
+
+**Turning one sideways was a dead end.** The panel starts collapsed on a phone
+so the model is the first thing you see. In landscape it slides off to the
+right — and what stays on screen is its left edge, while the button that brings
+it back sits on the right and had been hidden outright by the phone rules. The
+grip, which belongs to a bottom sheet, ended up off the side of the screen
+entirely. So a phone held sideways showed a fifty-pixel strip of chopped-off
+text with nothing tappable in it: no viewpoints, no time of day, no way back.
+The button is now on the edge that stays visible.
+
+**Nothing told you how to drive it.** The hint along the bottom — drag, scroll,
+right-drag — was hidden on touch, which is exactly where the gestures are least
+guessable. Touch now gets its own wording, and it goes away the moment you
+touch anything, or after seven seconds if you don't.
+
+**A safety net instead of a better guess.** The quality tier is picked from
+pointer type, core count and memory, which is a guess spread across hardware
+that differs by a factor of fifty. Rather than tune the guess — there is no
+honest way to test it against the devices it is guessing about — the frame rate
+is now measured, and if the median frame is slower than about 40 fps the
+renderer gives up pixels, down to one device pixel per CSS pixel. It only ever
+goes down: a resolution that oscillates with load is worse to look at than one
+that is simply lower.
+
+Two things checked and deliberately left alone. The gestures are right — one
+finger turns, two pinch and pan, all three verified. And the tier heuristic puts
+a current flagship phone on the *low* preset, which drops bloom, because it
+tests the CSS screen size against 900 and most phones report 812 or 852. That
+looks wrong, and it may be, but the low preset renders straight to the canvas
+in about 2 ms at phone resolution where the full post-processing chain would be
+four times that. On a phone GPU an order of magnitude slower than this one, the
+difference between those is the difference between working and not. Changing it
+on a hunch, with no way to test on the hardware in question, is not a trade
+worth making — and the frame-rate guard above now catches the case where the
+guess is too generous.
+
 ## Accuracy notes
 
 Tower position and orientation are not estimated. The reflecting pools of the

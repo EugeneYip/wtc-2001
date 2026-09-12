@@ -929,10 +929,57 @@ function sizeComposer() {
   composer.setSize(size.x, size.y);
 }
 
+/**
+ * Drop resolution if the device cannot keep up.
+ *
+ * The quality tier is a guess made from pointer type, core count and memory,
+ * and on a phone that guess is spread across hardware that differs by a factor
+ * of fifty. Rather than tune the guess — there is no way to test it against
+ * the devices it is guessing about — measure what the machine is actually
+ * managing and take pixels away if it is struggling. This frame is fill-bound,
+ * so pixels are the right thing to give up.
+ *
+ * One-directional on purpose: it never raises the ratio again, because a
+ * resolution that oscillates with load is worse to look at than one that is
+ * simply lower.
+ */
+const FRAME_BUDGET_MS = 26;          // about 40 fps
+const RATIO_FLOOR = 1.0;
+let frameSamples = [], lastFrameAt = 0;
+// Kept as a factor rather than a ratio so that rotating the phone, which goes
+// through the resize path and recomputes the cap, does not quietly undo it.
+let ratioScale = 1;
+
+function watchFrameRate() {
+  const now = performance.now();
+  const dt = now - lastFrameAt;
+  lastFrameAt = now;
+  // A long gap is a stall, a tab coming back, or the first frame. Not evidence.
+  if (dt <= 0 || dt > 400) return;
+  frameSamples.push(dt);
+  if (frameSamples.length < 90) return;
+  frameSamples.sort((a, b) => a - b);
+  const median = frameSamples[frameSamples.length >> 1];
+  frameSamples = [];
+  if (median <= FRAME_BUDGET_MS) return;
+  if (pixelRatioFor(TIERS[quality]) <= RATIO_FLOOR + 0.001) return;
+  ratioScale *= 0.88;
+  applyPixelRatio();
+}
+
 function pixelRatioFor(tier) {
   const want = Math.min(devicePixelRatio, tier.dpr);
   const css = Math.max(1, innerWidth * innerHeight);
-  return Math.max(1, Math.min(want, Math.sqrt(tier.maxPx / css)));
+  const capped = Math.min(want, Math.sqrt(tier.maxPx / css));
+  return Math.max(RATIO_FLOOR, capped * ratioScale);
+}
+
+function applyPixelRatio() {
+  const ratio = pixelRatioFor(TIERS[quality]);
+  if (Math.abs(renderer.getPixelRatio() - ratio) < 0.001) return;
+  renderer.setPixelRatio(ratio);
+  renderer.setSize(innerWidth, innerHeight);
+  sizeComposer();
 }
 
 /**
@@ -952,13 +999,8 @@ function onResize() {
   camera.fov = fovFor(camera.aspect);
   camera.updateProjectionMatrix();
   // Dragging a window onto a larger screen changes how many pixels two device
-  // pixels amounts to, so the cap has to be re-applied, and the composer told
-  // about it or its targets stay the old size.
-  const ratio = pixelRatioFor(TIERS[quality]);
-  if (Math.abs(renderer.getPixelRatio() - ratio) > 0.001) {
-    renderer.setPixelRatio(ratio);
-    if (composer) composer.setPixelRatio(ratio);
-  }
+  // pixels amounts to, so the cap has to be re-applied.
+  applyPixelRatio();
   renderer.setSize(innerWidth, innerHeight);
   sizeComposer();
   relabel();
@@ -1082,6 +1124,19 @@ function wireUI() {
     if (e.key === 'Escape') closeAbout();
   });
 
+  // The hint bar tells you how to drive this, and it was hidden on exactly the
+  // devices whose gestures are least guessable: nothing on a phone said that
+  // two fingers zoom and pan. Say it, then get out of the way once they have
+  // touched something.
+  const hint = document.getElementById('hint');
+  if (matchMedia('(pointer: coarse)').matches) {
+    hint.innerHTML = '<b>one finger</b> turn · <b>two</b> zoom and pan';
+    hint.classList.add('touch');
+    const dismiss = () => hint.classList.add('gone');
+    renderer.domElement.addEventListener('pointerdown', dismiss, { once: true });
+    setTimeout(dismiss, 7000);
+  }
+
   // Start collapsed on a phone, so the model is the first thing you see.
   if (isCompact()) sheet.classList.add('collapsed');
 }
@@ -1090,6 +1145,7 @@ function wireUI() {
 
 function render() {
   onResize();
+  watchFrameRate();
   stepFlight();
   clampToGround();
   controls.update();

@@ -281,10 +281,17 @@
     #views{grid-template-columns:1fr 1fr}
     #views button{min-height:44px;font-size:12px}
     .row{padding:8px 0;font-size:12.5px;min-height:44px}
+    /* The card covers all but a sliver of the backdrop on a phone, so this is
+       the way out, and it was a 30 px target. */
+    #aboutClose{width:44px;height:44px;font-size:19px;margin:-8px -8px 0 0}
     .row input{width:18px;height:18px}
     /* The track is 4 px; the padding is what makes the control a thumb tall. */
     input[type=range]{padding:20px 0;background-clip:content-box}
-    #hint{display:none}
+    /* Shown for touch by main.js, which also writes the wording and takes it
+       away once you have actually touched something. */
+    #hint{display:none;bottom:calc(64px + var(--sb))}
+    #hint.touch{display:block}
+    #hint.gone{opacity:0;transition:opacity .8s ease;pointer-events:none}
     #credit{bottom:auto;top:calc(12px + var(--st));right:calc(12px + var(--sr));
       text-align:right;font-size:9px;opacity:.75}
     .lbl{font-size:10px;padding:3px 7px}
@@ -300,7 +307,15 @@
     .body{max-height:44vh}
     #panel{left:auto;right:calc(8px + var(--sr));top:calc(8px + var(--st));width:300px}
     #panel.collapsed{transform:translateX(calc(100% - 42px))}
-    #panelToggle{transform:scaleX(-1)}
+    /* Sliding off to the right leaves the panel's LEFT edge on screen, so the
+       button that brings it back has to live on that edge. It did not: the
+       phone rules above hid it outright, and the grip — which belongs to a
+       bottom sheet — ended up off the right of the screen entirely. Since the
+       panel starts collapsed on a phone, turning one sideways gave you a strip
+       of chopped-off text and no way to open anything. */
+    #grip{display:none}
+    #panel header{padding:11px 14px}
+    #panelToggle{display:block;order:-1;transform:scaleX(-1)}
   }
 </style>
 </head>
