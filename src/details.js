@@ -994,11 +994,21 @@ const HULL = [
 ];
 
 export const VESSEL_MATS = {
+  // No vertexColors: the hulls are instanced now and take their colour from
+  // instanceColor. Left on, three declares the colour attribute the unit
+  // geometry does not have, WebGL supplies its default of zero, and every
+  // vessel in the harbour renders black.
   hull: new THREE.MeshStandardMaterial({
-    color: 0xffffff, vertexColors: true, roughness: 0.62, metalness: 0.20 }),
+    color: 0xffffff, roughness: 0.62, metalness: 0.20 }),
   wake: new THREE.MeshStandardMaterial({
-    color: 0x9fb6bd, roughness: 0.35, metalness: 0.0,
-    transparent: true, opacity: 0.5, depthWrite: false }),
+    color: 0xc7d8de, roughness: 0.4, metalness: 0.0, vertexColors: true,
+    transparent: true, opacity: 0.34, depthWrite: false }),
+  // A masthead light each. After dark the hulls vanish into the water and the
+  // harbour empties again; this is all that is left of a working boat at a
+  // mile, and it is enough.
+  navLight: new THREE.MeshStandardMaterial({
+    color: 0xfff4dc, roughness: 0.4, metalness: 0.0,
+    emissive: new THREE.Color(0xfff0cc), emissiveIntensity: 0 }),
 };
 
 /**
@@ -1027,7 +1037,7 @@ export function vessels(land, count = 16, reach = 2600) {
     const x = (rand() * 2 - 1) * reach;
     const z = (rand() * 2 - 1) * reach;
     if (!clear(x, z, 150)) continue;
-    if (picks.some((p) => Math.hypot(p.x - x, p.z - z) < 260)) continue;
+    if (picks.some((p) => Math.hypot(p.x - x, p.z - z) < 240)) continue;
     // Head along the longest clear bearing, so vessels line up with channels.
     let best = 0, bestRun = -1;
     for (let k = 0; k < 12; k++) {
@@ -1035,69 +1045,146 @@ export function vessels(land, count = 16, reach = 2600) {
       const run = runLength(x, z, a) + runLength(x, z, a + Math.PI);
       if (run > bestRun) { bestRun = run; best = a; }
     }
-    picks.push({ x, z, ang: best, kind: HULL[Math.floor(rand() * HULL.length)] });
+    const fwd = runLength(x, z, best), back = runLength(x, z, best + Math.PI);
+    picks.push({ x, z, ang: best, kind: HULL[Math.floor(rand() * HULL.length)],
+                 half: Math.max(60, Math.min(fwd, back) - 60) });
   }
   if (!picks.length) return [];
 
-  const hulls = [];
-  const wakes = [];
-  const col = new THREE.Color();
-
-  for (const { x, z, ang, kind } of picks) {
-    const heading = ang + (rand() < 0.5 ? 0 : Math.PI);
-
-    const hull = new THREE.BoxGeometry(kind.l, kind.h, kind.w);
-    const bow = hull.getAttribute('position');
-    for (let i = 0; i < bow.count; i++) {          // taper the bow
-      if (bow.getX(i) > 0) bow.setZ(i, bow.getZ(i) * 0.45);
+  // Unit shapes, one metre in every direction, scaled per instance. A hull
+  // baked in place cannot move, and a wake behind a vessel that never moves is
+  // a frozen frame: the water drifts, the boats sit still, and the wake claims
+  // a speed the boat plainly does not have.
+  const hullGeo = (() => {
+    const g = new THREE.BoxGeometry(1, 1, 1);
+    g.translate(0, 0.5, 0);
+    const p = g.getAttribute('position');
+    for (let i = 0; i < p.count; i++) {
+      if (p.getX(i) > 0) p.setZ(i, p.getZ(i) * 0.45);   // taper the bow
     }
-    hull.rotateY(-heading);
-    hull.translate(x, kind.h / 2 - 1.1, z);
-    col.setHex(kind.colour);
-    hulls.push(paint(norm(hull), col));
-
-    const [hw, hh, hd] = kind.house;
-    const house = new THREE.BoxGeometry(hw, hh, hd);
-    house.rotateY(-heading);
-    house.translate(x - Math.cos(heading) * kind.l * 0.18, kind.h + hh / 2 - 1.1,
-                    z - Math.sin(heading) * kind.l * 0.18);
-    hulls.push(paint(norm(house), col.setHex(0xd7d9d4)));
-
-    // Wake: a wedge widening astern.
-    const len = kind.l * (4 + rand() * 3);
-    const wide = kind.w * 3.2;
-    const bx = x - Math.cos(heading) * kind.l * 0.5;
-    const bz = z - Math.sin(heading) * kind.l * 0.5;
-    const tx = bx - Math.cos(heading) * len;
-    const tz = bz - Math.sin(heading) * len;
-    const px = -Math.sin(heading), pz = Math.cos(heading);
+    return norm(g);
+  })();
+  const houseGeo = (() => {
+    const g = new THREE.BoxGeometry(1, 1, 1);
+    g.translate(0, 0.5, 0);
+    return norm(g);
+  })();
+  // The wake: a wedge astern, bright where the water is broken and fading out
+  // along its length. Alpha lives in the vertex colour, so the taper is in the
+  // geometry rather than in a texture.
+  const wakeGeo = (() => {
+    const pos = [], col = [];
+    const push = (x, z, a) => { pos.push(x, 0, z); col.push(1, 1, 1, a); };
+    // Stern is at x = 0; the tail runs to x = -1. Wound anticlockwise seen
+    // from above — the obvious order gives a normal of -y and the whole wake
+    // is culled, which is the third time a flat horizontal quad in this
+    // project has been built face-down.
+    push(-0.45, 0.55, 0.34); push(0, 0.20, 0.70); push(0, -0.20, 0.70);
+    push(-0.45, -0.55, 0.34); push(-0.45, 0.55, 0.34); push(0, -0.20, 0.70);
+    push(-1, 1.0, 0.0); push(-0.45, 0.55, 0.34); push(-0.45, -0.55, 0.34);
+    push(-1, -1.0, 0.0); push(-1, 1.0, 0.0); push(-0.45, -0.55, 0.34);
     const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute([
-      bx - px * kind.w * 0.4, 0, bz - pz * kind.w * 0.4,
-      bx + px * kind.w * 0.4, 0, bz + pz * kind.w * 0.4,
-      tx + px * wide, 0, tz + pz * wide,
-      bx - px * kind.w * 0.4, 0, bz - pz * kind.w * 0.4,
-      tx + px * wide, 0, tz + pz * wide,
-      tx - px * wide, 0, tz - pz * wide,
-    ], 3));
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
     g.setAttribute('normal', new THREE.Float32BufferAttribute(
-      Array.from({ length: 18 }, (_, i) => (i % 3 === 1 ? 1 : 0)), 3));
-    g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(12), 2));
-    wakes.push(g);
+      pos.map((_, i) => (i % 3 === 1 ? 1 : 0)), 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(
+      new Float32Array((pos.length / 3) * 2), 2));
+    return g;
+  })();
+
+  const n = picks.length;
+  const hulls = new THREE.InstancedMesh(hullGeo, VESSEL_MATS.hull, n);
+  const houses = new THREE.InstancedMesh(houseGeo, VESSEL_MATS.hull, n);
+  const wakes = new THREE.InstancedMesh(wakeGeo, VESSEL_MATS.wake, n);
+  const lamps = new THREE.InstancedMesh(
+    norm(new THREE.SphereGeometry(0.5, 6, 5)), VESSEL_MATS.navLight, n);
+  hulls.castShadow = houses.castShadow = true;
+  wakes.renderOrder = 1;
+  hulls.name = 'vessels';
+  houses.name = 'vessel-houses';
+  wakes.name = 'wakes';
+  lamps.name = 'vessel-lights';
+
+  const col = new THREE.Color();
+  const tracks = picks.map((p, i) => {
+    hulls.setColorAt(i, col.setHex(p.kind.colour));
+    houses.setColorAt(i, col.setHex(0xd7d9d4));
+    return {
+      x: p.x, z: p.z, ang: p.ang, kind: p.kind, half: p.half,
+      // Peak speed about five metres a second, whatever the run length.
+      w: 5 / p.half,
+      phase: rand() * Math.PI * 2,
+    };
+  });
+  for (const im of [hulls, houses, wakes]) {
+    if (im.instanceColor) im.instanceColor.needsUpdate = true;
   }
+  hulls.userData.tracks = tracks;
+  hulls.userData.crew = { houses, wakes, lamps };
+  animateVessels(hulls, 0);
+  return [hulls, houses, wakes, lamps];
+}
 
-  const out = [];
-  const hullMesh = new THREE.Mesh(mergeGeometries(hulls), VESSEL_MATS.hull);
-  hullMesh.castShadow = true;
-  hullMesh.name = 'vessels';
-  out.push(hullMesh);
+const _vm = new THREE.Matrix4();
+const _vq = new THREE.Quaternion();
+const _vp = new THREE.Vector3();
+const _vs = new THREE.Vector3();
+const _vup = new THREE.Vector3(0, 1, 0);
 
-  const wakeMesh = new THREE.Mesh(mergeGeometries(wakes), VESSEL_MATS.wake);
-  wakeMesh.position.y = -0.36;
-  wakeMesh.renderOrder = 1;
-  wakeMesh.name = 'wakes';
-  out.push(wakeMesh);
-  return out;
+/**
+ * Work the harbour. Each vessel runs back and forth along its channel on a
+ * sinusoid, so it slows, turns and gathers way again at each end rather than
+ * snapping round, and the wake shortens as it loses speed.
+ */
+export function animateVessels(hulls, t) {
+  if (!hulls || !hulls.userData.tracks) return;
+  const { houses, wakes, lamps } = hulls.userData.crew;
+  const tracks = hulls.userData.tracks;
+  for (let i = 0; i < tracks.length; i++) {
+    const k = tracks[i];
+    const ph = k.phase + t * k.w;
+    const along = Math.sin(ph) * k.half;
+    const vel = Math.cos(ph);                       // -1 astern, +1 ahead
+    // Turn through the reversal rather than flipping in a frame.
+    const heading = k.ang + Math.PI * (0.5 - 0.5 * Math.tanh(vel * 5));
+    const ux = Math.cos(k.ang), uz = Math.sin(k.ang);
+    const x = k.x + ux * along, z = k.z + uz * along;
+    _vq.setFromAxisAngle(_vup, -heading);
+
+    _vp.set(x, -1.1, z);
+    _vs.set(k.kind.l, k.kind.h, k.kind.w);
+    _vm.compose(_vp, _vq, _vs);
+    hulls.setMatrixAt(i, _vm);
+
+    const [hw, hh, hd] = k.kind.house;
+    _vp.set(x - Math.cos(heading) * k.kind.l * 0.18, k.kind.h - 1.1,
+            z - Math.sin(heading) * k.kind.l * 0.18);
+    _vs.set(hw, hh, hd);
+    _vm.compose(_vp, _vq, _vs);
+    houses.setMatrixAt(i, _vm);
+
+    // The wake belongs to the speed, not to the boat. Kept to a few boat
+    // lengths and a couple of beams: at nine lengths and three beams it was a
+    // white sheet half a kilometre long lying on the harbour.
+    const speed = Math.abs(vel);
+    _vp.set(x - Math.cos(heading) * k.kind.l * 0.5, -0.42,
+            z - Math.sin(heading) * k.kind.l * 0.5);
+    _vs.set(k.kind.l * (0.6 + 1.6 * speed), 1, k.kind.w * (0.45 + 0.6 * speed));
+    _vm.compose(_vp, _vq, _vs);
+    wakes.setMatrixAt(i, _vm);
+
+    _vp.set(x - Math.cos(heading) * k.kind.l * 0.18,
+            k.kind.h + hh - 0.7,
+            z - Math.sin(heading) * k.kind.l * 0.18);
+    _vs.set(1, 1, 1);
+    _vm.compose(_vp, _vq, _vs);
+    lamps.setMatrixAt(i, _vm);
+  }
+  hulls.instanceMatrix.needsUpdate = true;
+  houses.instanceMatrix.needsUpdate = true;
+  wakes.instanceMatrix.needsUpdate = true;
+  lamps.instanceMatrix.needsUpdate = true;
 }
 
 /** Bake a flat colour into a geometry so hulls can share one draw call. */

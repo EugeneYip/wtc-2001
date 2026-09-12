@@ -21,9 +21,9 @@ import { buildCity, cityLabels, animateWater, setShoreGlow, lampPoolShading,
          junctions, CITY_MATS, WALL_CLASSES } from './city.js';
 import { buildComplex, MATS as WTC_MATS, PLAZA_TREE_SITES,
          PLAZA_LAMP_SITES, SPHERE_AT } from './wtc.js';
-import { roofClutter, trees, traffic, parkedCars, manholes, vessels, streetLamps,
-         lampPoolTexture, trafficSignals, kerbFurniture, obstacleIndex,
-         DETAIL_MATS } from './details.js';
+import { roofClutter, trees, traffic, parkedCars, manholes, vessels,
+         animateVessels, streetLamps, lampPoolTexture, trafficSignals,
+         kerbFurniture, obstacleIndex, DETAIL_MATS, VESSEL_MATS } from './details.js';
 import { makeNightSky } from './nightsky.js';
 import { buildBridge, BRIDGE_MATS } from './bridge.js';
 
@@ -39,6 +39,7 @@ let shadowSpan = 1050;
 let labels = [], labelLayer, data, waterMesh;
 let showLabels = true;
 let beaconLevel = 0;
+let harbour = null;
 let timeOfDay = 17.0;
 let quality = 'high';
 const clock = new THREE.Clock();
@@ -48,9 +49,9 @@ const clock = new THREE.Clock();
 // ---------------------------------------------------------------------------
 
 const TIERS = {
-  low:    { dpr: 1.5,  shadow: 1024, bloom: false, probe: 128, cars: 190, parked: 900,  parkReach: 450, boats: 8,  lamps: 260, props: 110, pool: 512,  shadowSpan: 800 },
-  medium: { dpr: 1.75, shadow: 2048, bloom: true,  probe: 192, cars: 420, parked: 2100, parkReach: 650, boats: 14, lamps: 480, props: 200, pool: 1024, shadowSpan: 950 },
-  high:   { dpr: 2.0,  shadow: 4096, bloom: true,  probe: 256, cars: 620, parked: 4100, parkReach: 900, boats: 18, lamps: 700, props: 300, pool: 1024, shadowSpan: 1050 },
+  low:    { dpr: 1.5,  shadow: 1024, bloom: false, probe: 128, cars: 190, parked: 900,  parkReach: 450, boats: 14, lamps: 260, props: 110, pool: 512,  shadowSpan: 800 },
+  medium: { dpr: 1.75, shadow: 2048, bloom: true,  probe: 192, cars: 420, parked: 2100, parkReach: 650, boats: 26, lamps: 480, props: 200, pool: 1024, shadowSpan: 950 },
+  high:   { dpr: 2.0,  shadow: 4096, bloom: true,  probe: 256, cars: 620, parked: 4100, parkReach: 900, boats: 38, lamps: 700, props: 300, pool: 1024, shadowSpan: 1050 },
 };
 
 function detectQuality() {
@@ -220,6 +221,7 @@ function applyTime(hour) {
   DETAIL_MATS.tail.emissiveIntensity = lit * 1.5;
   DETAIL_MATS.signalLens.emissiveIntensity = 0.9 + lit * 1.9;
   BRIDGE_MATS.lamp.emissiveIntensity = lit * 2.4;
+  VESSEL_MATS.navLight.emissiveIntensity = lit * 4.2;
   BRIDGE_MATS.deck.emissiveIntensity = lit * 0.10;
 
   CITY_MATS.water.color.copy(WATER_DAY).lerp(WATER_NIGHT, dusk);
@@ -580,7 +582,9 @@ async function init() {
   // The deck also carries its concentric courses, struck from the fountain.
   lampPoolShading(WTC_MATS.plaza, pool, LAMP_SPAN,
                   { centre: SPHERE_AT, pitch: 4.4 });
-  for (const m of vessels(data.land || [], tier.boats)) detail.add(m);
+  const fleet = vessels(data.land || [], tier.boats);
+  for (const m of fleet) detail.add(m);
+  harbour = fleet[0] || null;
   scene.add(detail);
 
   // Reflection probe, over the plaza and above the low-rise roofline.
@@ -733,6 +737,7 @@ function render() {
 
   const t = clock.getElapsedTime();
   animateWater(t);
+  animateVessels(harbour, t);
   // The mast tip flashed; the roof corner lights did not.
   const on = (t % 2.0) < 0.55;
   WTC_MATS.beaconFlash.emissiveIntensity = beaconLevel * (on ? 2.2 : 0.10);

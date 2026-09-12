@@ -213,9 +213,15 @@ gives water its behaviour: its own dark blue-green looking down, turning to a
 sky mirror at grazing angles. Two normal maps drift across each other at
 different scales and headings — one layer alone only slides, two beating
 against each other read as chop — over a varying roughness map, because real
-water is never uniformly glassy. A paler shelf runs off every shoreline, and
-a handful of tugs, ferries and barges work the harbour with wakes behind
-them.
+water is never uniformly glassy. A paler shelf runs off every shoreline.
+
+Tugs, ferries and barges work the harbour, and they *work* it: each one runs
+its channel on a sinusoid, so it slows, turns and gathers way again at the ends
+rather than snapping round, and the wake shortens as it loses speed. They used
+to be baked in place — a fleet of boats sitting perfectly still, each with a
+permanent wake claiming a speed it plainly did not have. After dark the hulls
+disappear into the water and all that is left is a masthead light each, which
+is all a working boat is at a mile.
 
 ![The Twin Towers at twilight from the East River](assets/night.jpg)
 
@@ -302,7 +308,7 @@ uniform slab. Those are massing, not survey.
 
 ## Performance
 
-About 169 draw calls and 1.01M triangles in daylight, and roughly 2 to 3 ms a
+About 172 draw calls and 1.01M triangles in daylight, and roughly 2 to 3 ms a
 frame on an M2 at 2800 × 1800 once shaders are warm, with the post-processing
 running at full resolution and 4x multisampling.
 
