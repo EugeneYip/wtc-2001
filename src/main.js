@@ -20,7 +20,7 @@ import { OutputPass } from 'OutputPass';
 import { buildCity, cityLabels, animateWater, setShoreGlow, lampPoolShading,
          junctions, CITY_MATS, WALL_CLASSES } from './city.js';
 import { buildComplex, MATS as WTC_MATS, PLAZA_TREE_SITES,
-         PLAZA_LAMP_SITES } from './wtc.js';
+         PLAZA_LAMP_SITES, SPHERE_AT } from './wtc.js';
 import { roofClutter, trees, traffic, parkedCars, manholes, vessels, streetLamps,
          lampPoolTexture, trafficSignals, kerbFurniture, obstacleIndex,
          DETAIL_MATS } from './details.js';
@@ -543,7 +543,8 @@ async function init() {
   // Park polygons overlap buildings and some streets run under them, so
   // scatter placement is tested against every footprint in the city.
   const footprints = obstacleIndex(data.buildings.map((b) => b.p));
-  for (const m of roofClutter(data.buildings)) detail.add(m);
+  // The complex's low-rise roofs take the same plant as the rest of the city.
+  for (const m of roofClutter(data.buildings.concat(data.complex))) detail.add(m);
   for (const m of trees(data.parks, PLAZA_TREE_SITES(data, obstacleIndex), footprints)) {
     detail.add(m);
   }
@@ -563,9 +564,12 @@ async function init() {
   // Paint where those lamps land, and let the paved materials read it.
   const pool = lampPoolTexture(lamps[0].userData.sites, LAMP_SPAN, tier.pool);
   for (const m of [CITY_MATS.road, CITY_MATS.roadMinor, CITY_MATS.sidewalk,
-                   WTC_MATS.plaza, WTC_MATS.plazaWall]) {
+                   WTC_MATS.plazaWall]) {
     lampPoolShading(m, pool, LAMP_SPAN);
   }
+  // The deck also carries its concentric courses, struck from the fountain.
+  lampPoolShading(WTC_MATS.plaza, pool, LAMP_SPAN,
+                  { centre: SPHERE_AT, pitch: 4.4 });
   for (const m of vessels(data.land || [], tier.boats)) detail.add(m);
   scene.add(detail);
 

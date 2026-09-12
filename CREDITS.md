@@ -28,7 +28,8 @@ dimensions and historic site plans, and any error in them is mine:
 - 1 and 2 World Trade Center, including the facade column grid, the base
   arcade and the 1 WTC transmission mast
 - 3, 4, 5, 6 World Trade Center and Austin J. Tobin Plaza, with the Liberty
-  Street and Vesey Street flights up to the deck
+  Street and Vesey Street flights up to the deck, the concentric granite
+  courses struck from the fountain, and Fritz Koenig's *Sphere* on its pool
 - 7 World Trade Center as built in 1987
 - The Deutsche Bank Building at 130 Liberty Street, demolished 2007–2011
 - The Brooklyn Bridge: plan from OpenStreetMap, section from published figures

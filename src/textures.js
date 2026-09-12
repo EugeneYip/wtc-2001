@@ -458,24 +458,34 @@ export function roofTexture() {
 }
 
 /** Austin J. Tobin Plaza: a granite grid, laid to the towers' own geometry. */
+/**
+ * Tobin Plaza granite.
+ *
+ * Only the stone itself: the courses that radiate from the fountain are round,
+ * so they cannot come from a tiling map and are computed in the shader. This
+ * tile is a little warm, as the plaza's granite was, and jointed at slab size
+ * rather than every twelve metres.
+ */
 export function plazaTexture() {
-  const [c, x] = canvas(256, 256);
+  const N = 256;
+  const [c, x] = canvas(N, N);
   const rand = rng(41);
-  x.fillStyle = '#a89f92';
-  x.fillRect(0, 0, 256, 256);
-  for (let i = 0; i < 5000; i++) {
-    const g = 150 + Math.floor(rand() * 45);
-    x.fillStyle = `rgba(${g},${g - 6},${g - 16},${0.18 + rand() * 0.3})`;
-    x.fillRect(rand() * 256, rand() * 256, 1 + rand() * 2, 1 + rand() * 2);
+  x.fillStyle = '#a79c8d';
+  x.fillRect(0, 0, N, N);
+  for (let i = 0; i < 9000; i++) {
+    const g = 146 + Math.floor(rand() * 48);
+    x.fillStyle = `rgba(${g},${g - 7},${g - 18},${0.16 + rand() * 0.3})`;
+    x.fillRect(rand() * N, rand() * N, 1 + rand() * 2, 1 + rand() * 2);
   }
-  x.strokeStyle = 'rgba(120,112,102,0.55)';
-  x.lineWidth = 1.5;
+  // Slab joints. The tile is 6 m, so this is a course of 1.5 m slabs.
+  x.strokeStyle = 'rgba(118,110,99,0.42)';
+  x.lineWidth = 1.2;
   for (let i = 0; i <= 4; i++) {
-    const p = i * 64;
-    x.beginPath(); x.moveTo(p, 0); x.lineTo(p, 256); x.stroke();
-    x.beginPath(); x.moveTo(0, p); x.lineTo(256, p); x.stroke();
+    const p = i * (N / 4);
+    x.beginPath(); x.moveTo(p, 0); x.lineTo(p, N); x.stroke();
+    x.beginPath(); x.moveTo(0, p); x.lineTo(N, p); x.stroke();
   }
-  return finish(c, 1 / 12, 1 / 12, 4);
+  return finish(c, 1 / 6, 1 / 6, 8);
 }
 
 /**

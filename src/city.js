@@ -274,10 +274,13 @@ function shallows(landPolys, width = 17) {
  * A floor is kept under it because a city's streets do glow as a continuous
  * network from the air, where the individual pools are far below a pixel.
  */
-export function lampPoolShading(mat, tex, span) {
+export function lampPoolShading(mat, tex, span, rings = null) {
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.poolMap = { value: tex };
     shader.uniforms.poolScale = { value: 1 / span };
+    shader.uniforms.ringCentre = { value: new THREE.Vector2(
+      rings ? rings.centre[0] : 0, rings ? rings.centre[1] : 0) };
+    shader.uniforms.ringPitch = { value: rings ? rings.pitch : 0 };
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `
         #include <common>
@@ -292,12 +295,38 @@ export function lampPoolShading(mat, tex, span) {
         #include <common>
         uniform sampler2D poolMap;
         uniform float poolScale;
+        uniform vec2 ringCentre;
+        uniform float ringPitch;
         varying vec3 vWorldPos;
       `)
       .replace('#include <emissivemap_fragment>', `
         #include <emissivemap_fragment>
         totalEmissiveRadiance *= 0.18 + 3.4 *
           texture2D( poolMap, vWorldPos.xz * poolScale + 0.5 ).r;
+      `)
+      // Concentric granite, radiating from the fountain. It cannot come from
+      // the map: a tiling texture repeats in a square grid and this pattern is
+      // round, so it is computed from the distance to the centre instead,
+      // which also clips itself to the deck for free.
+      .replace('#include <map_fragment>', `
+        #include <map_fragment>
+        if ( ringPitch > 0.0 ) {
+          vec2 rel = vWorldPos.xz - ringCentre;
+          float rad = length( rel );
+          float band = fract( rad / ringPitch );
+          // Alternating courses, with a joint line between them.
+          float tone = step( 0.5, band ) * 0.19;
+          float w = fwidth( rad / ringPitch ) * 1.5 + 0.004;
+          float joint = 1.0 - smoothstep( 0.0, w, min( band, 1.0 - band ) );
+          // Radial joints as well, so it reads as laid rather than painted.
+          float spokes = fract( atan( rel.y, rel.x ) * 12.0 / 3.14159265 );
+          float spoke = ( 1.0 - smoothstep( 0.0, 0.06, min( spokes, 1.0 - spokes ) ) )
+                        * smoothstep( 4.0, 16.0, rad );
+          float shade = 1.0 - tone - joint * 0.30 - spoke * 0.13;
+          // Fade the whole pattern out where the deck runs past the towers.
+          diffuseColor.rgb *= mix( 1.0, shade,
+            1.0 - smoothstep( 70.0, 120.0, rad ) );
+        }
       `);
   };
   mat.needsUpdate = true;

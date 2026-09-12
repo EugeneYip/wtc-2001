@@ -204,6 +204,11 @@ export const MATS = {
   bronze: new THREE.MeshStandardMaterial({
     color: 0x6b5434, metalness: 0.75, roughness: 0.35,
   }),
+  // Shallow water over pale stone, so it is light looking down and a mirror at
+  // a glance: at 0x2a4a52 the pool read as a hole in the deck.
+  fountain: new THREE.MeshStandardMaterial({
+    color: 0x6f8f92, metalness: 0.03, roughness: 0.14, envMapIntensity: 1.3,
+  }),
 };
 
 /** The four faces, as (centre offset, direction along the face). */
@@ -333,30 +338,64 @@ function roofDeck(side, roofY) {
   const g = new THREE.Group();
   const inner = side - 2 * COL_D;
 
-  const deck = new THREE.Mesh(
-    new THREE.BoxGeometry(inner, 1.2, inner), MATS.baseDark);
-  deck.position.y = roofY + 0.6;
-  deck.receiveShadow = true;
-  g.add(deck);
+  // One mesh per material. Built as loose meshes this came to fifteen draw
+  // calls a tower, which for a roof you mostly see from two kilometres away is
+  // not a good trade.
+  const stone = [];
+  const plant = [];
+  const lamps = [];
 
-  // Steady red obstruction lights at the roof corners, as both towers carried.
-  const q = inner / 2 - 1.4;
-  for (const [cx, cz] of [[-q, -q], [q, -q], [q, q], [-q, q]]) {
-    const b = new THREE.Mesh(new THREE.SphereGeometry(0.55, 8, 6), MATS.beacon);
-    b.position.set(cx, roofY + 1.5, cz);
-    g.add(b);
+  const deck = new THREE.BoxGeometry(inner, 1.2, inner);
+  deck.translate(0, roofY + 0.6, 0);
+  const deckMesh = new THREE.Mesh(norm(deck), MATS.baseDark);
+  deckMesh.receiveShadow = true;
+  g.add(deckMesh);
+
+  // Parapet. The facade columns did not stop at the top floor — they ran on
+  // past it, which is what gave the towers their hard upper edge and hid the
+  // plant behind it. Cut off level with the deck, the roofline went soft and
+  // the mechanical boxes sat out in the open.
+  const PARA = 2.6, T = 0.85;
+  const half = side / 2 - T / 2;
+  for (const [ax, az, w, d] of [[0, -half, side, T], [0, half, side, T],
+                                [-half, 0, T, side - T * 2],
+                                [half, 0, T, side - T * 2]]) {
+    const wall = new THREE.BoxGeometry(w, PARA, d);
+    wall.translate(ax, roofY + PARA / 2, az);
+    stone.push(norm(wall));
   }
 
-  // Mechanical penthouses and cooling plant.
+  // Steady red obstruction lights, standing on the parapet rather than behind
+  // it: at deck level the parapet hid every one of them.
+  const q = side / 2 - 1.6;
+  for (const [cx, cz] of [[-q, -q], [q, -q], [q, q], [-q, q]]) {
+    const b = new THREE.SphereGeometry(0.55, 8, 6);
+    b.translate(cx, roofY + PARA + 0.45, cz);
+    lamps.push(norm(b));
+  }
+
+  // Mechanical penthouses and cooling plant. The real roof was most of the way
+  // covered by plant: a long central house with the cooling towers around it,
+  // not three boxes on an empty deck.
   const boxes = [
-    [-14, -10, 17, 5.5, 12], [9, 8, 14, 4.2, 16], [12, -14, 9, 3.0, 9],
+    [-6, 0, 34, 6.4, 20], [-20, -16, 14, 4.0, 11], [14, 15, 16, 3.6, 13],
+    [17, -16, 10, 2.8, 9], [-19, 16, 9, 2.4, 8], [4, -20, 12, 2.2, 7],
   ];
   for (const [x, z, w, h, d] of boxes) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), MATS.roofPlant);
-    m.position.set(x, roofY + 1.2 + h / 2, z);
-    m.castShadow = true; m.receiveShadow = true;
-    g.add(m);
+    const b = new THREE.BoxGeometry(w, h, d);
+    b.translate(x, roofY + 1.2 + h / 2, z);
+    plant.push(norm(b));
   }
+
+  const add = (parts, mat, shadow) => {
+    if (!parts.length) return;
+    const m = new THREE.Mesh(mergeGeometries(parts), mat);
+    if (shadow) m.castShadow = m.receiveShadow = true;
+    g.add(m);
+  };
+  add(stone, MATS.column, true);
+  add(plant, MATS.roofPlant, true);
+  add(lamps, MATS.beacon, false);
   return g;
 }
 
@@ -584,17 +623,43 @@ function plazaParapet(poly, level, stairs, height = 1.05, thick = 0.55) {
   return parts.length ? mergeGeometries(parts) : null;
 }
 
-/** The Sphere: Fritz Koenig's bronze, on the plaza fountain. */
+/** Where Koenig's Sphere stood, and what the plaza courses are struck from. */
+export const SPHERE_AT = [24, -22];
+
+/**
+ * The Sphere: Fritz Koenig's bronze, on the plaza fountain.
+ *
+ * The basin used to be one dark cylinder, which from the deck read as a hole
+ * cut in the granite. It is a pool: a granite kerb round the rim, water inside
+ * it, and the bronze standing on a low plinth in the middle.
+ */
 function sphere(x, z, y) {
   const g = new THREE.Group();
-  const basin = new THREE.Mesh(
-    new THREE.CylinderGeometry(13, 13, 0.9, 32), MATS.baseDark);
-  basin.position.set(x, y + 0.45, z);
-  basin.receiveShadow = true;
-  g.add(basin);
-  const ball = new THREE.Mesh(new THREE.SphereGeometry(3.8, 28, 20), MATS.bronze);
-  ball.position.set(x, y + 0.9 + 3.8, z);
+  const R = 13;
+
+  const kerb = new THREE.Mesh(
+    new THREE.CylinderGeometry(R, R, 0.8, 48), MATS.plazaWall);
+  kerb.position.set(x, y + 0.4, z);
+  kerb.receiveShadow = true;
+  g.add(kerb);
+
+  const water = new THREE.Mesh(
+    new THREE.CylinderGeometry(R - 1.1, R - 1.1, 0.76, 48), MATS.fountain);
+  water.position.set(x, y + 0.44, z);
+  water.receiveShadow = true;
+  water.name = 'fountain';
+  g.add(water);
+
+  const plinth = new THREE.Mesh(
+    new THREE.CylinderGeometry(4.4, 4.7, 1.0, 24), MATS.plazaWall);
+  plinth.position.set(x, y + 0.9, z);
+  plinth.castShadow = plinth.receiveShadow = true;
+  g.add(plinth);
+
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(3.8, 32, 22), MATS.bronze);
+  ball.position.set(x, y + 1.4 + 3.8, z);
   ball.castShadow = true;
+  ball.name = 'the-sphere';
   g.add(ball);
   return g;
 }
@@ -718,7 +783,7 @@ export function buildComplex(data) {
     g.add(m);
   }
 
-  g.add(sphere(24, -22, data.plaza.y));
+  g.add(sphere(SPHERE_AT[0], SPHERE_AT[1], data.plaza.y));
 
   const towers = new THREE.Group();
   towers.name = 'towers';

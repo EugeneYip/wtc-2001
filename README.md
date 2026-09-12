@@ -64,6 +64,17 @@ ground where Greenwich Street now runs. Austin J. Tobin Plaza is raised 4.3 m
 above street grade, walled at its edge, with Fritz Koenig's *Sphere* on its
 fountain.
 
+The deck is not a blank apron. Its granite was laid in courses struck from the
+fountain, and that pattern is round, so it cannot come from a tiling map: it is
+computed from the distance to the centre in the shader, which also clips it to
+the deck for nothing. The Sphere stands on a plinth in a pool with a granite
+kerb round it, rather than on the dark disc it used to sit on.
+
+The towers' facade columns run on past the top floor as a parapet. That is what
+gave them their hard upper edge, and what kept the roof plant out of sight from
+below; cut off level with the deck, the roofline went soft and the mechanical
+houses sat out in the open. The obstruction lights stand on the parapet.
+
 Two flights climb to the deck, each in the only stretch of its frontage that
 is not a building: a broad one from Liberty Street, centred on the South
 Tower, and the Vesey Street stair on the north — the **Survivors' Staircase**,
@@ -283,7 +294,7 @@ uniform slab. Those are massing, not survey.
 
 ## Performance
 
-About 175 draw calls and 984k triangles in daylight, and roughly 2 to 3 ms a
+About 168 draw calls and 986k triangles in daylight, and roughly 2 to 3 ms a
 frame on an M2 at 2800 × 1800 once shaders are warm, with the post-processing
 running at full resolution and 4x multisampling.
 

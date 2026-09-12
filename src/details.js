@@ -161,7 +161,10 @@ export function roofClutter(buildings) {
   for (let i = 0; i < buildings.length; i++) {
     const b = buildings[i];
     const top = b.t ? b.t.h : b.h;
-    if (top < 11 || b.r) continue;                  // crowned buildings opt out
+    // Crowned buildings opt out — but a roof explicitly tagged flat is still a
+    // roof, and skipping those left every building in the WTC complex bare
+    // while the rest of the city had tanks and bulkheads on it.
+    if (top < 11 || (b.r && b.r !== 'flat')) continue;
     const poly = b.p;
     const bb = bounds(poly);
     const area = bb.w * bb.d;
