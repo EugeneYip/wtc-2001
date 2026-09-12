@@ -354,6 +354,10 @@ function renderProbe() {
 // The towers sit on a north-west/south-east diagonal, so any camera looking
 // along that axis stacks one behind the other. These all cross it.
 
+// A 1.7 second camera flight is a long involuntary movement. If the reader has
+// asked the system for less of that, the viewpoint buttons cut straight there.
+const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 const VIEWS = {
   hudson: { p: [-1180, 230, 210], t: [0, 210, 0],
             d: 'From the Hudson — the view from New Jersey and the harbour.' },
@@ -363,9 +367,14 @@ const VIEWS = {
             d: 'High oblique from the south-west, the World Financial Center in front.' },
   site:   { p: [-580, 440, 690], t: [30, 185, -40],
             d: 'The sixteen-acre superblock and all seven WTC buildings.' },
-  street: { p: [392, 11, 292], t: [-20, 175, -42],
-            d: 'Church and Liberty Street, looking north-west across the site.' },
-  plaza:  { p: [14, 7, 30], t: [-22, 320, -44],
+  // Both of these stand on the ground and look up, which the old orbit clamp
+  // made impossible — so neither had ever been seen, and neither target had
+  // ever been aimed at anything. The street camera used to sit with a facade
+  // 38 m in front of it, and the plaza camera stood inside the South Tower's
+  // own footprint, which is why its sky was a black ceiling.
+  street: { p: [340, 11, 190], t: [33.5, 200, 51.9],
+            d: 'Street level a few blocks south-east, the South Tower in the canyon.' },
+  plaza:  { p: [36, 7, -44], t: [-33.5, 190, -51.9],
             d: 'On Austin J. Tobin Plaza, looking up the North Tower.' },
 };
 
@@ -373,18 +382,52 @@ let flight = null;
 function goTo(key, instant) {
   const v = VIEWS[key];
   if (!v) return;
-  document.querySelectorAll('#views button').forEach((b) =>
-    b.classList.toggle('on', b.dataset.view === key));
+  document.querySelectorAll('#views button').forEach((b) => {
+    const on = b.dataset.view === key;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
   document.getElementById('viewdesc').textContent = v.d;
   const to = { p: new THREE.Vector3(...v.p), t: new THREE.Vector3(...v.t) };
-  if (instant) {
-    camera.position.copy(to.p); controls.target.copy(to.t); controls.update();
+  if (instant || REDUCED_MOTION) {
+    camera.position.copy(to.p); controls.target.copy(to.t);
+    clampToGround(); controls.update();
     return;
   }
   flight = {
     from: { p: camera.position.clone(), t: controls.target.clone() },
     to, t0: performance.now(), ms: 1700,
   };
+}
+
+/**
+ * Keep the camera above the pavement.
+ *
+ * OrbitControls measures maxPolarAngle from the target, so a fixed value says
+ * "never get below the thing you are looking at". That is the wrong rule the
+ * moment the thing you are looking at is 320 m up a tower: it put the camera
+ * for "On the plaza" 322 m in the air and "Street level" at 178 m, so neither
+ * of the two ground-level viewpoints had ever actually worked. What is wanted
+ * is "never get below the ground", which depends on how high the target is and
+ * how far away the camera is, so it has to be worked out every frame.
+ */
+const EYE_MIN = 1.8;
+function clampToGround() {
+  const r = camera.position.distanceTo(controls.target);
+  const c = r > 1e-3 ? (EYE_MIN - controls.target.y) / r : 0;
+  controls.maxPolarAngle = Math.acos(THREE.MathUtils.clamp(c, -1, 1));
+}
+
+/**
+ * The reader has taken hold of the camera, so the flight stops fighting them
+ * and the highlighted viewpoint button stops claiming to be where they are.
+ */
+function releaseView() {
+  flight = null;
+  document.querySelectorAll('#views button.on').forEach((b) => {
+    b.classList.remove('on');
+    b.setAttribute('aria-pressed', 'false');
+  });
 }
 
 function stepFlight() {
@@ -529,12 +572,15 @@ async function init() {
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.06;
-  controls.maxPolarAngle = Math.PI * 0.498;
+  // maxPolarAngle is set per frame by clampToGround(); see there for why a
+  // fixed value is the wrong rule for this scene.
+  controls.minPolarAngle = 0.02;
   controls.minDistance = 10;
   controls.maxDistance = 6000;
   controls.zoomSpeed = 0.9;
   controls.rotateSpeed = 0.85;
   controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+  controls.addEventListener('start', releaseView);
 
   sky = new Sky();
   sky.scale.setScalar(20000);
@@ -660,6 +706,7 @@ async function init() {
   applyTime(timeOfDay);
   renderProbe();
 
+
   addEventListener('resize', onResize);
   document.getElementById('quality').textContent = quality;
   renderer.setAnimationLoop(render);
@@ -674,6 +721,21 @@ async function init() {
   if (built < MIN_LOADER_MS) await wait(MIN_LOADER_MS - built);
   document.getElementById('loader').classList.add('gone');
   loaderHeldMs = Math.round(performance.now() - bootAt);
+
+  // The Shadows checkbox changes every material's shader, and the tab froze for
+  // the best part of a second the first time it was ticked. renderer.compile()
+  // alone does not fix it: the driver defers the link until the program is
+  // actually drawn with, so the cost only moves to the first frame after the
+  // switch. Drawing a frame in each state is what makes it warm, and it has to
+  // be a frame through the composer — rendering straight to the canvas applies
+  // tone mapping and rendering into the composer's target does not, which is
+  // part of the shader cache key, so the two paths compile to different
+  // programs. Both frames happen inside one task, so nothing flickers; and it
+  // waits until the model is on screen rather than adding a second and a half
+  // to the wait before it.
+  const warm = () => { setShadows(false); render(); setShadows(true); render(); };
+  if (window.requestIdleCallback) requestIdleCallback(warm, { timeout: 4000 });
+  else setTimeout(warm, 1200);
 
   window.WTC = { scene, camera, controls, renderer, goTo, applyTime, VIEWS, data,
                  quality, render,
@@ -718,9 +780,35 @@ function onResize() {
 
 const isCompact = () => matchMedia('(max-width: 820px)').matches;
 
+/**
+ * Turning shadows on or off changes the shader every material compiles to, so
+ * every one of them has to be marked stale. Shared with the warm-up in init(),
+ * which draws a frame in each state so the driver has linked both.
+ */
+function setShadows(on) {
+  renderer.shadowMap.enabled = on;
+  const seen = new Set();
+  scene.traverse((o) => {
+    if (!o.material) return;
+    for (const m of (Array.isArray(o.material) ? o.material : [o.material])) {
+      if (seen.has(m)) continue;
+      seen.add(m);
+      m.needsUpdate = true;
+    }
+  });
+}
+
 function wireUI() {
   const sheet = document.getElementById('panel');
-  const toggle = () => sheet.classList.toggle('collapsed');
+  const toggle = () => {
+    const collapsed = sheet.classList.toggle('collapsed');
+    // The button said "Collapse panel" whether or not it was already collapsed.
+    const label = collapsed ? 'Expand panel' : 'Collapse panel';
+    const pt = document.getElementById('panelToggle');
+    pt.setAttribute('aria-label', label); pt.title = label;
+    pt.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    document.getElementById('grip').setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+  };
 
   document.querySelectorAll('#views button').forEach((b) =>
     b.addEventListener('click', () => {
@@ -729,31 +817,67 @@ function wireUI() {
     }));
 
   const t = document.getElementById('time');
-  t.addEventListener('input', () => applyTime(parseFloat(t.value)));
+  // Without this a screen reader reads the raw slider value — "17.35" — rather
+  // than the time the clock beside it is showing.
+  const sayTime = () => {
+    const h = parseFloat(t.value);
+    t.setAttribute('aria-valuetext',
+      String(Math.floor(h)).padStart(2, '0') + ':' +
+      String(Math.round((h % 1) * 60)).padStart(2, '0'));
+  };
+  t.addEventListener('input', () => { applyTime(parseFloat(t.value)); sayTime(); });
+  sayTime();
 
   document.getElementById('toggleLabels').addEventListener('change', (e) => {
     showLabels = e.target.checked;
   });
-  document.getElementById('toggleShadows').addEventListener('change', (e) => {
-    renderer.shadowMap.enabled = e.target.checked;
-    scene.traverse((o) => {
-      if (!o.material) return;
-      for (const m of (Array.isArray(o.material) ? o.material : [o.material])) {
-        m.needsUpdate = true;
-      }
-    });
+  document.getElementById('toggleShadows').addEventListener('change',
+    (e) => setShadows(e.target.checked));
+
+  const panelToggle = document.getElementById('panelToggle');
+  panelToggle.addEventListener('click', toggle);
+  const grip = document.getElementById('grip');
+  grip.addEventListener('click', toggle);
+  // It carries role="button" and tabindex="0", which promises a keyboard can
+  // work it. Nothing was listening, so on a tablet the panel could be focused
+  // and never opened.
+  grip.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
   });
 
-  document.getElementById('panelToggle').addEventListener('click', toggle);
-  document.getElementById('grip').addEventListener('click', toggle);
-
+  // The About panel calls itself aria-modal, which is a promise: focus goes
+  // into it, Tab stays inside it, and the page behind is out of reach. None of
+  // that was true, so a reader using the keyboard opened it and then tabbed
+  // straight out the back of it without ever reaching the text.
   const about = document.getElementById('about');
-  document.getElementById('aboutOpen').addEventListener('click',
-    () => about.classList.add('open'));
-  document.getElementById('aboutClose').addEventListener('click',
-    () => about.classList.remove('open'));
-  about.addEventListener('click', (e) => {
-    if (e.target === about) about.classList.remove('open');
+  const card = about.querySelector('.card');
+  const FOCUSABLE = 'a[href],button,input,select,textarea,[tabindex]:not([tabindex="-1"])';
+  let returnFocusTo = null;
+  const openAbout = () => {
+    returnFocusTo = document.activeElement;
+    about.classList.add('open');
+    for (const el of [document.getElementById('panel'), document.getElementById('hint'),
+                      document.getElementById('credit')]) el.inert = true;
+    card.querySelector(FOCUSABLE)?.focus();
+  };
+  const closeAbout = () => {
+    if (!about.classList.contains('open')) return;
+    about.classList.remove('open');
+    for (const el of [document.getElementById('panel'), document.getElementById('hint'),
+                      document.getElementById('credit')]) el.inert = false;
+    returnFocusTo?.focus();
+    returnFocusTo = null;
+  };
+  document.getElementById('aboutOpen').addEventListener('click', openAbout);
+  document.getElementById('aboutClose').addEventListener('click', closeAbout);
+  about.addEventListener('click', (e) => { if (e.target === about) closeAbout(); });
+  about.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab') return;
+    const items = [...card.querySelectorAll(FOCUSABLE)].filter((el) => el.offsetParent !== null);
+    if (!items.length) return;
+    const first = items[0], last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   });
 
   const KEYS = { 1: 'hudson', 2: 'east', 3: 'aerial', 4: 'site', 5: 'street', 6: 'plaza' };
@@ -764,7 +888,7 @@ function wireUI() {
       const box = document.getElementById('toggleLabels');
       box.checked = showLabels = !showLabels;
     }
-    if (e.key === 'Escape') about.classList.remove('open');
+    if (e.key === 'Escape') closeAbout();
   });
 
   // Start collapsed on a phone, so the model is the first thing you see.
@@ -776,6 +900,7 @@ function wireUI() {
 function render() {
   onResize();
   stepFlight();
+  clampToGround();
   controls.update();
 
   const t = clock.getElapsedTime();

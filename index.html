@@ -42,6 +42,11 @@
     -webkit-text-size-adjust:100%;overscroll-behavior:none}
   #app,#app canvas{position:fixed;inset:0;display:block;touch-action:none}
   button{font:inherit;-webkit-tap-highlight-color:transparent}
+  /* There was no focus indicator anywhere, and the time slider explicitly
+     removed the one the browser supplies. Anyone driving this from a keyboard
+     had to guess where they were. */
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+  input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
 
   /* ---------- labels ---------- */
   #labels{position:fixed;inset:0;pointer-events:none;z-index:5}
@@ -99,7 +104,7 @@
   #clock{font-variant-numeric:tabular-nums;font-size:11px;color:var(--accent);
     letter-spacing:.03em;margin-bottom:9px}
   input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:4px;
-    border-radius:2px;outline:none;background:linear-gradient(90deg,
+    border-radius:2px;background:linear-gradient(90deg,
       #131d33,#2f4f6d,#cfa15e,#f0c37a,#cfa15e,#2f4f6d,#131d33)}
   input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;
     border-radius:50%;background:#eef2f6;border:2px solid #263140;cursor:pointer;
@@ -207,6 +212,15 @@
     @keyframes rise{from{height:24px;opacity:.30}to{height:84px;opacity:.95}}
   }
 
+  /* Honour a reader who has asked the system for less movement: the loader
+     bars stop climbing, the panel stops sliding, and main.js cuts the camera
+     straight to a viewpoint rather than flying there over 1.7 seconds. */
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{animation-duration:.01ms !important;
+      animation-iteration-count:1 !important;transition-duration:.01ms !important}
+    .bars i{animation:none;height:104px;opacity:.9}
+  }
+
   /* =========== desktop =========== */
   @media (min-width:821px){
     #panel{top:calc(14px + var(--st));left:calc(14px + var(--sl));width:304px}
@@ -223,16 +237,25 @@
     #panel.collapsed{transform:translateY(calc(100% - var(--sb) - 54px))}
     #panel.collapsed h1 em{display:none}
     .lbl{max-width:46vw;overflow:hidden;text-overflow:ellipsis}
-    #grip{display:block;width:38px;height:4px;border-radius:2px;
-      background:rgba(255,255,255,.26);margin:9px auto 3px;cursor:pointer;
-      flex:none}
+    /* The bar itself is 4 px tall, and so was everything that could be
+       tapped: the one control that opens and closes the panel on a phone was
+       a four-pixel target. The bar is now drawn by a border rather than the
+       box, so the box can be a thumb wide. */
+    #grip{display:block;width:64px;height:26px;margin:2px auto 0;cursor:pointer;
+      flex:none;position:relative;background:none}
+    #grip::before{content:"";position:absolute;left:50%;top:50%;
+      transform:translate(-50%,-50%);width:38px;height:4px;border-radius:2px;
+      background:rgba(255,255,255,.26)}
+    #grip:hover::before{background:rgba(255,255,255,.42)}
     #panel header{padding:6px 16px 11px}
     #panelToggle{display:none}
     .body{max-height:min(58vh,460px)}
     #views{grid-template-columns:1fr 1fr}
     #views button{min-height:44px;font-size:12px}
-    .row{padding:8px 0;font-size:12.5px}
+    .row{padding:8px 0;font-size:12.5px;min-height:44px}
     .row input{width:18px;height:18px}
+    /* The track is 4 px; the padding is what makes the control a thumb tall. */
+    input[type=range]{padding:20px 0;background-clip:content-box}
     #hint{display:none}
     #credit{bottom:auto;top:calc(12px + var(--st));right:calc(12px + var(--sr));
       text-align:right;font-size:9px;opacity:.75}
@@ -259,14 +282,16 @@
 <div id="labels"></div>
 
 <div id="panel">
-  <div id="grip" role="button" aria-label="Toggle panel" tabindex="0"></div>
+  <div id="grip" role="button" aria-label="Toggle panel" aria-expanded="true"
+       aria-controls="panelbody" tabindex="0"></div>
   <header>
     <h1>World Trade Center 2001
       <em>A 3D reconstruction of the World Trade Center and Lower Manhattan</em></h1>
-    <button id="panelToggle" title="Collapse panel" aria-label="Collapse panel">‹</button>
+    <button id="panelToggle" title="Collapse panel" aria-label="Collapse panel"
+            aria-expanded="true" aria-controls="panelbody">‹</button>
   </header>
 
-  <div class="body">
+  <div class="body" id="panelbody">
     <div id="memorial">
       <b>In memory</b>
       Twenty-five years on. This model reconstructs the buildings and the
@@ -276,20 +301,20 @@
 
     <div class="sec">
       <h2>Viewpoint</h2>
-      <div id="views">
-        <button data-view="hudson">Hudson River<kbd>1</kbd></button>
-        <button data-view="east">East River<kbd>2</kbd></button>
-        <button data-view="aerial">Aerial<kbd>3</kbd></button>
-        <button data-view="site">The site<kbd>4</kbd></button>
-        <button data-view="street">Street level<kbd>5</kbd></button>
-        <button data-view="plaza">On the plaza<kbd>6</kbd></button>
+      <div id="views" role="group" aria-label="Viewpoint">
+        <button data-view="hudson" aria-pressed="false">Hudson River<kbd aria-hidden="true">1</kbd></button>
+        <button data-view="east" aria-pressed="false">East River<kbd aria-hidden="true">2</kbd></button>
+        <button data-view="aerial" aria-pressed="false">Aerial<kbd aria-hidden="true">3</kbd></button>
+        <button data-view="site" aria-pressed="false">The site<kbd aria-hidden="true">4</kbd></button>
+        <button data-view="street" aria-pressed="false">Street level<kbd aria-hidden="true">5</kbd></button>
+        <button data-view="plaza" aria-pressed="false">On the plaza<kbd aria-hidden="true">6</kbd></button>
       </div>
-      <div id="viewdesc"></div>
+      <div id="viewdesc" role="status" aria-live="polite"></div>
     </div>
 
     <div class="sec">
       <h2>Time of day</h2>
-      <div id="clock">17:00</div>
+      <div id="clock" aria-hidden="true">17:00</div>
       <input type="range" id="time" min="3.5" max="22" step="0.05" value="17"
              aria-label="Time of day">
       <div class="ticks"><span>04:00</span><span>12:00</span><span>20:00</span></div>
@@ -298,7 +323,8 @@
     <div class="sec">
       <h2>Display</h2>
       <div class="row"><input type="checkbox" id="toggleLabels" checked>
-        <label for="toggleLabels">Labels</label><kbd style="color:#5d6b7a">L</kbd></div>
+        <label for="toggleLabels">Labels</label>
+        <kbd style="color:#5d6b7a" aria-hidden="true">L</kbd></div>
       <div class="row"><input type="checkbox" id="toggleShadows" checked>
         <label for="toggleShadows">Shadows</label></div>
       <div class="row" style="color:#5d6b7a">Detail preset<span id="quality"

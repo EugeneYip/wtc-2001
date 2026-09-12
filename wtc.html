@@ -42,6 +42,11 @@
     -webkit-text-size-adjust:100%;overscroll-behavior:none}
   #app,#app canvas{position:fixed;inset:0;display:block;touch-action:none}
   button{font:inherit;-webkit-tap-highlight-color:transparent}
+  /* There was no focus indicator anywhere, and the time slider explicitly
+     removed the one the browser supplies. Anyone driving this from a keyboard
+     had to guess where they were. */
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+  input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
 
   /* ---------- labels ---------- */
   #labels{position:fixed;inset:0;pointer-events:none;z-index:5}
@@ -99,7 +104,7 @@
   #clock{font-variant-numeric:tabular-nums;font-size:11px;color:var(--accent);
     letter-spacing:.03em;margin-bottom:9px}
   input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:4px;
-    border-radius:2px;outline:none;background:linear-gradient(90deg,
+    border-radius:2px;background:linear-gradient(90deg,
       #131d33,#2f4f6d,#cfa15e,#f0c37a,#cfa15e,#2f4f6d,#131d33)}
   input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;
     border-radius:50%;background:#eef2f6;border:2px solid #263140;cursor:pointer;
@@ -207,6 +212,15 @@
     @keyframes rise{from{height:24px;opacity:.30}to{height:84px;opacity:.95}}
   }
 
+  /* Honour a reader who has asked the system for less movement: the loader
+     bars stop climbing, the panel stops sliding, and main.js cuts the camera
+     straight to a viewpoint rather than flying there over 1.7 seconds. */
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{animation-duration:.01ms !important;
+      animation-iteration-count:1 !important;transition-duration:.01ms !important}
+    .bars i{animation:none;height:104px;opacity:.9}
+  }
+
   /* =========== desktop =========== */
   @media (min-width:821px){
     #panel{top:calc(14px + var(--st));left:calc(14px + var(--sl));width:304px}
@@ -223,16 +237,25 @@
     #panel.collapsed{transform:translateY(calc(100% - var(--sb) - 54px))}
     #panel.collapsed h1 em{display:none}
     .lbl{max-width:46vw;overflow:hidden;text-overflow:ellipsis}
-    #grip{display:block;width:38px;height:4px;border-radius:2px;
-      background:rgba(255,255,255,.26);margin:9px auto 3px;cursor:pointer;
-      flex:none}
+    /* The bar itself is 4 px tall, and so was everything that could be
+       tapped: the one control that opens and closes the panel on a phone was
+       a four-pixel target. The bar is now drawn by a border rather than the
+       box, so the box can be a thumb wide. */
+    #grip{display:block;width:64px;height:26px;margin:2px auto 0;cursor:pointer;
+      flex:none;position:relative;background:none}
+    #grip::before{content:"";position:absolute;left:50%;top:50%;
+      transform:translate(-50%,-50%);width:38px;height:4px;border-radius:2px;
+      background:rgba(255,255,255,.26)}
+    #grip:hover::before{background:rgba(255,255,255,.42)}
     #panel header{padding:6px 16px 11px}
     #panelToggle{display:none}
     .body{max-height:min(58vh,460px)}
     #views{grid-template-columns:1fr 1fr}
     #views button{min-height:44px;font-size:12px}
-    .row{padding:8px 0;font-size:12.5px}
+    .row{padding:8px 0;font-size:12.5px;min-height:44px}
     .row input{width:18px;height:18px}
+    /* The track is 4 px; the padding is what makes the control a thumb tall. */
+    input[type=range]{padding:20px 0;background-clip:content-box}
     #hint{display:none}
     #credit{bottom:auto;top:calc(12px + var(--st));right:calc(12px + var(--sr));
       text-align:right;font-size:9px;opacity:.75}
@@ -259,14 +282,16 @@
 <div id="labels"></div>
 
 <div id="panel">
-  <div id="grip" role="button" aria-label="Toggle panel" tabindex="0"></div>
+  <div id="grip" role="button" aria-label="Toggle panel" aria-expanded="true"
+       aria-controls="panelbody" tabindex="0"></div>
   <header>
     <h1>World Trade Center 2001
       <em>A 3D reconstruction of the World Trade Center and Lower Manhattan</em></h1>
-    <button id="panelToggle" title="Collapse panel" aria-label="Collapse panel">‹</button>
+    <button id="panelToggle" title="Collapse panel" aria-label="Collapse panel"
+            aria-expanded="true" aria-controls="panelbody">‹</button>
   </header>
 
-  <div class="body">
+  <div class="body" id="panelbody">
     <div id="memorial">
       <b>In memory</b>
       Twenty-five years on. This model reconstructs the buildings and the
@@ -276,20 +301,20 @@
 
     <div class="sec">
       <h2>Viewpoint</h2>
-      <div id="views">
-        <button data-view="hudson">Hudson River<kbd>1</kbd></button>
-        <button data-view="east">East River<kbd>2</kbd></button>
-        <button data-view="aerial">Aerial<kbd>3</kbd></button>
-        <button data-view="site">The site<kbd>4</kbd></button>
-        <button data-view="street">Street level<kbd>5</kbd></button>
-        <button data-view="plaza">On the plaza<kbd>6</kbd></button>
+      <div id="views" role="group" aria-label="Viewpoint">
+        <button data-view="hudson" aria-pressed="false">Hudson River<kbd aria-hidden="true">1</kbd></button>
+        <button data-view="east" aria-pressed="false">East River<kbd aria-hidden="true">2</kbd></button>
+        <button data-view="aerial" aria-pressed="false">Aerial<kbd aria-hidden="true">3</kbd></button>
+        <button data-view="site" aria-pressed="false">The site<kbd aria-hidden="true">4</kbd></button>
+        <button data-view="street" aria-pressed="false">Street level<kbd aria-hidden="true">5</kbd></button>
+        <button data-view="plaza" aria-pressed="false">On the plaza<kbd aria-hidden="true">6</kbd></button>
       </div>
-      <div id="viewdesc"></div>
+      <div id="viewdesc" role="status" aria-live="polite"></div>
     </div>
 
     <div class="sec">
       <h2>Time of day</h2>
-      <div id="clock">17:00</div>
+      <div id="clock" aria-hidden="true">17:00</div>
       <input type="range" id="time" min="3.5" max="22" step="0.05" value="17"
              aria-label="Time of day">
       <div class="ticks"><span>04:00</span><span>12:00</span><span>20:00</span></div>
@@ -298,7 +323,8 @@
     <div class="sec">
       <h2>Display</h2>
       <div class="row"><input type="checkbox" id="toggleLabels" checked>
-        <label for="toggleLabels">Labels</label><kbd style="color:#5d6b7a">L</kbd></div>
+        <label for="toggleLabels">Labels</label>
+        <kbd style="color:#5d6b7a" aria-hidden="true">L</kbd></div>
       <div class="row"><input type="checkbox" id="toggleShadows" checked>
         <label for="toggleShadows">Shadows</label></div>
       <div class="row" style="color:#5d6b7a">Detail preset<span id="quality"
@@ -62821,6 +62847,10 @@ function renderProbe() {
 // The towers sit on a north-west/south-east diagonal, so any camera looking
 // along that axis stacks one behind the other. These all cross it.
 
+// A 1.7 second camera flight is a long involuntary movement. If the reader has
+// asked the system for less of that, the viewpoint buttons cut straight there.
+const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 const VIEWS = {
   hudson: { p: [-1180, 230, 210], t: [0, 210, 0],
             d: 'From the Hudson — the view from New Jersey and the harbour.' },
@@ -62830,9 +62860,14 @@ const VIEWS = {
             d: 'High oblique from the south-west, the World Financial Center in front.' },
   site:   { p: [-580, 440, 690], t: [30, 185, -40],
             d: 'The sixteen-acre superblock and all seven WTC buildings.' },
-  street: { p: [392, 11, 292], t: [-20, 175, -42],
-            d: 'Church and Liberty Street, looking north-west across the site.' },
-  plaza:  { p: [14, 7, 30], t: [-22, 320, -44],
+  // Both of these stand on the ground and look up, which the old orbit clamp
+  // made impossible — so neither had ever been seen, and neither target had
+  // ever been aimed at anything. The street camera used to sit with a facade
+  // 38 m in front of it, and the plaza camera stood inside the South Tower's
+  // own footprint, which is why its sky was a black ceiling.
+  street: { p: [340, 11, 190], t: [33.5, 200, 51.9],
+            d: 'Street level a few blocks south-east, the South Tower in the canyon.' },
+  plaza:  { p: [36, 7, -44], t: [-33.5, 190, -51.9],
             d: 'On Austin J. Tobin Plaza, looking up the North Tower.' },
 };
 
@@ -62840,18 +62875,52 @@ let flight = null;
 function goTo(key, instant) {
   const v = VIEWS[key];
   if (!v) return;
-  document.querySelectorAll('#views button').forEach((b) =>
-    b.classList.toggle('on', b.dataset.view === key));
+  document.querySelectorAll('#views button').forEach((b) => {
+    const on = b.dataset.view === key;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
   document.getElementById('viewdesc').textContent = v.d;
   const to = { p: new THREE.Vector3(...v.p), t: new THREE.Vector3(...v.t) };
-  if (instant) {
-    camera.position.copy(to.p); controls.target.copy(to.t); controls.update();
+  if (instant || REDUCED_MOTION) {
+    camera.position.copy(to.p); controls.target.copy(to.t);
+    clampToGround(); controls.update();
     return;
   }
   flight = {
     from: { p: camera.position.clone(), t: controls.target.clone() },
     to, t0: performance.now(), ms: 1700,
   };
+}
+
+/**
+ * Keep the camera above the pavement.
+ *
+ * OrbitControls measures maxPolarAngle from the target, so a fixed value says
+ * "never get below the thing you are looking at". That is the wrong rule the
+ * moment the thing you are looking at is 320 m up a tower: it put the camera
+ * for "On the plaza" 322 m in the air and "Street level" at 178 m, so neither
+ * of the two ground-level viewpoints had ever actually worked. What is wanted
+ * is "never get below the ground", which depends on how high the target is and
+ * how far away the camera is, so it has to be worked out every frame.
+ */
+const EYE_MIN = 1.8;
+function clampToGround() {
+  const r = camera.position.distanceTo(controls.target);
+  const c = r > 1e-3 ? (EYE_MIN - controls.target.y) / r : 0;
+  controls.maxPolarAngle = Math.acos(THREE.MathUtils.clamp(c, -1, 1));
+}
+
+/**
+ * The reader has taken hold of the camera, so the flight stops fighting them
+ * and the highlighted viewpoint button stops claiming to be where they are.
+ */
+function releaseView() {
+  flight = null;
+  document.querySelectorAll('#views button.on').forEach((b) => {
+    b.classList.remove('on');
+    b.setAttribute('aria-pressed', 'false');
+  });
 }
 
 function stepFlight() {
@@ -62996,12 +63065,15 @@ async function init() {
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.06;
-  controls.maxPolarAngle = Math.PI * 0.498;
+  // maxPolarAngle is set per frame by clampToGround(); see there for why a
+  // fixed value is the wrong rule for this scene.
+  controls.minPolarAngle = 0.02;
   controls.minDistance = 10;
   controls.maxDistance = 6000;
   controls.zoomSpeed = 0.9;
   controls.rotateSpeed = 0.85;
   controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+  controls.addEventListener('start', releaseView);
 
   sky = new Sky();
   sky.scale.setScalar(20000);
@@ -63127,6 +63199,7 @@ async function init() {
   applyTime(timeOfDay);
   renderProbe();
 
+
   addEventListener('resize', onResize);
   document.getElementById('quality').textContent = quality;
   renderer.setAnimationLoop(render);
@@ -63141,6 +63214,21 @@ async function init() {
   if (built < MIN_LOADER_MS) await wait(MIN_LOADER_MS - built);
   document.getElementById('loader').classList.add('gone');
   loaderHeldMs = Math.round(performance.now() - bootAt);
+
+  // The Shadows checkbox changes every material's shader, and the tab froze for
+  // the best part of a second the first time it was ticked. renderer.compile()
+  // alone does not fix it: the driver defers the link until the program is
+  // actually drawn with, so the cost only moves to the first frame after the
+  // switch. Drawing a frame in each state is what makes it warm, and it has to
+  // be a frame through the composer — rendering straight to the canvas applies
+  // tone mapping and rendering into the composer's target does not, which is
+  // part of the shader cache key, so the two paths compile to different
+  // programs. Both frames happen inside one task, so nothing flickers; and it
+  // waits until the model is on screen rather than adding a second and a half
+  // to the wait before it.
+  const warm = () => { setShadows(false); render(); setShadows(true); render(); };
+  if (window.requestIdleCallback) requestIdleCallback(warm, { timeout: 4000 });
+  else setTimeout(warm, 1200);
 
   window.WTC = { scene, camera, controls, renderer, goTo, applyTime, VIEWS, data,
                  quality, render,
@@ -63185,9 +63273,35 @@ function onResize() {
 
 const isCompact = () => matchMedia('(max-width: 820px)').matches;
 
+/**
+ * Turning shadows on or off changes the shader every material compiles to, so
+ * every one of them has to be marked stale. Shared with the warm-up in init(),
+ * which draws a frame in each state so the driver has linked both.
+ */
+function setShadows(on) {
+  renderer.shadowMap.enabled = on;
+  const seen = new Set();
+  scene.traverse((o) => {
+    if (!o.material) return;
+    for (const m of (Array.isArray(o.material) ? o.material : [o.material])) {
+      if (seen.has(m)) continue;
+      seen.add(m);
+      m.needsUpdate = true;
+    }
+  });
+}
+
 function wireUI() {
   const sheet = document.getElementById('panel');
-  const toggle = () => sheet.classList.toggle('collapsed');
+  const toggle = () => {
+    const collapsed = sheet.classList.toggle('collapsed');
+    // The button said "Collapse panel" whether or not it was already collapsed.
+    const label = collapsed ? 'Expand panel' : 'Collapse panel';
+    const pt = document.getElementById('panelToggle');
+    pt.setAttribute('aria-label', label); pt.title = label;
+    pt.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    document.getElementById('grip').setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+  };
 
   document.querySelectorAll('#views button').forEach((b) =>
     b.addEventListener('click', () => {
@@ -63196,31 +63310,67 @@ function wireUI() {
     }));
 
   const t = document.getElementById('time');
-  t.addEventListener('input', () => applyTime(parseFloat(t.value)));
+  // Without this a screen reader reads the raw slider value — "17.35" — rather
+  // than the time the clock beside it is showing.
+  const sayTime = () => {
+    const h = parseFloat(t.value);
+    t.setAttribute('aria-valuetext',
+      String(Math.floor(h)).padStart(2, '0') + ':' +
+      String(Math.round((h % 1) * 60)).padStart(2, '0'));
+  };
+  t.addEventListener('input', () => { applyTime(parseFloat(t.value)); sayTime(); });
+  sayTime();
 
   document.getElementById('toggleLabels').addEventListener('change', (e) => {
     showLabels = e.target.checked;
   });
-  document.getElementById('toggleShadows').addEventListener('change', (e) => {
-    renderer.shadowMap.enabled = e.target.checked;
-    scene.traverse((o) => {
-      if (!o.material) return;
-      for (const m of (Array.isArray(o.material) ? o.material : [o.material])) {
-        m.needsUpdate = true;
-      }
-    });
+  document.getElementById('toggleShadows').addEventListener('change',
+    (e) => setShadows(e.target.checked));
+
+  const panelToggle = document.getElementById('panelToggle');
+  panelToggle.addEventListener('click', toggle);
+  const grip = document.getElementById('grip');
+  grip.addEventListener('click', toggle);
+  // It carries role="button" and tabindex="0", which promises a keyboard can
+  // work it. Nothing was listening, so on a tablet the panel could be focused
+  // and never opened.
+  grip.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
   });
 
-  document.getElementById('panelToggle').addEventListener('click', toggle);
-  document.getElementById('grip').addEventListener('click', toggle);
-
+  // The About panel calls itself aria-modal, which is a promise: focus goes
+  // into it, Tab stays inside it, and the page behind is out of reach. None of
+  // that was true, so a reader using the keyboard opened it and then tabbed
+  // straight out the back of it without ever reaching the text.
   const about = document.getElementById('about');
-  document.getElementById('aboutOpen').addEventListener('click',
-    () => about.classList.add('open'));
-  document.getElementById('aboutClose').addEventListener('click',
-    () => about.classList.remove('open'));
-  about.addEventListener('click', (e) => {
-    if (e.target === about) about.classList.remove('open');
+  const card = about.querySelector('.card');
+  const FOCUSABLE = 'a[href],button,input,select,textarea,[tabindex]:not([tabindex="-1"])';
+  let returnFocusTo = null;
+  const openAbout = () => {
+    returnFocusTo = document.activeElement;
+    about.classList.add('open');
+    for (const el of [document.getElementById('panel'), document.getElementById('hint'),
+                      document.getElementById('credit')]) el.inert = true;
+    card.querySelector(FOCUSABLE)?.focus();
+  };
+  const closeAbout = () => {
+    if (!about.classList.contains('open')) return;
+    about.classList.remove('open');
+    for (const el of [document.getElementById('panel'), document.getElementById('hint'),
+                      document.getElementById('credit')]) el.inert = false;
+    returnFocusTo?.focus();
+    returnFocusTo = null;
+  };
+  document.getElementById('aboutOpen').addEventListener('click', openAbout);
+  document.getElementById('aboutClose').addEventListener('click', closeAbout);
+  about.addEventListener('click', (e) => { if (e.target === about) closeAbout(); });
+  about.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab') return;
+    const items = [...card.querySelectorAll(FOCUSABLE)].filter((el) => el.offsetParent !== null);
+    if (!items.length) return;
+    const first = items[0], last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   });
 
   const KEYS = { 1: 'hudson', 2: 'east', 3: 'aerial', 4: 'site', 5: 'street', 6: 'plaza' };
@@ -63231,7 +63381,7 @@ function wireUI() {
       const box = document.getElementById('toggleLabels');
       box.checked = showLabels = !showLabels;
     }
-    if (e.key === 'Escape') about.classList.remove('open');
+    if (e.key === 'Escape') closeAbout();
   });
 
   // Start collapsed on a phone, so the model is the first thing you see.
@@ -63243,6 +63393,7 @@ function wireUI() {
 function render() {
   onResize();
   stepFlight();
+  clampToGround();
   controls.update();
 
   const t = clock.getElapsedTime();

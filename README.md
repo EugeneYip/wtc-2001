@@ -315,6 +315,61 @@ level, where light comes in pools with darkness between them. Cars carry
 headlights and tail lamps; both towers carry red obstruction lights at their
 roof corners, and the mast tip flashes.
 
+## Controls
+
+Six viewpoints, a time-of-day slider, and free orbit with the mouse or a
+finger. Keys **1**–**6** jump between viewpoints and **L** toggles the labels.
+
+**The ground-level viewpoints.** For most of this model's life the two most
+important buttons on the panel did not work. "On the plaza" put the camera
+322 m in the air and "Street level" put it at 178 m — both of them level with
+the thing they were supposed to be looking up at.
+
+The cause was one line. OrbitControls measures its `maxPolarAngle` from the
+target, so a fixed value means "never get below the thing you are looking at".
+That is a perfectly good rule while the target is a building seen from across
+the river, and quite wrong the moment the target is 320 m up a tower: it makes
+standing at the bottom and looking up the one thing the camera cannot do. What
+was actually wanted is "never get below the pavement", which depends on how
+high the target is and how far away the camera is, so it is now worked out
+every frame rather than fixed once.
+
+Because neither view had ever been visible, neither had ever been aimed. The
+street camera had a facade 38 m in front of it and filled the frame with a
+wall of windows; the plaza camera stood inside the South Tower's own footprint,
+which is why the sky above it was a black ceiling. Both have been re-placed.
+
+Two smaller things in the same pass. Dragging during a viewpoint flight used to
+fight it — the flight kept pulling for its full 1.7 seconds — and the highlight
+stayed on a viewpoint button long after you had orbited somewhere else, so the
+panel claimed you were somewhere you were not. Taking hold of the camera now
+cancels the flight and clears the highlight.
+
+**Reaching it from a keyboard.** There was no focus indicator anywhere, and the
+time slider explicitly removed the one the browser supplies. The grip that opens
+the panel on a phone carried `role="button"` and `tabindex="0"` — a promise that
+a keyboard can work it — with nothing listening for a key. The About panel
+called itself `aria-modal` while leaving focus outside it and the page behind it
+tabbable. The viewpoint buttons carried no pressed state, and the time slider
+read out as "17.35" rather than as a time. All of that is fixed; none of it was
+visible on screen, which is presumably why it lasted.
+
+The reader's motion preference is honoured too: with `prefers-reduced-motion`
+set, the viewpoint buttons cut straight to the view instead of flying, and the
+loader and panel stop animating.
+
+**One hitch.** Turning shadows off changes the shader every material in the
+scene compiles to, and the first tick of that checkbox froze the tab for the
+better part of a second. `renderer.compile()` does not fix it on its own: the
+driver defers the link until a program is actually drawn with, so the cost just
+moves to the first frame after the switch. Drawing one frame in each state does
+fix it — but it has to be a frame through the post-processing chain, because
+rendering straight to the canvas applies tone mapping and rendering into the
+composer's target does not, and that is part of the shader cache key. Warming
+the wrong path bought nothing. It now happens on the first idle callback after
+the model appears, so it costs nothing on the way in, and the checkbox responds
+in about 16 ms instead of 900.
+
 ## Accuracy notes
 
 Tower position and orientation are not estimated. The reflecting pools of the
