@@ -36,7 +36,8 @@ dimensions and historic site plans, and any error in them is mine:
 - Cladding corrections for the Woolworth and American Surety buildings, which
   are pale terracotta rather than the brownstone their class would give them
 
-Roof clutter, street trees, street lamps, traffic and the harbour vessels are
+Roof clutter, street trees, street lamps, traffic signals, hydrants, litter
+bins, traffic, the harbour vessels and every ground-floor shopfront are
 procedurally placed for plausibility and are not survey data. The night sky
 and the city's light on the water are rendering models, not observations: the
 sky is a hand-written gradient with a skyglow term, and the light on the

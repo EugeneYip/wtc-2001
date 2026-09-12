@@ -190,6 +190,118 @@ export function facade(opts) {
   return { map: finish(c, ru, rv), surface: finishData(sc, ru, rv) };
 }
 
+/**
+ * The ground storey.
+ *
+ * Every building in the city was running its upper-floor window grid straight
+ * into the pavement, which is the one thing you cannot do: a street is read
+ * from its ground floor, and a ground floor is nothing like the floors above
+ * it. It is taller, it is mostly glass, it is set behind a plinth and under a
+ * fascia, and every twenty feet something interrupts it.
+ *
+ * Drawn as one tile spanning the full height of the band, so the plinth is
+ * always at the bottom and the fascia always at the top.
+ */
+export const STOREFRONT_H = 5.2;                   // metres, ground floor height
+const STOREFRONT_BAY = 4.2;                        // metres per shopfront bay
+
+export function storefront() {
+  const BAYS_S = 4;
+  const W = 512, H = 160;
+  const PX = W / BAYS_S;                           // pixels per bay
+  const m = H / STOREFRONT_H;                      // pixels per metre
+  const [c, x] = canvas(W, H);
+  const [sc, sx] = canvas(W, H);
+  const rand = rng(4801);
+
+  const surf = (r, mt) => `rgb(0,${clamp255(r * 255)},${clamp255(mt * 255)})`;
+  const STONE = surf(0.88, 0.04);
+  // Shop glass is not curtain wall: it is closer to the street, it is dirtier,
+  // and at the grazing angles you get on a pavement a mirror finish turns the
+  // whole ground floor into one pale band and loses the dark interiors.
+  const GLASS = surf(0.17, 0.05);
+  const METAL = surf(0.34, 0.60);
+
+  // y is measured up from the pavement; the canvas runs the other way.
+  const band = (y0, y1) => [H - y1 * m, (y1 - y0) * m];
+
+  x.fillStyle = '#9a948b';                          // the wall behind it all
+  x.fillRect(0, 0, W, H);
+  sx.fillStyle = STONE;
+  sx.fillRect(0, 0, W, H);
+
+  for (let b = 0; b < BAYS_S; b++) {
+    const bx = b * PX;
+    const solid = rand() < 0.22;                    // a blank bay: service, or a stair
+    const [gy, gh] = band(0.5, 3.95);
+    if (solid) {
+      // A stone pier rather than a painted panel: what actually interrupts a
+      // ground floor down here is structure, and a pale panel ends up the
+      // brightest thing on a shaded street.
+      const t = 96 + Math.floor(rand() * 18);
+      x.fillStyle = `rgb(${t},${t - 4},${t - 11})`;
+      x.fillRect(bx + 3, gy, PX - 6, gh);
+      x.fillStyle = 'rgba(0,0,0,0.22)';
+      x.fillRect(bx + 3, gy, 3, gh);
+    } else {
+      // Shopfront glazing, dark because you are looking into a room, with a
+      // lighter head where the light inside falls on the ceiling.
+      const g = x.createLinearGradient(0, gy, 0, gy + gh);
+      const v = 34 + Math.floor(rand() * 22);
+      g.addColorStop(0, `rgb(${v + 26},${v + 28},${v + 30})`);
+      g.addColorStop(0.45, `rgb(${v},${v + 2},${v + 5})`);
+      g.addColorStop(1, `rgb(${Math.round(v * 0.7)},${Math.round(v * 0.72)},${Math.round(v * 0.78)})`);
+      x.fillStyle = g;
+      x.fillRect(bx + 3, gy, PX - 6, gh);
+      sx.fillStyle = GLASS;
+      sx.fillRect(bx + 3, gy, PX - 6, gh);
+      // A door in about a third of them, darker and full height.
+      if (rand() < 0.34) {
+        const dw = PX * 0.26, dx = bx + PX * (0.2 + rand() * 0.4);
+        x.fillStyle = `rgb(${Math.round(v * 0.6)},${Math.round(v * 0.62)},${Math.round(v * 0.68)})`;
+        x.fillRect(dx, gy + gh * 0.12, dw, gh * 0.88);
+      }
+      // Mullions.
+      x.fillStyle = '#6e6a64';
+      sx.fillStyle = METAL;
+      for (let k = 1; k < 3; k++) {
+        const mx = Math.round(bx + (PX * k) / 3);
+        x.fillRect(mx, gy, 2, gh);
+        sx.fillRect(mx, gy, 2, gh);
+      }
+    }
+    // Transom band over the shopfront: signage, canopy, or nothing.
+    const [ty, th] = band(3.95, 4.45);
+    const sign = rand();
+    x.fillStyle = sign < 0.30 ? '#3a3630' : sign < 0.55 ? '#5b544a' : '#7d766c';
+    x.fillRect(bx + 2, ty, PX - 4, th);
+    sx.fillStyle = STONE;
+    sx.fillRect(bx + 2, ty, PX - 4, th);
+  }
+
+  // Plinth at the foot, fascia at the head. Both stone, both across the whole
+  // tile, so a corner reads as one building rather than four shops.
+  const [py, ph] = band(0, 0.5);
+  x.fillStyle = '#7c766d';
+  x.fillRect(0, py, W, ph);
+  const [fy, fh] = band(4.45, STOREFRONT_H);
+  x.fillStyle = '#8d8780';
+  x.fillRect(0, fy, W, fh);
+  // A shadow line under the fascia, which is what actually reads from across
+  // the street.
+  x.fillStyle = 'rgba(0,0,0,0.32)';
+  x.fillRect(0, fy + fh - 1, W, 3);
+
+  for (let i = 0; i < 2400; i++) {                  // grime, heaviest low down
+    const gx = rand() * W, gy2 = H - Math.pow(rand(), 2) * H;
+    x.fillStyle = `rgba(0,0,0,${0.02 + rand() * 0.05})`;
+    x.fillRect(gx, gy2, 1 + rand() * 2, 1);
+  }
+
+  const ru = 1 / (BAYS_S * STOREFRONT_BAY), rv = 1 / STOREFRONT_H;
+  return { map: finish(c, ru, rv), surface: finishData(sc, ru, rv) };
+}
+
 /** Lit windows for the same tile grid, so night lights land on real windows. */
 export function facadeLights(opts) {
   const { seed, bayW, floorH, winW, winH, density = 0.24, ribbon = false } = opts;

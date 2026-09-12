@@ -118,6 +118,21 @@ export const DETAIL_MATS = {
     color: 0x2a2d31, roughness: 0.4, metalness: 0.3,
     emissive: new THREE.Color(0xffbe6a), emissiveIntensity: 0,
   }),
+  signalBody: new THREE.MeshStandardMaterial({
+    color: 0x2f3a33, roughness: 0.55, metalness: 0.30,
+  }),
+  // Vertex colours so one instanced mesh can hold both a red aspect and a
+  // green one; main.js lifts the emissive after dark.
+  signalLens: new THREE.MeshStandardMaterial({
+    color: 0xffffff, vertexColors: true, roughness: 0.3, metalness: 0.1,
+    emissive: new THREE.Color(0xffffff), emissiveIntensity: 0,
+  }),
+  hydrant: new THREE.MeshStandardMaterial({
+    color: 0xb8452c, roughness: 0.62, metalness: 0.12,
+  }),
+  bin: new THREE.MeshStandardMaterial({
+    color: 0x2f4338, roughness: 0.72, metalness: 0.25,
+  }),
 };
 
 // ---------------------------------------------------------------------------
@@ -496,6 +511,181 @@ export function streetLamps(roads, limit = 700, avoid, extra = [], reach = 1150)
   heads.name = 'street-lamp-heads';
   posts.userData.sites = chosen;
   return [posts, heads];
+}
+
+/**
+ * Traffic signals on the corners.
+ *
+ * A junction with nothing standing at it reads as a gap between buildings
+ * rather than a crossing, and this is the one piece of street furniture that
+ * says which country you are in. Two diagonally opposite corners each get a
+ * post with a mast arm over the roadway; the aspect showing is fixed per
+ * signal, red on one axis and green on the other, so a junction is never
+ * green in both directions.
+ */
+export function trafficSignals(junctionList, avoid) {
+  const rand = rng(2207);
+  const post = [];
+  {
+    const pole = new THREE.CylinderGeometry(0.09, 0.12, 4.4, 6);
+    pole.translate(0, 2.2, 0);
+    post.push(norm(pole));
+    const arm = new THREE.BoxGeometry(0.13, 0.13, 2.6);
+    arm.translate(0, 4.3, 1.3);
+    post.push(norm(arm));
+  }
+  const postGeo = mergeGeometries(post);
+  // A backplate behind the head, as New York signals carry. Without it a dark
+  // green box on a dark street is simply not there at any distance.
+  const head = [];
+  {
+    const plate = new THREE.BoxGeometry(0.78, 1.36, 0.06);
+    plate.translate(0, 3.72, 2.58);
+    head.push(norm(plate));
+    const body = new THREE.BoxGeometry(0.38, 1.02, 0.34);
+    body.translate(0, 3.72, 2.40);
+    head.push(norm(body));
+    for (const dy of [0.30, 0, -0.30]) {            // visors over each aspect
+      const v = new THREE.BoxGeometry(0.42, 0.05, 0.16);
+      v.translate(0, 3.72 + dy + 0.13, 2.18);
+      head.push(norm(v));
+    }
+  }
+  const headGeo = mergeGeometries(head);
+  const lensGeo = norm(new THREE.CylinderGeometry(0.11, 0.11, 0.05, 10));
+  lensGeo.rotateX(Math.PI / 2);
+  lensGeo.translate(0, 3.72, 2.21);
+
+  const sites = [];
+  for (const j of junctionList) {
+    const wide = j.arms.filter((a) => a.w >= 11);
+    if (wide.length < 2) continue;
+    const a = wide[0];
+    const d = Math.max(...j.arms.map((x) => x.w)) * 0.5 + 2.0;
+    const px = -a.uz, pz = a.ux;
+    // Two opposite corners, each facing back down its own street.
+    for (const [su, sp, face] of [[1, 1, 0], [-1, -1, Math.PI]]) {
+      const x = j.x + a.ux * d * su + px * d * sp;
+      const z = j.z + a.uz * d * su + pz * d * sp;
+      if (avoid && avoid.blocked(x, z)) continue;   // a corner inside a building
+      sites.push([x, z, -Math.atan2(a.uz, a.ux) + face + Math.PI / 2, face === 0]);
+    }
+  }
+  if (!sites.length) return [];
+
+  const posts = new THREE.InstancedMesh(postGeo, DETAIL_MATS.lampPost, sites.length);
+  const heads = new THREE.InstancedMesh(headGeo, DETAIL_MATS.signalBody, sites.length);
+  const lenses = new THREE.InstancedMesh(lensGeo, DETAIL_MATS.signalLens, sites.length);
+  posts.castShadow = true;
+  const m = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const pos = new THREE.Vector3();
+  const scl = new THREE.Vector3(1, 1, 1);
+  const up = new THREE.Vector3(0, 1, 0);
+  const col = new THREE.Color();
+
+  sites.forEach(([x, z, rot, green], i) => {
+    q.setFromAxisAngle(up, rot);
+    pos.set(x, -0.26, z);
+    m.compose(pos, q, scl);
+    posts.setMatrixAt(i, m);
+    heads.setMatrixAt(i, m);
+    pos.set(x, -0.26 + (green ? -0.30 : 0.30), z);
+    m.compose(pos, q, scl);
+    lenses.setMatrixAt(i, m);
+    col.setHex(green ? 0x35c257 : 0xd8362a);
+    lenses.setColorAt(i, col);
+  });
+  for (const im of [posts, heads, lenses]) im.instanceMatrix.needsUpdate = true;
+  if (lenses.instanceColor) lenses.instanceColor.needsUpdate = true;
+  posts.name = 'signal-posts';
+  heads.name = 'signal-heads';
+  lenses.name = 'signal-lenses';
+  return [posts, heads, lenses];
+}
+
+/**
+ * Hydrants and litter bins along the kerb.
+ *
+ * Small, and that is the point: they are the things that give a pavement its
+ * scale. Without something knee-high near the kerb there is nothing in the
+ * frame between a lamp standard and a car, and the pavement reads as a blank
+ * apron.
+ */
+export function kerbFurniture(roads, limit = 260, avoid, reach = 900) {
+  const rand = rng(8317);
+  const hyd = [];
+  {
+    const body = new THREE.CylinderGeometry(0.17, 0.20, 0.62, 8);
+    body.translate(0, 0.31, 0);
+    hyd.push(norm(body));
+    const cap = new THREE.SphereGeometry(0.17, 8, 5);
+    cap.translate(0, 0.66, 0);
+    hyd.push(norm(cap));
+    for (const sx of [-1, 1]) {
+      const nozzle = new THREE.CylinderGeometry(0.07, 0.07, 0.16, 6);
+      nozzle.rotateZ(Math.PI / 2);
+      nozzle.translate(sx * 0.2, 0.4, 0);
+      hyd.push(norm(nozzle));
+    }
+  }
+  const hydGeo = mergeGeometries(hyd);
+  const binGeo = norm(new THREE.CylinderGeometry(0.34, 0.30, 0.86, 10));
+  binGeo.translate(0, 0.43, 0);
+
+  const picks = [];
+  for (const r of roads) {
+    if (r.w < 9) continue;
+    for (let i = 0; i < r.p.length - 1; i++) {
+      const [x0, z0] = r.p[i], [x1, z1] = r.p[i + 1];
+      const dx = x1 - x0, dz = z1 - z0;
+      const len = Math.hypot(dx, dz);
+      if (len < 18) continue;
+      const ang = Math.atan2(dz, dx);
+      const nx = -Math.sin(ang), nz = Math.cos(ang);
+      const off = Math.min(r.w * 0.5 - 1.1, 10);
+      if (off < 3) continue;
+      for (let d = 12; d < len; d += 46) {
+        const t = d / len;
+        const cx = x0 + dx * t, cz = z0 + dz * t;
+        if (Math.hypot(cx, cz) > reach) continue;
+        const side = rand() < 0.5 ? 1 : -1;
+        const x = cx + nx * off * side, z = cz + nz * off * side;
+        if (avoid && avoid.blocked(x, z)) continue;
+        picks.push([x, z, rand() < 0.55]);         // true: hydrant, else a bin
+      }
+    }
+  }
+  if (!picks.length) return [];
+  const step = Math.max(1, picks.length / limit);
+  const chosen = [];
+  for (let i = 0; i < picks.length && chosen.length < limit; i += step) {
+    chosen.push(picks[Math.floor(i)]);
+  }
+  const hydrants = chosen.filter((c) => c[2]);
+  const bins = chosen.filter((c) => !c[2]);
+
+  const build = (geo, mat, list, name) => {
+    if (!list.length) return null;
+    const im = new THREE.InstancedMesh(geo, mat, list.length);
+    im.castShadow = true;
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const pos = new THREE.Vector3();
+    const scl = new THREE.Vector3(1, 1, 1);
+    const up = new THREE.Vector3(0, 1, 0);
+    list.forEach(([x, z], i) => {
+      q.setFromAxisAngle(up, rand() * Math.PI * 2);
+      pos.set(x, -0.26, z);
+      m.compose(pos, q, scl);
+      im.setMatrixAt(i, m);
+    });
+    im.instanceMatrix.needsUpdate = true;
+    im.name = name;
+    return im;
+  };
+  return [build(hydGeo, DETAIL_MATS.hydrant, hydrants, 'hydrants'),
+          build(binGeo, DETAIL_MATS.bin, bins, 'litter-bins')].filter(Boolean);
 }
 
 /**

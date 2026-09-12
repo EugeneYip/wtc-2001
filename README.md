@@ -79,6 +79,28 @@ parallel ways in the data, so asphalt is laid over pavement rather than beside
 it — otherwise each way's pavement buries its neighbour's roadway. Lamp
 standards line both sides, alternating, with a few more around the plaza deck.
 
+Junctions come free: OpenStreetMap splits ways where they meet, so the ends of
+the ways *are* the junctions and no intersection test is needed. Every crossing
+of two real streets gets painted crosswalks and a stop bar on each approach —
+two transverse lines rather than the ladder bars that came later, which is what
+nearly every crossing down here had in 2001 — and two diagonally opposite
+corners get a signal on a mast arm, red on one axis and green on the other.
+Hydrants and litter bins stand along the kerb, because without something
+knee-high there is nothing in the frame between a lamp standard and a car and
+the pavement reads as a blank apron.
+
+**Ground floors.** Every building used to run its upper-floor window grid
+straight into the pavement, which is the one thing a street will not survive: a
+street is read from its ground floor, and a ground floor is nothing like the
+floors above it. It is taller, mostly glass, set behind a plinth and under a
+fascia, and interrupted every few metres by a stone pier. So the bottom five
+metres of every building tall enough to have a proper ground storey is a band
+of its own, standing a hand's breadth proud of the wall behind — which is what
+a base course does anyway. It is built by hand rather than extruded, because
+the run along the perimeter has to be true arc length for the shopfront bays to
+keep their width around a corner, and the tile has to be anchored at the
+pavement so the plinth is always at the bottom.
+
 **Around it.** 814 building footprints, the street grid, the Hudson and East
 rivers and the harbour out to about fifteen kilometres, and the parks. Cesar Pelli's World Financial Center
 towers with their dome and stepped-pyramid crowns, the Woolworth Building,
@@ -177,12 +199,16 @@ Six things are deliberately not raw OpenStreetMap:
    placed and proportioned to read correctly, and this model holds every
    street at one level, where Lower Manhattan in fact slopes — the grade at
    the north-east of the site was not the grade at Liberty Street.
-4. **Roof clutter, street trees, street lamps, traffic and harbour vessels are
-   invented.** They are placed from a fixed seed for plausibility, not from
-   survey, and tested against every building footprint, or against the
-   coastline, so nothing grows through a wall, parks inside one, or runs
-   aground. Water tanks, stair bulkheads, plane trees and lamp standards are
-   what those roofs and streets had; their exact positions are not claimed.
+4. **Roof clutter, street trees, street lamps, signals, hydrants, bins,
+   traffic, harbour vessels and every shopfront are invented.** They are
+   placed from a fixed seed for plausibility, not from survey, and tested
+   against every building footprint, or against the coastline, so nothing
+   grows through a wall, parks inside one, or runs aground. Water tanks, stair
+   bulkheads, plane trees and lamp standards are what those roofs and streets
+   had; their exact positions are not claimed. The ground floors are the
+   furthest from survey of anything here: there is no record in the data of
+   what occupied any given one, so what is modelled is the *kind* of thing a
+   ground floor is — glazing, piers, a fascia — and not one real shop.
    The land across the rivers is generic mottling for the same reason — there
    is no data behind it, so it stays deliberately vague rather than inventing
    a Jersey City skyline.
@@ -205,7 +231,7 @@ uniform slab. Those are massing, not survey.
 
 ## Performance
 
-About 150 draw calls and 554k triangles in daylight, rendering in well under a
+About 161 draw calls and 636k triangles in daylight, rendering in well under a
 millisecond a frame on an M2 at 2800 × 1800 once shaders are warm — measured
 with a GPU sync, since a browser will otherwise report its own compositor.
 Night is cheaper in draw calls than day: with the sun below the horizon there

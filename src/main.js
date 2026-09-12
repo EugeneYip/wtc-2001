@@ -18,11 +18,11 @@ import { RenderPass } from 'RenderPass';
 import { UnrealBloomPass } from 'UnrealBloomPass';
 import { OutputPass } from 'OutputPass';
 import { buildCity, cityLabels, animateWater, setShoreGlow, lampPoolShading,
-         CITY_MATS, WALL_CLASSES } from './city.js';
+         junctions, CITY_MATS, WALL_CLASSES } from './city.js';
 import { buildComplex, MATS as WTC_MATS, PLAZA_TREE_SITES,
          PLAZA_LAMP_SITES } from './wtc.js';
 import { roofClutter, trees, traffic, vessels, streetLamps, lampPoolTexture,
-         obstacleIndex, DETAIL_MATS } from './details.js';
+         trafficSignals, kerbFurniture, obstacleIndex, DETAIL_MATS } from './details.js';
 import { makeNightSky } from './nightsky.js';
 
 const DEG = Math.PI / 180;
@@ -46,9 +46,9 @@ const clock = new THREE.Clock();
 // ---------------------------------------------------------------------------
 
 const TIERS = {
-  low:    { dpr: 1.5,  shadow: 1024, bloom: false, probe: 128, cars: 140, boats: 8,  lamps: 260, pool: 512,  shadowSpan: 800 },
-  medium: { dpr: 1.75, shadow: 2048, bloom: true,  probe: 192, cars: 300, boats: 14, lamps: 480, pool: 1024, shadowSpan: 950 },
-  high:   { dpr: 2.0,  shadow: 4096, bloom: true,  probe: 256, cars: 460, boats: 18, lamps: 700, pool: 1024, shadowSpan: 1050 },
+  low:    { dpr: 1.5,  shadow: 1024, bloom: false, probe: 128, cars: 140, boats: 8,  lamps: 260, props: 110, pool: 512,  shadowSpan: 800 },
+  medium: { dpr: 1.75, shadow: 2048, bloom: true,  probe: 192, cars: 300, boats: 14, lamps: 480, props: 200, pool: 1024, shadowSpan: 950 },
+  high:   { dpr: 2.0,  shadow: 4096, bloom: true,  probe: 256, cars: 460, boats: 18, lamps: 700, props: 300, pool: 1024, shadowSpan: 1050 },
 };
 
 function detectQuality() {
@@ -211,6 +211,7 @@ function applyTime(hour) {
   DETAIL_MATS.lampHead.emissiveIntensity = lit * 2.2;
   DETAIL_MATS.headlight.emissiveIntensity = lit * 2.4;
   DETAIL_MATS.tail.emissiveIntensity = lit * 1.5;
+  DETAIL_MATS.signalLens.emissiveIntensity = 0.9 + lit * 1.9;
 
   CITY_MATS.water.color.copy(WATER_DAY).lerp(WATER_NIGHT, dusk);
   // Distant water holds a mirror after dark instead of the wide, hazy lobe
@@ -541,6 +542,8 @@ async function init() {
   const lamps = streetLamps(data.roads, tier.lamps, footprints,
                             PLAZA_LAMP_SITES(data));
   for (const m of lamps) detail.add(m);
+  for (const m of trafficSignals(junctions(data.roads), footprints)) detail.add(m);
+  for (const m of kerbFurniture(data.roads, tier.props, footprints)) detail.add(m);
   // Paint where those lamps land, and let the paved materials read it.
   const pool = lampPoolTexture(lamps[0].userData.sites, LAMP_SPAN, tier.pool);
   for (const m of [CITY_MATS.road, CITY_MATS.roadMinor, CITY_MATS.sidewalk,

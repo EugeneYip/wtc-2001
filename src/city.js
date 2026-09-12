@@ -16,7 +16,8 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'BufferGeometryUtils';
 import { norm, shapeFrom, flat, extrude, bounds } from './geo.js';
 import { facadeMaps, roofTexture, roadTexture, sidewalkTexture, waterNormal,
-         waterRoughness, landTexture, LAND_TILE_M } from './textures.js';
+         waterRoughness, landTexture, LAND_TILE_M, storefront,
+         STOREFRONT_H } from './textures.js';
 
 const FACADE = facadeMaps();
 
@@ -30,6 +31,12 @@ export const CITY_MATS = {
 
   roof: new THREE.MeshStandardMaterial({
     map: roofTexture(), roughness: 0.93, metalness: 0.02, vertexColors: true }),
+  shopfront: (() => {
+    const f = storefront();
+    return new THREE.MeshStandardMaterial({
+      map: f.map, roughnessMap: f.surface, metalnessMap: f.surface,
+      roughness: 1, metalness: 1, vertexColors: true });
+  })(),
   // Roof crowns that are not storeys: the World Financial Center domes, and
   // the copper pyramid on the Woolworth.
   crownMetal: new THREE.MeshStandardMaterial({
@@ -42,6 +49,11 @@ export const CITY_MATS = {
     map: landTexture(), color: 0xb4b7b0, roughness: 0.98, metalness: 0.0 }),
   road: new THREE.MeshStandardMaterial({
     map: roadTexture(true), color: 0xc4c2ba, roughness: 0.9, metalness: 0.0 }),
+  // Road paint. Worn, not white: fresh thermoplastic on a dark road is the
+  // brightest thing in a daylight frame and it never looks like paint.
+  paint: new THREE.MeshStandardMaterial({
+    color: 0xbdb9ac, roughness: 0.78, metalness: 0.0,
+    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
   roadMinor: new THREE.MeshStandardMaterial({
     map: roadTexture(false), color: 0xd0ccc1, roughness: 0.92, metalness: 0.0 }),
   sidewalk: new THREE.MeshStandardMaterial({
@@ -423,6 +435,90 @@ function shoreGlow(landPolys, buildings) {
 }
 
 // ---------------------------------------------------------------------------
+// Junctions
+// ---------------------------------------------------------------------------
+
+/**
+ * Where the streets actually meet.
+ *
+ * OpenStreetMap splits ways at every junction, so the ends of the ways are the
+ * junctions — no geometric intersection test needed. Anything with three or
+ * more way-ends coming into it is a crossing; two is just a way split in the
+ * middle, which is most of them.
+ */
+export function junctions(roads) {
+  const key = (x, z) => `${Math.round(x * 2)},${Math.round(z * 2)}`;
+  const at = new Map();
+  for (const r of roads) {
+    for (const end of [0, 1]) {
+      const p = end ? r.p[r.p.length - 1] : r.p[0];
+      const q = end ? r.p[r.p.length - 2] : r.p[1];
+      if (!q) continue;
+      const k = key(p[0], p[1]);
+      if (!at.has(k)) at.set(k, { x: p[0], z: p[1], arms: [] });
+      const dx = q[0] - p[0], dz = q[1] - p[1];
+      const len = Math.hypot(dx, dz) || 1;
+      // Direction pointing away from the junction, down the arm.
+      at.get(k).arms.push({ ux: dx / len, uz: dz / len, w: r.w, k: r.k });
+    }
+  }
+  return [...at.values()].filter((j) => j.arms.length >= 3);
+}
+
+/**
+ * Crosswalks and stop bars.
+ *
+ * Two transverse lines rather than the ladder bars that came later — in 2001
+ * that is what nearly every crossing down here had. Laid just above the
+ * asphalt on its own mesh, so the paint is geometry and stays crisp at the
+ * angle a pedestrian actually sees it from.
+ */
+function streetMarkings(roads) {
+  const geos = [];
+  const bar = (cx, cz, ux, uz, along, across) => {
+    // A quad centred at (cx, cz), `along` deep down the arm and `across` wide.
+    const px = -uz, pz = ux;
+    const hx = (ux * along) / 2, hz = (uz * along) / 2;
+    const gx = (px * across) / 2, gz = (pz * across) / 2;
+    const p = [[cx - hx - gx, cz - hz - gz], [cx + hx - gx, cz + hz - gz],
+               [cx + hx + gx, cz + hz + gz], [cx - hx + gx, cz - hz + gz]];
+    // Wound so the face points up: with +x across and +z down the arm, the
+    // obvious 0-1-2 order gives a normal of -y and the paint is culled away.
+    const pos = [];
+    for (const [a, b, c] of [[0, 2, 1], [0, 3, 2]]) {
+      for (const i of [a, b, c]) pos.push(p[i][0], 0, p[i][1]);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(
+      pos.map((_, i) => (i % 3 === 1 ? 1 : 0)), 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(12), 2));
+    geos.push(g);
+  };
+
+  for (const j of junctions(roads)) {
+    // Two proper streets have to meet. Requiring one of them to be tagged
+    // `major` sounded right and was not: almost nothing in the Financial
+    // District grid is tagged that way, so the first pass painted crossings
+    // on the avenues and left the whole of Wall Street bare.
+    if (j.arms.filter((a) => a.w >= 11).length < 2) continue;
+    const widest = Math.max(...j.arms.map((a) => a.w));
+    for (const arm of j.arms) {
+      if (arm.w < 9) continue;
+      const lane = Math.max(4.0, arm.w - 2 * Math.min(4.0, Math.max(2.0, arm.w * 0.22)));
+      const setback = widest * 0.5 + 1.2;
+      for (const d of [setback, setback + 3.2]) {
+        bar(j.x + arm.ux * d, j.z + arm.uz * d, arm.ux, arm.uz, 0.45, lane);
+      }
+      // Stop bar behind the crossing, on the approaching side only.
+      const st = setback + 4.6;
+      bar(j.x + arm.ux * st, j.z + arm.uz * st, arm.ux, arm.uz, 0.55, lane * 0.46);
+    }
+  }
+  return geos.length ? mergeGeometries(geos) : null;
+}
+
+// ---------------------------------------------------------------------------
 // Per-building tint
 // ---------------------------------------------------------------------------
 
@@ -488,6 +584,60 @@ function tint(geo, rgb) {
 // ---------------------------------------------------------------------------
 
 const PARAPET = 0.85;
+
+/**
+ * The ground storey, as a band standing just proud of the wall behind it.
+ *
+ * Built by hand rather than extruded, for two reasons: the run along the
+ * perimeter has to be true arc length so the shopfront bays keep their real
+ * width around a corner, and the tile has to be anchored at the pavement so
+ * the plinth is always at the bottom. ExtrudeGeometry gives neither — its
+ * side-wall u is whichever world axis the edge runs along, and its v is
+ * measured from the top.
+ */
+const STOREFRONT_PROUD = 0.11;
+
+function baseBand(poly, h) {
+  if (h < STOREFRONT_H + 2.5) return null;
+  // Signed area tells us which way is out.
+  let a = 0;
+  for (let i = 0; i < poly.length; i++) {
+    const [x0, z0] = poly[i];
+    const [x1, z1] = poly[(i + 1) % poly.length];
+    a += x0 * z1 - x1 * z0;
+  }
+  const out = a > 0 ? 1 : -1;
+
+  const pos = [], nrm = [], uv = [];
+  let run = 0;
+  for (let i = 0; i < poly.length; i++) {
+    const [x0, z0] = poly[i];
+    const [x1, z1] = poly[(i + 1) % poly.length];
+    const dx = x1 - x0, dz = z1 - z0;
+    const len = Math.hypot(dx, dz);
+    if (len < 0.8) continue;
+    const nx = (dz / len) * out, nz = (-dx / len) * out;
+    const ax = x0 + nx * STOREFRONT_PROUD, az = z0 + nz * STOREFRONT_PROUD;
+    const bx = x1 + nx * STOREFRONT_PROUD, bz = z1 + nz * STOREFRONT_PROUD;
+    const H = STOREFRONT_H;
+    const quad = [
+      [ax, 0, az, run, 0], [bx, 0, bz, run + len, 0], [bx, H, bz, run + len, H],
+      [ax, 0, az, run, 0], [bx, H, bz, run + len, H], [ax, H, az, run, H],
+    ];
+    for (const [px, py, pz, u, v] of quad) {
+      pos.push(px, py, pz);
+      nrm.push(nx, 0, nz);
+      uv.push(u, v);
+    }
+    run += len;
+  }
+  if (!pos.length) return null;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  return g;
+}
 
 /**
  * Extrude a footprint and hand back its walls and its roof separately.
@@ -751,6 +901,15 @@ export function buildCity(data) {
     g.add(m);
   }
 
+  const marks = streetMarkings(data.roads);
+  if (marks) {
+    const m = new THREE.Mesh(marks, CITY_MATS.paint);
+    m.position.y = ASPHALT_Y + 0.01;
+    m.receiveShadow = true;
+    m.name = 'road-paint';
+    g.add(m);
+  }
+
   if (walks.length) {
     const m = new THREE.Mesh(mergeGeometries(walks), CITY_MATS.sidewalk);
     m.position.y = SIDEWALK_Y;
@@ -762,6 +921,7 @@ export function buildCity(data) {
   const walls = {};
   const roofs = [];
   const caps = { metal: [], copper: [] };
+  const shops = [];
   for (const b of data.buildings) {
     const cls = FACADE_OVERRIDE[b.n] ||
                 (WALL_CLASSES.includes(b.c) ? b.c : 'lowrise');
@@ -773,6 +933,8 @@ export function buildCity(data) {
     const base = shell(b.p, b.h);
     if (base.wall) into.push(tint(base.wall, rgb));
     if (base.roof) roofs.push(tint(base.roof, roofRgb));
+    const band = baseBand(b.p, b.h);
+    if (band) shops.push(tint(band, rgb));
 
     // A crown sits on whatever is directly under it: the tower box where
     // there is one, otherwise the building's own footprint.
@@ -807,6 +969,12 @@ export function buildCity(data) {
     const m = new THREE.Mesh(mergeGeometries(geos), CITY_MATS[cls]);
     m.castShadow = m.receiveShadow = true;
     m.name = 'walls-' + cls;
+    g.add(m);
+  }
+  if (shops.length) {
+    const m = new THREE.Mesh(mergeGeometries(shops), CITY_MATS.shopfront);
+    m.castShadow = m.receiveShadow = true;
+    m.name = 'shopfronts';
     g.add(m);
   }
   if (roofs.length) {
