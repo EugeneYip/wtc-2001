@@ -103,11 +103,13 @@ Four things are deliberately not raw OpenStreetMap:
    Those buildings are modelled as a podium, a slender tower, and a crown.
 3. **Demolished buildings are added back**, in local grid coordinates.
 4. **Roof clutter, street trees and traffic are invented.** They are placed
-   from a fixed seed for plausibility, not from survey. Water tanks, stair
-   bulkheads and plane trees are what those roofs and streets had; their
-   exact positions are not claimed. The land across the rivers is generic
-   mottling for the same reason — there is no data behind it, so it stays
-   deliberately vague rather than inventing a Jersey City skyline.
+   from a fixed seed for plausibility, not from survey, and tested against
+   every building footprint so nothing grows through a wall or parks inside
+   one. Water tanks, stair bulkheads and plane trees are what those roofs and
+   streets had; their exact positions are not claimed. The land across the
+   rivers is generic mottling for the same reason — there is no data behind
+   it, so it stays deliberately vague rather than inventing a Jersey City
+   skyline.
 
 Background buildings with no height in OSM get a deterministic estimate from
 their id and footprint area, so the fabric varies instead of reading as one
@@ -115,10 +117,10 @@ uniform slab. Those are massing, not survey.
 
 ## Performance
 
-The scene is about 100 draw calls and 258k triangles, and renders in roughly
-1.3 ms a frame on an M2 at 1078 × 1674 once shaders are warm. Detail scales
-automatically: phones get a smaller shadow map, no bloom and fewer cars;
-desktops get the full set. The preset in use is shown in the panel.
+The scene is about 100 draw calls and 256k triangles, and renders in under a
+millisecond a frame on an M2 at 1078 × 1674 once shaders are warm. Detail
+scales automatically: phones get a smaller shadow map, no bloom and fewer
+cars; desktops get the full set. The preset in use is shown in the panel.
 
 ## Layout
 

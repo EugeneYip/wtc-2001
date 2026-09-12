@@ -19,7 +19,7 @@ import { UnrealBloomPass } from 'UnrealBloomPass';
 import { OutputPass } from 'OutputPass';
 import { buildCity, cityLabels, animateWater, CITY_MATS, WALL_CLASSES } from './city.js';
 import { buildComplex, MATS as WTC_MATS, PLAZA_TREE_SITES } from './wtc.js';
-import { roofClutter, trees, traffic } from './details.js';
+import { roofClutter, trees, traffic, obstacleIndex } from './details.js';
 
 const DEG = Math.PI / 180;
 const GRID_ROT = 29.11 * DEG;       // Manhattan grid offset from true north
@@ -79,6 +79,9 @@ const SKY_DAY = new THREE.Color(0x9dbdd8);
 const SKY_DUSK = new THREE.Color(0xd9793a);
 const SKY_NIGHT = new THREE.Color(0x0a1120);
 const NIGHT_BG = new THREE.Color(0x070c17);
+const NIGHT_FILL = new THREE.Color(0x3a4f7a);
+const MOON = new THREE.Color(0xaebfe4);
+const FILL_DAY = new THREE.Color(0xc8d8ff);
 const SUN_HIGH = new THREE.Color(0xfff2df);
 const SUN_LOW = new THREE.Color(0xff8c3c);
 const WHITE = new THREE.Color(0xffffff);
@@ -112,10 +115,16 @@ function applyTime(hour) {
   u.mieDirectionalG.value = 0.82;
 
   _c.copy(SKY_DAY).lerp(SKY_DUSK, warm * 0.85);
-  hemi.intensity = night ? 0.22 : 0.22 + 0.38 * up;
-  hemi.color.copy(night ? SKY_NIGHT : _c);
+  // Sky glow and moonlight at night. With neither, the buildings vanish and
+  // the windows read as grids floating in a void; ACES crushes the low end
+  // hard, so this needs a good deal more than it looks like it should.
+  hemi.intensity = night ? 1.5 : 0.22 + 0.38 * up;
+  hemi.color.copy(night ? NIGHT_FILL : _c);
   hemi.groundColor.setHex(night ? 0x05080e : 0x3a332a);
-  fill.intensity = night ? 0.07 : 0.06 + 0.20 * up;
+  // The fill doubles as moonlight after dark, so facades get some modelling
+  // rather than flat ambient.
+  fill.intensity = night ? 0.55 : 0.06 + 0.20 * up;
+  fill.color.copy(night ? MOON : FILL_DAY);
 
   _fog.copy(night ? SKY_NIGHT : _c);
   if (!night) _fog.lerp(WHITE, 0.22 * (1 - warm * 0.7));
@@ -409,9 +418,14 @@ async function init() {
   await tick();
   const detail = new THREE.Group();
   detail.name = 'detail';
+  // Park polygons overlap buildings and some streets run under them, so
+  // scatter placement is tested against every footprint in the city.
+  const footprints = obstacleIndex(data.buildings.map((b) => b.p));
   for (const m of roofClutter(data.buildings)) detail.add(m);
-  for (const m of trees(data.parks, PLAZA_TREE_SITES(data))) detail.add(m);
-  for (const m of traffic(data.roads, tier.cars)) detail.add(m);
+  for (const m of trees(data.parks, PLAZA_TREE_SITES(data, obstacleIndex), footprints)) {
+    detail.add(m);
+  }
+  for (const m of traffic(data.roads, tier.cars, footprints)) detail.add(m);
   scene.add(detail);
 
   // Reflection probe, over the plaza and above the low-rise roofline.
@@ -460,7 +474,9 @@ async function init() {
   loaderHeldMs = Math.round(performance.now() - bootAt);
 
   window.WTC = { scene, camera, controls, renderer, goTo, applyTime, VIEWS, data,
-                 quality, get loaderHeldMs() { return loaderHeldMs; } };
+                 quality, render,
+                 get composer() { return composer; },
+                 get loaderHeldMs() { return loaderHeldMs; } };
 }
 
 function tick() { return wait(16); }

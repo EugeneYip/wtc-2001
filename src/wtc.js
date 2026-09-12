@@ -19,6 +19,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'BufferGeometryUtils';
 import { norm, extrude } from './geo.js';
 import { plazaTexture } from './textures.js';
+import { shell, CITY_MATS } from './city.js';
 
 const SIDE = 63.40;            // 208 ft square footprint
 const FLOOR = 3.66;            // 12 ft floor-to-floor
@@ -426,9 +427,30 @@ function sphere(x, z, y) {
   return g;
 }
 
-export const PLAZA_TREE_SITES = (data) => {
-  const p = data.plaza.p;
-  return [{ poly: p, n: 54, scale: 1.15 }];
+/**
+ * Planting on Austin J. Tobin Plaza. The trees stand on the deck rather than
+ * at street level, and have to keep clear of the towers and of the low-rise
+ * buildings that wrap the plaza -- scattering across the whole superblock
+ * puts most of them inside a building.
+ */
+export const PLAZA_TREE_SITES = (data, obstacleIndex) => {
+  const half = data.towers.side / 2;
+  const footprints = data.complex.map((b) => b.p);
+  for (const key of ['wtc1', 'wtc2']) {
+    const [cx, cz] = data.towers[key].c;
+    footprints.push([
+      [cx - half, cz - half], [cx + half, cz - half],
+      [cx + half, cz + half], [cx - half, cz + half],
+    ]);
+  }
+  return [{
+    poly: data.plaza.p,
+    n: 46,
+    scale: 1.15,
+    y: data.plaza.y,
+    margin: 7,
+    avoid: obstacleIndex(footprints),
+  }];
 };
 
 export function buildComplex(data) {
@@ -441,9 +463,14 @@ export function buildComplex(data) {
   deck.name = 'plaza';
   g.add(deck);
 
+  // Walls by material, roofs pooled onto the same tar-and-gravel as the rest
+  // of the city -- otherwise these read as blank white slabs from above.
   const byMat = { wtc_low: [], wtc7: [] };
+  const roofs = [];
   for (const b of data.complex) {
-    (byMat[b.c] || byMat.wtc_low).push(extrude(b.p, b.h));
+    const parts = shell(b.p, b.h);
+    if (parts.wall) (byMat[b.c] || byMat.wtc_low).push(parts.wall);
+    if (parts.roof) roofs.push(parts.roof);
   }
   for (const [k, list] of Object.entries(byMat)) {
     if (!list.length) continue;
@@ -451,6 +478,12 @@ export function buildComplex(data) {
       k === 'wtc7' ? MATS.wtc7 : MATS.lowrise);
     m.castShadow = true; m.receiveShadow = true;
     m.name = k;
+    g.add(m);
+  }
+  if (roofs.length) {
+    const m = new THREE.Mesh(mergeGeometries(roofs), CITY_MATS.roof);
+    m.receiveShadow = true;
+    m.name = 'complex-roofs';
     g.add(m);
   }
 

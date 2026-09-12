@@ -105,6 +105,11 @@ POST_2001 = {
     75309475:   "200 West Street / Goldman Sachs (2009)",
     292727038:  "115 Nassau Street",
     369868758:  "215 Pearl Street (Courtyard)",
+    # Liberty Park, built on the cleared Deutsche Bank site after 2001.
+    278033625:  "St. Nicholas National Shrine (2022)",
+    1125067850: "Liberty Park guardhouse",
+    684936385:  "Liberty Park service structure",
+    684939461:  "Liberty Park structure",
     # Battery Park City north and south neighbourhoods, all post-2001
     277880567:  "River & Warren",
     277880570:  "The Solaire (2003)",
@@ -151,10 +156,15 @@ HEIGHT_FIX = {
 # directly in the local grid frame.
 DEMOLISHED = [
     {
-        # Damaged on 9/11, deconstructed 2007-2011. A dark 40-storey slab
+        # Damaged on 9/11, deconstructed 2007-2011. A dark 40-storey tower
         # directly across Liberty Street from the South Tower.
+        #
+        # Its block is bounded by Liberty (z 111.6), Cedar (z 169.9),
+        # Washington (x 46.4) and Greenwich (x 121.7), measured from the road
+        # centrelines in that band -- the street averages over the whole
+        # extract are useless here because both avenues jog.
         "name": "Deutsche Bank Building (130 Liberty Street)",
-        "poly": [(-6, 128), (62, 128), (62, 180), (-6, 180)],
+        "poly": [(50, 117), (118, 117), (118, 165), (50, 165)],
         "h": 158.0, "cls": "dark",
     },
 ]

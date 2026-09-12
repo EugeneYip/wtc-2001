@@ -149,8 +149,10 @@ const SPECS = {
                   glass: '#20262d', winW: 0.42, winH: 0.60, sill: '#8d857a' },
   tower_modern: { seed: 71, bayW: 1.6, floorH: 3.7, wall: '#7b8288', trim: '#5d666e',
                   glass: '#2f3c49', winW: 0.78, winH: 0.68, ribbon: true },
-  dark:         { seed: 89, bayW: 1.6, floorH: 3.7, wall: '#3e444a', trim: '#2b3036',
-                  glass: '#1c242d', winW: 0.80, winH: 0.70, ribbon: true },
+  // Bronze-tinted curtain wall. Dark, but not a void: the real thing still
+  // picked up plenty of sky.
+  dark:         { seed: 89, bayW: 1.6, floorH: 3.7, wall: '#6b6455', trim: '#4e4840',
+                  glass: '#443c31', winW: 0.80, winH: 0.70, ribbon: true },
 };
 
 export function facadeMaps() {
@@ -339,9 +341,11 @@ export function landTexture() {
 
   // Brighter than it looks right: this is multiplied by the material colour
   // and then dimmed again by low afternoon sun and haze.
-  const GREEN = [96, 110, 82];
-  const GREY = [150, 148, 141];
-  const BROWN = [142, 128, 106];
+  // Cooler and darker than instinct suggests. Haze lifts all of this a long
+  // way toward the sky colour, and a warm palette ends up reading as desert.
+  const GREEN = [72, 88, 66];
+  const GREY = [118, 120, 118];
+  const BROWN = [112, 104, 88];
 
   for (let i = 0; i < N * N; i++) {
     const u = Math.min(1, Math.max(0, (urban[i] - 0.35) * 2.2));  // built-up
@@ -349,7 +353,7 @@ export function landTexture() {
     const warm = Math.min(1, Math.max(0, (g - 0.45) * 2.4));
     let col = GREEN.map((v, k) => v + (BROWN[k] - v) * warm);
     col = col.map((v, k) => v + (GREY[k] - v) * u);
-    const shade = 0.82 + g * 0.36;
+    const shade = 0.70 + g * 0.62;
     img.data[i * 4] = Math.min(255, col[0] * shade);
     img.data[i * 4 + 1] = Math.min(255, col[1] * shade);
     img.data[i * 4 + 2] = Math.min(255, col[2] * shade);
@@ -368,5 +372,5 @@ export function landTexture() {
   }
   x.globalAlpha = 1;
 
-  return finish(c, 1 / 1400, 1 / 1400, 4);
+  return finish(c, 1 / 750, 1 / 750, 4);
 }

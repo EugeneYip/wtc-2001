@@ -26,15 +26,56 @@ function inside(x, z, poly) {
   return hit;
 }
 
-/** Rejection-sample `n` points inside a polygon. */
-function scatter(poly, n, rand, tries = 40) {
+/**
+ * Uniform grid over building footprints, so a candidate point can be tested
+ * against only the few polygons near it. Without this, park polygons overlap
+ * buildings and trees grow through walls, and streets that pass under
+ * buildings end up with cars inside them.
+ */
+const CELL = 60;
+
+export function obstacleIndex(polys) {
+  const cells = new Map();
+  const key = (cx, cz) => cx + ',' + cz;
+  for (const poly of polys) {
+    const b = bounds(poly);
+    for (let cx = Math.floor(b.x0 / CELL); cx <= Math.floor(b.x1 / CELL); cx++) {
+      for (let cz = Math.floor(b.z0 / CELL); cz <= Math.floor(b.z1 / CELL); cz++) {
+        const k = key(cx, cz);
+        if (!cells.has(k)) cells.set(k, []);
+        cells.get(k).push(poly);
+      }
+    }
+  }
+  return {
+    /** True if (x, z) is inside any footprint, or within `margin` of one. */
+    blocked(x, z, margin = 0) {
+      const near = cells.get(key(Math.floor(x / CELL), Math.floor(z / CELL)));
+      if (!near) return false;
+      for (const poly of near) {
+        if (inside(x, z, poly)) return true;
+        if (margin > 0 && (
+            inside(x + margin, z, poly) || inside(x - margin, z, poly) ||
+            inside(x, z + margin, poly) || inside(x, z - margin, poly))) return true;
+      }
+      return false;
+    },
+  };
+}
+
+/** Rejection-sample `n` points inside a polygon, avoiding obstacles. */
+function scatter(poly, n, rand, opts = {}) {
+  const { avoid = null, margin = 0, tries = 40 } = opts;
   const b = bounds(poly);
   const pts = [];
   for (let i = 0; i < n; i++) {
     for (let t = 0; t < tries; t++) {
       const x = b.x0 + rand() * b.w;
       const z = b.z0 + rand() * b.d;
-      if (inside(x, z, poly)) { pts.push([x, z]); break; }
+      if (!inside(x, z, poly)) continue;
+      if (avoid && avoid.blocked(x, z, margin)) continue;
+      pts.push([x, z]);
+      break;
     }
   }
   return pts;
@@ -146,7 +187,7 @@ export function roofClutter(buildings) {
  * the churchyards were all heavily planted, and the WTC plaza had its own
  * rows, so the sites are passed in explicitly alongside the OSM parks.
  */
-export function trees(parks, extraSites) {
+export function trees(parks, extraSites, avoid) {
   const rand = rng(4242);
   const spots = [];
 
@@ -155,11 +196,16 @@ export function trees(parks, extraSites) {
     const area = b.w * b.d;
     if (area < 220) continue;
     const n = Math.min(90, Math.round(area / 165));
-    for (const [x, z] of scatter(p.p, n, rand)) spots.push([x, z, 1]);
+    for (const [x, z] of scatter(p.p, n, rand, { avoid, margin: 2.5 })) {
+      spots.push([x, z, 1, 0]);
+    }
   }
   for (const site of extraSites || []) {
-    for (const [x, z] of scatter(site.poly, site.n, rand)) {
-      spots.push([x, z, site.scale || 1]);
+    // Plaza trees stand on the deck, not at street level, and have to keep
+    // clear of the towers and the low-rise buildings around them.
+    for (const [x, z] of scatter(site.poly, site.n, rand,
+                                 { avoid: site.avoid, margin: site.margin || 6 })) {
+      spots.push([x, z, site.scale || 1, site.y || 0]);
     }
   }
   if (!spots.length) return [];
@@ -180,16 +226,16 @@ export function trees(parks, extraSites) {
   const scl = new THREE.Vector3();
   const col = new THREE.Color();
 
-  spots.forEach(([x, z, s], i) => {
+  spots.forEach(([x, z, s, y0], i) => {
     const h = (0.85 + rand() * 0.5) * s;
     q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rand() * Math.PI * 2);
 
-    pos.set(x, 0, z); scl.set(h, h, h);
+    pos.set(x, y0, z); scl.set(h, h, h);
     m.compose(pos, q, scl);
     trunks.setMatrixAt(i, m);
 
     const r = (1.7 + rand() * 1.0) * s;
-    pos.set(x, 2.6 * h + r * 0.55, z);
+    pos.set(x, y0 + 2.6 * h + r * 0.55, z);
     scl.set(r, r * (0.78 + rand() * 0.3), r);
     m.compose(pos, q, scl);
     crowns.setMatrixAt(i, m);
@@ -217,7 +263,7 @@ const CAR_COLORS = [
 ];
 
 /** Cars and cabs along the street centrelines, for scale and a little life. */
-export function traffic(roads, limit = 420) {
+export function traffic(roads, limit = 420, avoid) {
   const rand = rng(1313);
   const geo = new THREE.BoxGeometry(4.4, 1.45, 1.85);
   geo.translate(0, 0.72, 0);
@@ -250,19 +296,24 @@ export function traffic(roads, limit = 420) {
   const col = new THREE.Color();
   const up = new THREE.Vector3(0, 1, 0);
 
-  chosen.forEach(([x0, z0, x1, z1, w], i) => {
+  let placed = 0;
+  chosen.forEach(([x0, z0, x1, z1, w]) => {
     const t = 0.15 + rand() * 0.7;
     const ang = Math.atan2(z1 - z0, x1 - x0);
     const lane = (rand() < 0.5 ? -1 : 1) * w * (0.12 + rand() * 0.18);
     const x = x0 + (x1 - x0) * t - Math.sin(ang) * lane;
     const z = z0 + (z1 - z0) * t + Math.cos(ang) * lane;
+    // Some streets pass under buildings; a car parked inside one reads badly.
+    if (avoid && avoid.blocked(x, z)) return;
     q.setFromAxisAngle(up, -ang);
     pos.set(x, 0, z);
     m.compose(pos, q, scl);
-    mesh.setMatrixAt(i, m);
+    mesh.setMatrixAt(placed, m);
     col.setHex(CAR_COLORS[Math.floor(rand() * CAR_COLORS.length)]);
-    mesh.setColorAt(i, col);
+    mesh.setColorAt(placed, col);
+    placed++;
   });
+  mesh.count = placed;
 
   mesh.instanceMatrix.needsUpdate = true;
   if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;

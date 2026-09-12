@@ -14,7 +14,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'BufferGeometryUtils';
-import { norm, shapeFrom, flat, bounds } from './geo.js';
+import { norm, shapeFrom, flat, extrude, bounds } from './geo.js';
 import { facadeMaps, roofTexture, roadTexture, waterNormal, waterRoughness,
          landTexture } from './textures.js';
 
@@ -26,7 +26,7 @@ export const CITY_MATS = {
   midrise:      new THREE.MeshStandardMaterial({ roughness: 0.78, metalness: 0.08 }),
   lowrise:      new THREE.MeshStandardMaterial({ roughness: 0.88, metalness: 0.03 }),
   tower_modern: new THREE.MeshStandardMaterial({ roughness: 0.32, metalness: 0.45 }),
-  dark:         new THREE.MeshStandardMaterial({ roughness: 0.28, metalness: 0.55 }),
+  dark:         new THREE.MeshStandardMaterial({ roughness: 0.34, metalness: 0.34 }),
 
   roof: new THREE.MeshStandardMaterial({
     map: roofTexture(), roughness: 0.93, metalness: 0.02 }),
@@ -95,6 +95,11 @@ function makeWater() {
         // Whiteout blend: add the slopes, multiply the up components.
         vec3 mapN = normalize( vec3( nA.xy + nB.xy, nA.z * nB.z ) );
         mapN.xy *= normalScale;
+        // Flatten the chop with distance. Mipmapping smooths the normal map
+        // but not the specular lobe it drives, so far water otherwise breaks
+        // into a crawling stipple of aliased highlights.
+        float far = smoothstep( 400.0, 2600.0, length( vViewPosition ) );
+        mapN = normalize( mix( mapN, vec3( 0.0, 0.0, 1.0 ), far ) );
         normal = normalize( tbn * mapN );
       `);
 
@@ -133,7 +138,7 @@ const PARAPET = 0.85;
  * ExtrudeGeometry tags caps as material 0 and side walls as material 1; the
  * underside cap is never visible, so it is dropped.
  */
-function shell(poly, h) {
+export function shell(poly, h) {
   const g = new THREE.ExtrudeGeometry(shapeFrom(poly), {
     depth: h, bevelEnabled: false,
   });
@@ -174,11 +179,42 @@ function shell(poly, h) {
   return { wall: make(parts.wall), roof: make(parts.roof) };
 }
 
-/** A plain box, for a tower shaft standing on a podium. */
-function boxShell(cx, cz, w, d, y0, y1) {
-  const g = new THREE.BoxGeometry(w, y1 - y0, d);
-  g.translate(cx, (y0 + y1) / 2, cz);
-  return norm(g);
+/** Area centroid of a ring. */
+function centroid(poly) {
+  let a = 0, cx = 0, cz = 0;
+  for (let i = 0; i < poly.length; i++) {
+    const [x0, z0] = poly[i];
+    const [x1, z1] = poly[(i + 1) % poly.length];
+    const f = x0 * z1 - x1 * z0;
+    a += f; cx += (x0 + x1) * f; cz += (z0 + z1) * f;
+  }
+  if (Math.abs(a) < 1e-6) {
+    const n = poly.length;
+    return [poly.reduce((s, p) => s + p[0], 0) / n,
+            poly.reduce((s, p) => s + p[1], 0) / n];
+  }
+  return [cx / (3 * a), cz / (3 * a)];
+}
+
+function scalePoly(poly, k, cx, cz) {
+  return poly.map(([x, z]) => [cx + (x - cx) * k, cz + (z - cz) * k]);
+}
+
+/**
+ * A tower shaft standing on a podium.
+ *
+ * Built by extruding a rectangle rather than as a BoxGeometry: box UVs run
+ * 0..1 per face, so the facade texture — which tiles in metres — would map a
+ * single tile fragment across the whole shaft and render it as a flat slab.
+ * Extrusion gives the same world-scale UVs as every other wall in the city.
+ */
+function shaftRect(cx, cz, w, d, y0, y1) {
+  const hw = w / 2, hd = d / 2;
+  const poly = [[cx - hw, cz - hd], [cx + hw, cz - hd],
+                [cx + hw, cz + hd], [cx - hw, cz + hd]];
+  const parts = shell(poly, y1 - y0);
+  for (const g of [parts.wall, parts.roof]) if (g) g.translate(0, y0, 0);
+  return parts;
 }
 
 // ---------------------------------------------------------------------------
@@ -189,46 +225,43 @@ function boxShell(cx, cz, w, d, y0, y1) {
  * Distinctive tops, for the buildings where the silhouette is the point:
  * Cesar Pelli's crowns on the World Financial Center, the Woolworth
  * Building's terracotta tower, and Art Deco setbacks.
+ *
+ * Each step is the building's own footprint scaled about its centroid, not a
+ * box built from its bounding box. On anything that is not rectangular a
+ * bounding box overhangs, which left slabs visibly floating off the side of
+ * the building below.
  */
-function crown(style, rect, y0, hh) {
+function crown(style, poly, y0, hh) {
   const parts = [];
-  const box = (w, d, ht, y) => {
-    const g = new THREE.BoxGeometry(w, ht, d);
-    g.translate(rect.cx, y + ht / 2, rect.cz);
-    parts.push(norm(g));
+  const [cx, cz] = centroid(poly);
+  const b = bounds(poly);
+  const span = Math.min(b.w, b.d);
+
+  const slab = (k, ht, y) => {
+    const g = extrude(scalePoly(poly, k, cx, cz), ht);
+    g.translate(0, y, 0);
+    parts.push(g);
   };
 
   if (style === 'dome') {
     const steps = 3, sh = (hh * 0.55) / steps;
-    for (let i = 0; i < steps; i++) {
-      const f = 1 - (i / steps) * 0.34;
-      box(rect.w * f, rect.d * f, sh, y0 + i * sh);
-    }
-    const r = Math.min(rect.w, rect.d) * 0.33;
+    for (let i = 0; i < steps; i++) slab(0.96 - (i / steps) * 0.32, sh, y0 + i * sh);
+    const r = span * 0.31;
     const dome = new THREE.SphereGeometry(r, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2);
     dome.scale(1, (hh * 0.45) / r, 1);
-    dome.translate(rect.cx, y0 + hh * 0.55, rect.cz);
+    dome.translate(cx, y0 + hh * 0.55, cz);
     parts.push(norm(dome));
   } else if (style === 'steppyr') {
     const steps = 7, sh = hh / steps;
-    for (let i = 0; i < steps; i++) {
-      const f = 1 - (i / steps) * 0.82;
-      box(rect.w * f, rect.d * f, sh, y0 + i * sh);
-    }
+    for (let i = 0; i < steps; i++) slab(0.96 - (i / steps) * 0.80, sh, y0 + i * sh);
   } else if (style === 'setback') {
     const steps = 4, sh = hh / steps;
-    for (let i = 0; i < steps; i++) {
-      const f = 1 - (i / steps) * 0.58;
-      box(rect.w * f, rect.d * f, sh, y0 + i * sh);
-    }
+    for (let i = 0; i < steps; i++) slab(0.94 - (i / steps) * 0.56, sh, y0 + i * sh);
   } else if (style === 'spire') {
     const steps = 5, sh = (hh * 0.62) / steps;
-    for (let i = 0; i < steps; i++) {
-      const f = 1 - (i / steps) * 0.66;
-      box(rect.w * f, rect.d * f, sh, y0 + i * sh);
-    }
-    const pin = new THREE.ConeGeometry(rect.w * 0.16, hh * 0.38, 8);
-    pin.translate(rect.cx, y0 + hh * 0.62 + hh * 0.19, rect.cz);
+    for (let i = 0; i < steps; i++) slab(0.94 - (i / steps) * 0.64, sh, y0 + i * sh);
+    const pin = new THREE.ConeGeometry(span * 0.16, hh * 0.38, 8);
+    pin.translate(cx, y0 + hh * 0.62 + hh * 0.19, cz);
     parts.push(norm(pin));
   }
   return parts;
@@ -300,14 +333,20 @@ export function buildCity(data) {
     if (base.wall) into.push(base.wall);
     if (base.roof) roofs.push(base.roof);
 
-    let rect = bounds(b.p);
+    // A crown sits on whatever is directly under it: the tower box where
+    // there is one, otherwise the building's own footprint.
+    let capPoly = b.p;
     let top = b.h;
     if (b.t) {
-      into.push(boxShell(b.t.cx, b.t.cz, b.t.w, b.t.d, b.h, b.t.h));
-      rect = { cx: b.t.cx, cz: b.t.cz, w: b.t.w, d: b.t.d };
+      const shaft = shaftRect(b.t.cx, b.t.cz, b.t.w, b.t.d, b.h, b.t.h);
+      if (shaft.wall) into.push(shaft.wall);
+      if (shaft.roof) roofs.push(shaft.roof);
+      const hw = b.t.w / 2, hd = b.t.d / 2;
+      capPoly = [[b.t.cx - hw, b.t.cz - hd], [b.t.cx + hw, b.t.cz - hd],
+                 [b.t.cx + hw, b.t.cz + hd], [b.t.cx - hw, b.t.cz + hd]];
       top = b.t.h;
     }
-    if (b.r && b.r !== 'flat') into.push(...crown(b.r, rect, top, b.rh || 16));
+    if (b.r && b.r !== 'flat') into.push(...crown(b.r, capPoly, top, b.rh || 16));
   }
 
   for (const [cls, geos] of Object.entries(walls)) {
