@@ -31,10 +31,11 @@ ENDPOINTS = [
 # Lower Manhattan around the WTC site: City Hall down to the Battery,
 # the Hudson across to the East River.
 BBOX = "40.7048,-74.0205,40.7185,-74.0045"
-# Water needs a far wider box than the buildings: the Hudson, East River
-# and Upper Bay are single large multipolygons, and clipping them tightly
-# leaves a straight artificial shoreline across the horizon.
-WATER_BBOX = "40.670,-74.075,40.760,-73.950"
+# Water needs a far wider box than the buildings. The Hudson, East River and
+# Upper Bay are single large multipolygons, and wherever the extract stops the
+# shoreline ends in a dead straight line. This box reaches roughly 15 km out,
+# past the fog limit, so that edge is never visible.
+WATER_BBOX = "40.58,-74.20,40.84,-73.83"
 
 QUERIES = {
     "buildings": """[out:json][timeout:120];

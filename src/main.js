@@ -28,6 +28,7 @@ const DECL = 4.5 * DEG;             // solar declination, mid-September
 
 let renderer, scene, camera, controls, sky, sun, hemi, fill, pmrem;
 let composer, bloom, cubeCam, cubeRT;
+let shadowSpan = 1050;
 let labels = [], labelLayer, data, waterMesh;
 let warningLight = null;
 let showLabels = true;
@@ -99,6 +100,18 @@ function applyTime(hour) {
   sun.position.copy(dir).multiplyScalar(2600);
   sun.target.position.set(0, 80, 0);
   sun.target.updateMatrixWorld();
+
+  // A 417 m tower throws a 1.8 km shadow at a 13 degree sun, far past a
+  // frustum sized for midday, and the shadows were being cut off in a hard
+  // straight line across the city. Widen the frustum as the sun drops; the
+  // resolution lost matters least in raking light.
+  const reach = shadowSpan * (1 + 1.15 * (1 - THREE.MathUtils.clamp(
+    elev / (35 * DEG), 0, 1)));
+  const cam = sun.shadow.camera;
+  if (Math.abs(cam.right - reach) > 1) {
+    cam.left = -reach; cam.right = reach; cam.top = reach; cam.bottom = -reach;
+    cam.updateProjectionMatrix();
+  }
   sun.intensity = night ? 0.0 : 1.1 + 3.8 * Math.pow(up, 0.45);
   sun.color.copy(SUN_HIGH).lerp(SUN_LOW, warm * warm);
   sun.visible = !night;
@@ -139,6 +152,8 @@ function applyTime(hour) {
   // so the same intensity reads as almost unlit next to a plain curtain wall.
   const lit = THREE.MathUtils.clamp((elev / DEG + 6) / -10 + 1, 0, 1);
   WTC_MATS.glass.emissiveIntensity = lit * 2.6;
+  WTC_MATS.lowrise.emissiveIntensity = lit * 0.9;
+  WTC_MATS.wtc7.emissiveIntensity = lit * 0.9;
   for (const k of WALL_CLASSES) CITY_MATS[k].emissiveIntensity = lit * 0.9;
   CITY_MATS.water.color.setHex(night ? 0x08131f : 0x16303f);
 
@@ -388,9 +403,10 @@ async function init() {
   sun = new THREE.DirectionalLight(0xffffff, 2.6);
   sun.castShadow = true;
   sun.shadow.mapSize.set(tier.shadow, tier.shadow);
-  const s = tier.shadowSpan;
+  shadowSpan = tier.shadowSpan;
   Object.assign(sun.shadow.camera, {
-    left: -s, right: s, top: s, bottom: -s, near: 400, far: 6200,
+    left: -shadowSpan, right: shadowSpan, top: shadowSpan, bottom: -shadowSpan,
+    near: 400, far: 7200,
   });
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 1.1;

@@ -63,8 +63,8 @@ the low-rise 4, 5 and 6 WTC wrapping the plaza, and the original 47-storey
 ground where Greenwich Street now runs. Austin J. Tobin Plaza is raised above
 street grade, with Fritz Koenig's *Sphere* on its fountain.
 
-**Around it.** 815 building footprints, the street grid, the Hudson and East
-rivers and the harbour, and the parks. Cesar Pelli's World Financial Center
+**Around it.** 814 building footprints, the street grid, the Hudson and East
+rivers and the harbour out to about fifteen kilometres, and the parks. Cesar Pelli's World Financial Center
 towers with their dome and stepped-pyramid crowns, the Woolworth Building,
 One Liberty Plaza, the Barclay-Vesey Building, and the Deutsche Bank Building
 at 130 Liberty Street — damaged on 9/11 and since demolished, so re-added by
@@ -119,7 +119,7 @@ uniform slab. Those are massing, not survey.
 
 ## Performance
 
-The scene is about 100 draw calls and 256k triangles, and renders in under a
+The scene is about 100 draw calls and 259k triangles, and renders in about a
 millisecond a frame on an M2 at 1078 × 1674 once shaders are warm. Detail
 scales automatically: phones get a smaller shadow map, no bloom and fewer
 cars; desktops get the full set. The preset in use is shown in the panel.

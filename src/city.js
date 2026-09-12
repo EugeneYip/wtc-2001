@@ -16,7 +16,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'BufferGeometryUtils';
 import { norm, shapeFrom, flat, extrude, bounds } from './geo.js';
 import { facadeMaps, roofTexture, roadTexture, waterNormal, waterRoughness,
-         landTexture } from './textures.js';
+         landTexture, LAND_TILE_M } from './textures.js';
 
 const FACADE = facadeMaps();
 
@@ -88,6 +88,16 @@ function makeWater() {
         uniform float normalMap2Scale;
         uniform vec2 normalMap2Offset;
       `)
+      .replace('#include <roughnessmap_fragment>', `
+        #include <roughnessmap_fragment>
+        // Minifying a normal map loses the sub-pixel detail that should have
+        // widened the specular lobe. Flattening the normals alone kills the
+        // aliasing but turns distant water into a mirror, which at a low sun
+        // blows out into one huge white blob. Widening roughness to match is
+        // what the lost detail would actually have done.
+        roughnessFactor = mix( roughnessFactor, 0.66,
+          smoothstep( 300.0, 3000.0, length( vViewPosition ) ) );
+      `)
       .replace('#include <normal_fragment_maps>', `
         vec3 nA = texture2D( normalMap, vNormalMapUv ).xyz * 2.0 - 1.0;
         vec3 nB = texture2D( normalMap2,
@@ -99,7 +109,7 @@ function makeWater() {
         // but not the specular lobe it drives, so far water otherwise breaks
         // into a crawling stipple of aliased highlights.
         float far = smoothstep( 400.0, 2600.0, length( vViewPosition ) );
-        mapN = normalize( mix( mapN, vec3( 0.0, 0.0, 1.0 ), far ) );
+        mapN = normalize( mix( mapN, vec3( 0.0, 0.0, 1.0 ), far * 0.7 ) );
         normal = normalize( tbn * mapN );
       `);
 
@@ -273,7 +283,10 @@ export function buildCity(data) {
   const g = new THREE.Group();
   g.name = 'city';
 
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(26000, 26000), CITY_MATS.ground);
+  // Far larger than the fog reaches, so its own edge is never on the horizon.
+  const GROUND = 64000;
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(GROUND, GROUND), CITY_MATS.ground);
+  CITY_MATS.ground.map.repeat.setScalar(GROUND / LAND_TILE_M);
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.4;
   ground.receiveShadow = true;

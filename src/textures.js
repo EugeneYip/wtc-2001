@@ -45,7 +45,7 @@ function finish(c, repeatU, repeatV, aniso = 8) {
  *   winW/winH    window size as a fraction of the bay and floor
  *   ribbon       true for curtain wall: windows run together horizontally
  */
-function facade(opts) {
+export function facade(opts) {
   const {
     seed, bayW, floorH, wall, trim, glass, winW, winH, ribbon = false,
     grain = 0.03, sill = null,
@@ -109,7 +109,7 @@ function facade(opts) {
 }
 
 /** Lit windows for the same tile grid, so night lights land on real windows. */
-function facadeLights(opts) {
+export function facadeLights(opts) {
   const { seed, bayW, floorH, winW, winH, density = 0.24, ribbon = false } = opts;
   const PX = 48;
   const W = BAYS * PX, H = FLOORS * PX;
@@ -341,19 +341,21 @@ export function landTexture() {
 
   // Brighter than it looks right: this is multiplied by the material colour
   // and then dimmed again by low afternoon sun and haze.
-  // Cooler and darker than instinct suggests. Haze lifts all of this a long
-  // way toward the sky colour, and a warm palette ends up reading as desert.
-  const GREEN = [72, 88, 66];
-  const GREY = [118, 120, 118];
-  const BROWN = [112, 104, 88];
+  // Mostly grey: this is Jersey City, Bayonne and Brooklyn, not countryside.
+  // Warm it and it reads as desert; green it and it reads as farmland. Kept
+  // fairly dark so the unmapped blocks at the edge of the extract do not
+  // read as bright empty pads next to the city.
+  const GREEN = [72, 79, 68];
+  const GREY = [101, 102, 100];
+  const BROWN = [98, 93, 84];
 
   for (let i = 0; i < N * N; i++) {
-    const u = Math.min(1, Math.max(0, (urban[i] - 0.35) * 2.2));  // built-up
+    const u = Math.min(1, Math.max(0, (urban[i] - 0.12) * 2.4));  // built-up
     const g = base[i];
     const warm = Math.min(1, Math.max(0, (g - 0.45) * 2.4));
     let col = GREEN.map((v, k) => v + (BROWN[k] - v) * warm);
     col = col.map((v, k) => v + (GREY[k] - v) * u);
-    const shade = 0.70 + g * 0.62;
+    const shade = 0.88 + g * 0.22;
     img.data[i * 4] = Math.min(255, col[0] * shade);
     img.data[i * 4 + 1] = Math.min(255, col[1] * shade);
     img.data[i * 4 + 2] = Math.min(255, col[2] * shade);
@@ -362,7 +364,7 @@ export function landTexture() {
   x.putImageData(img, 0, 0);
 
   // A faint street grid, enough to read as built-up at distance.
-  x.globalAlpha = 0.10;
+  x.globalAlpha = 0.05;
   x.strokeStyle = '#2e2f2c';
   x.lineWidth = 1.5;
   for (let i = 0; i < 16; i++) {
@@ -372,5 +374,15 @@ export function landTexture() {
   }
   x.globalAlpha = 1;
 
-  return finish(c, 1 / 750, 1 / 750, 4);
+  // No repeat set here: the ground is a single plane whose UVs run 0..1 over
+  // its whole width, so the caller has to scale by the plane size. Treating
+  // this like a world-scale repeat stretches one texel over everything.
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
+  return t;
 }
+
+/** Metres of ground covered by one tile of landTexture(). */
+export const LAND_TILE_M = 620;

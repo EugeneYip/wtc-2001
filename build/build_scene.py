@@ -493,6 +493,60 @@ ROAD_WIDTH = {
 # and were only reinstated across it after 2001.
 SITE_CLIP = (-118, -170, 194, 106)
 
+# Overpass returns whole ways, so a street that merely clips the extract comes
+# back in full -- Broadway and the FDR ran two and a half kilometres past the
+# last building, leaving roads and traffic stranded on bare ground. Roads are
+# clipped back to the box the buildings were queried from, which is a rotated
+# quad once projected onto the street grid.
+BUILD_BBOX = (40.7048, -74.0205, 40.7185, -74.0045)   # south, west, north, east
+
+
+def _road_quad(margin=90.0):
+    s_, w_, n_, e_ = BUILD_BBOX
+    corners = [project(s_, w_), project(s_, e_), project(n_, e_), project(n_, w_)]
+    cx = sum(p[0] for p in corners) / 4.0
+    cz = sum(p[1] for p in corners) / 4.0
+    out = []
+    for x, z in corners:
+        d = math.hypot(x - cx, z - cz) or 1.0
+        out.append((x + (x - cx) / d * margin, z + (z - cz) / d * margin))
+    return out
+
+
+ROAD_QUAD = _road_quad()
+
+
+def _in_quad(pt, quad):
+    x, z = pt
+    sign = 0
+    for i in range(len(quad)):
+        x0, z0 = quad[i]
+        x1, z1 = quad[(i + 1) % len(quad)]
+        cross = (x1 - x0) * (z - z0) - (z1 - z0) * (x - x0)
+        if cross == 0:
+            continue
+        s = 1 if cross > 0 else -1
+        if sign == 0:
+            sign = s
+        elif s != sign:
+            return False
+    return True
+
+
+def clip_to_quad(pts, quad):
+    """Split a polyline so only the parts inside `quad` survive."""
+    runs, cur = [], []
+    for p in pts:
+        if _in_quad(p, quad):
+            cur.append(p)
+        else:
+            if len(cur) > 1:
+                runs.append(cur)
+            cur = []
+    if len(cur) > 1:
+        runs.append(cur)
+    return runs
+
 
 def clip_out_site(pts):
     """Split a polyline so no part of it crosses the WTC superblock."""
@@ -522,7 +576,10 @@ def build_roads():
         if not g or len(g) < 2:
             continue
         pts = [project(p["lat"], p["lon"]) for p in g]
-        for run in clip_out_site(pts):
+        runs = []
+        for inside_quad in clip_to_quad(pts, ROAD_QUAD):
+            runs.extend(clip_out_site(inside_quad))
+        for run in runs:
             run = simplify(run, 1.5)
             if len(run) < 2:
                 continue
@@ -539,8 +596,9 @@ def build_roads():
 # Water and open space
 # ---------------------------------------------------------------------------
 
-# The rivers run far past the site; anything beyond this is never in frame.
-WATER_CLIP = 6500.0
+# The rivers run far past the site. This sits beyond the fog limit, so the
+# edge of the extract is never visible.
+WATER_CLIP = 14000.0
 
 
 def clip_ring(poly, limit):
@@ -582,12 +640,12 @@ def build_areas():
         if tags.get("natural") != "water":
             continue
         outers, inners = rings_from(e)
-        outs = [p for p in (prep(r, 7.0, WATER_CLIP) for r in outers) if p]
-        ins = [p for p in (prep(r, 7.0, WATER_CLIP) for r in inners) if p]
+        outs = [p for p in (prep(r, 14.0, WATER_CLIP) for r in outers) if p]
+        ins = [p for p in (prep(r, 14.0, WATER_CLIP) for r in inners) if p]
         for o in outs:
-            if area_of(o) < 900:
+            if area_of(o) < 12000:
                 continue
-            holes = [h for h in ins if area_of(h) > 900 and point_in(h[0], o)]
+            holes = [h for h in ins if area_of(h) > 12000 and point_in(h[0], o)]
             rec = {"p": [[round(x, 1), round(z, 1)] for x, z in ccw(o)]}
             if holes:
                 rec["h"] = [[[round(x, 1), round(z, 1)] for x, z in ccw(h)[::-1]]

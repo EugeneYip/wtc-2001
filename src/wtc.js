@@ -18,7 +18,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'BufferGeometryUtils';
 import { norm, extrude } from './geo.js';
-import { plazaTexture } from './textures.js';
+import { plazaTexture, facade, facadeLights } from './textures.js';
 import { shell, CITY_MATS } from './city.js';
 
 const SIDE = 63.40;            // 208 ft square footprint
@@ -128,6 +128,15 @@ function towerLights() {
   return t;
 }
 
+const LOW_SPEC = {
+  seed: 311, bayW: 1.75, floorH: 3.8, wall: '#a4aab0', trim: '#7c848c',
+  glass: '#2c3540', winW: 0.78, winH: 0.60, ribbon: true,
+};
+const WTC7_SPEC = {
+  seed: 707, bayW: 1.70, floorH: 3.9, wall: '#8a5b45', trim: '#66412f',
+  glass: '#2e2822', winW: 0.80, winH: 0.62, ribbon: true,
+};
+
 export const MATS = {
   column: new THREE.MeshStandardMaterial({
     color: 0xb4b8bd, metalness: 0.62, roughness: 0.38, name: 'wtc-aluminium',
@@ -146,11 +155,18 @@ export const MATS = {
   plaza: new THREE.MeshStandardMaterial({
     map: plazaTexture(), metalness: 0.02, roughness: 0.88,
   }),
+  // 4, 5 and 6 WTC were clad in the same aluminium as the towers, in
+  // horizontal bands rather than the towers' vertical column grid.
   lowrise: new THREE.MeshStandardMaterial({
-    color: 0x9aa0a5, metalness: 0.42, roughness: 0.48,
+    map: facade(LOW_SPEC), emissiveMap: facadeLights(LOW_SPEC),
+    emissive: new THREE.Color(0xffd6a4), emissiveIntensity: 0,
+    metalness: 0.40, roughness: 0.46,
   }),
+  // The original 7 WTC was faced in dark red granite with ribbon glazing.
   wtc7: new THREE.MeshStandardMaterial({
-    color: 0x8e6f52, metalness: 0.45, roughness: 0.45,
+    map: facade(WTC7_SPEC), emissiveMap: facadeLights(WTC7_SPEC),
+    emissive: new THREE.Color(0xffd6a4), emissiveIntensity: 0,
+    metalness: 0.22, roughness: 0.62,
   }),
   roofPlant: new THREE.MeshStandardMaterial({
     color: 0x6e7276, metalness: 0.45, roughness: 0.6,
