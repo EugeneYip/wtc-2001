@@ -5,7 +5,9 @@
 A browser-based 3D reconstruction of the World Trade Center and Lower
 Manhattan in 2001.
 
-**→ [eugeneyip.github.io/wtc-2001](https://eugeneyip.github.io/wtc-2001/)**
+**→ [wtc.eugeneyip.net](https://wtc.eugeneyip.net/)**
+
+<sub>Also reachable at [eugeneyip.github.io/wtc-2001](https://eugeneyip.github.io/wtc-2001/), which redirects here.</sub>
 
 ![The Twin Towers and Lower Manhattan from the Hudson River](assets/preview.jpg)
 
