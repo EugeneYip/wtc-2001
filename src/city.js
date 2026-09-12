@@ -35,6 +35,8 @@ export const CITY_MATS = {
     const f = storefront();
     return new THREE.MeshStandardMaterial({
       map: f.map, roughnessMap: f.surface, metalnessMap: f.surface,
+      emissiveMap: f.lights, emissive: new THREE.Color(0xffe2b6),
+      emissiveIntensity: 0,
       roughness: 1, metalness: 1, vertexColors: true });
   })(),
   // Roof crowns that are not storeys: the World Financial Center domes, and
@@ -59,13 +61,16 @@ export const CITY_MATS = {
   sidewalk: new THREE.MeshStandardMaterial({
     map: sidewalkTexture(), roughness: 0.94, metalness: 0.0 }),
   park: new THREE.MeshStandardMaterial({
-    map: grassTexture(), roughness: 0.95, metalness: 0.0 }),
+    map: grassTexture(), roughness: 0.95, metalness: 0.0,
+    emissiveMap: grassTexture(), emissive: new THREE.Color(0x5a6a4a),
+    emissiveIntensity: 0 }),
   // The path network inside a park: rolled stone dust, a shade off the
   // pavement and a good deal warmer than the grass.
   // Coplanar with the grass a centimetre below it, so it needs the offset:
   // looking straight down the slope term is nil and the units do the work.
   parkPath: new THREE.MeshStandardMaterial({
     color: 0x9c907c, roughness: 0.95, metalness: 0.0,
+    emissive: new THREE.Color(0xffc98a), emissiveIntensity: 0,
     polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -24 }),
   water: makeWater(),
   // The shelf off every shoreline. Barely lighter than the open water and

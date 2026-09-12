@@ -39,6 +39,15 @@ export const BRIDGE_MATS = {
   }),
   deck: new THREE.MeshStandardMaterial({
     color: 0x4c4a46, roughness: 0.88, metalness: 0.06, name: 'bridge-deck',
+    emissive: new THREE.Color(0xffb463), emissiveIntensity: 0,
+  }),
+  // The necklace: the lamps strung from the main cables, which are what the
+  // bridge is after dark. Without them it was a black cut-out across a river
+  // carrying the whole city's light.
+  lamp: new THREE.MeshStandardMaterial({
+    color: 0xfff0d2, roughness: 0.4, metalness: 0.0,
+    emissive: new THREE.Color(0xffe0ad), emissiveIntensity: 0,
+    name: 'bridge-lamp',
   }),
 };
 
@@ -275,6 +284,35 @@ export function buildBridge(spec) {
     }
   }
 
+  // ---- the necklace -----------------------------------------------------
+  const lamps = [];
+  for (const off of [CABLE_OFF[0], CABLE_OFF[3]]) {
+    for (let s = anchorA + 8; s <= anchorB - 8; s += 13) {
+      const top = cableY(s), bot = h(s);
+      // Hung a little below the cable, and only where there is room between
+      // cable and deck for anything to hang.
+      if (top - bot < 4) continue;
+      const b = new THREE.SphereGeometry(0.55, 8, 6);
+      b.translate(0, 0, 0);
+      const g2 = norm(b);
+      const p = at(s, off, top - 1.6);
+      g2.translate(p.x, p.y, p.z);
+      lamps.push(g2);
+    }
+  }
+  // And a row down each side of the roadway itself.
+  for (const off of [-DECK_W / 2 + 1.4, DECK_W / 2 - 1.4]) {
+    for (let s = s0 + 20; s <= s1 - 20; s += 26) {
+      const b = norm(new THREE.SphereGeometry(0.42, 8, 6));
+      const p = at(s, off, h(s) + 4.2);
+      b.translate(p.x, p.y, p.z);
+      lamps.push(b);
+      const post = norm(new THREE.CylinderGeometry(0.09, 0.11, 4.2, 5));
+      post.translate(p.x, h(s) + 2.1, p.z);
+      steel.push(post);
+    }
+  }
+
   const add = (parts, mat, name) => {
     if (!parts.length) return;
     const m = new THREE.Mesh(mergeGeometries(parts.map(norm)), mat);
@@ -285,5 +323,10 @@ export function buildBridge(spec) {
   add(stone, BRIDGE_MATS.stone, 'bridge-towers');
   add(deck, BRIDGE_MATS.deck, 'bridge-deck');
   add(steel, BRIDGE_MATS.steel, 'bridge-cables');
+  if (lamps.length) {
+    const m = new THREE.Mesh(mergeGeometries(lamps.map(norm)), BRIDGE_MATS.lamp);
+    m.name = 'bridge-lights';
+    g.add(m);
+  }
   return g;
 }

@@ -206,6 +206,9 @@ function applyTime(hour) {
   // so the same intensity reads as almost unlit next to a plain curtain wall.
   const lit = 1 - smooth(e, -5.5, 5.0);
   WTC_MATS.glass.emissiveIntensity = lit * 2.6;
+  // A shop is lit from inside and stays lit late; at street level this is the
+  // brightest surface on the block.
+  CITY_MATS.shopfront.emissiveIntensity = lit * 0.62;
   WTC_MATS.lowrise.emissiveIntensity = lit * 0.95;
   WTC_MATS.wtc7.emissiveIntensity = lit * 0.95;
   for (const k of WALL_CLASSES) CITY_MATS[k].emissiveIntensity = lit * 0.95;
@@ -216,6 +219,8 @@ function applyTime(hour) {
   DETAIL_MATS.headlight.emissiveIntensity = lit * 2.4;
   DETAIL_MATS.tail.emissiveIntensity = lit * 1.5;
   DETAIL_MATS.signalLens.emissiveIntensity = 0.9 + lit * 1.9;
+  BRIDGE_MATS.lamp.emissiveIntensity = lit * 2.4;
+  BRIDGE_MATS.deck.emissiveIntensity = lit * 0.10;
 
   CITY_MATS.water.color.copy(WATER_DAY).lerp(WATER_NIGHT, dusk);
   // The shelf has to follow the water it is part of, or it stays a daytime
@@ -261,10 +266,15 @@ function applyTime(hour) {
  * and which is what the streets read as from above.
  */
 function setNightGround(lit) {
-  CITY_MATS.road.emissiveIntensity = lit * 0.11;
-  CITY_MATS.roadMinor.emissiveIntensity = lit * 0.10;
-  CITY_MATS.sidewalk.emissiveIntensity = lit * 0.07;
+  CITY_MATS.road.emissiveIntensity = lit * 0.14;
+  CITY_MATS.roadMinor.emissiveIntensity = lit * 0.12;
+  CITY_MATS.sidewalk.emissiveIntensity = lit * 0.09;
   CITY_MATS.ground.emissiveIntensity = lit * 0.03;
+  // A park is not lit, but it is not a hole in the city either: enough for the
+  // grass to separate from the buildings round it, and the walks a little more
+  // so they read as the lit thing in a dark park.
+  CITY_MATS.park.emissiveIntensity = lit * 0.045;
+  CITY_MATS.parkPath.emissiveIntensity = lit * 0.13;
   // Tobin Plaza was lit, and its granite is pale, so it is legitimately the
   // brightest ground here — but only if it reads warm. Lit by sky alone it
   // came out a flat blue-white and looked like snow.

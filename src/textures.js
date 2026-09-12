@@ -212,7 +212,19 @@ export function storefront() {
   const m = H / STOREFRONT_H;                      // pixels per metre
   const [c, x] = canvas(W, H);
   const [sc, sx] = canvas(W, H);
+  const [lc, lx] = canvas(W, H);                     // what is lit after dark
   const rand = rng(4801);
+  // A second generator, for the decisions rather than the detail.
+  //
+  // These used to share one stream, which meant adding a draw anywhere in the
+  // loop shifted every later decision. Adding the shop lights consumed two
+  // more numbers per bay and, by coincidence, walked every one of the four
+  // solid-bay rolls onto a low number: the whole ground floor turned to stone
+  // piers and not one shop window was left to light. Kept apart, a new detail
+  // cannot reshuffle the layout.
+  const pick = rng(31337);
+  lx.fillStyle = '#000';
+  lx.fillRect(0, 0, W, H);
 
   const surf = (r, mt) => `rgb(0,${clamp255(r * 255)},${clamp255(mt * 255)})`;
   const STONE = surf(0.88, 0.04);
@@ -232,7 +244,7 @@ export function storefront() {
 
   for (let b = 0; b < BAYS_S; b++) {
     const bx = b * PX;
-    const solid = rand() < 0.22;                    // a blank bay: service, or a stair
+    const solid = pick() < 0.22;                    // a blank bay: service, or a stair
     const [gy, gh] = band(0.5, 3.95);
     if (solid) {
       // A stone pier rather than a painted panel: what actually interrupts a
@@ -255,8 +267,20 @@ export function storefront() {
       x.fillRect(bx + 3, gy, PX - 6, gh);
       sx.fillStyle = GLASS;
       sx.fillRect(bx + 3, gy, PX - 6, gh);
+      // A lit shop. Most are: at street level after dark the ground floor is
+      // the brightest thing on the block, and leaving it unlit put a band of
+      // pitch black under every building while the offices above glowed.
+      if (pick() < 0.78) {
+        const lit = lx.createLinearGradient(0, gy, 0, gy + gh);
+        const v = 150 + Math.floor(rand() * 80);
+        lit.addColorStop(0, `rgb(${v},${Math.round(v * 0.88)},${Math.round(v * 0.68)})`);
+        lit.addColorStop(0.75, `rgb(${Math.round(v * 0.74)},${Math.round(v * 0.64)},${Math.round(v * 0.48)})`);
+        lit.addColorStop(1, `rgb(${Math.round(v * 0.42)},${Math.round(v * 0.36)},${Math.round(v * 0.28)})`);
+        lx.fillStyle = lit;
+        lx.fillRect(bx + 4, gy + 1, PX - 8, gh - 2);
+      }
       // A door in about a third of them, darker and full height.
-      if (rand() < 0.34) {
+      if (pick() < 0.34) {
         const dw = PX * 0.26, dx = bx + PX * (0.2 + rand() * 0.4);
         x.fillStyle = `rgb(${Math.round(v * 0.6)},${Math.round(v * 0.62)},${Math.round(v * 0.68)})`;
         x.fillRect(dx, gy + gh * 0.12, dw, gh * 0.88);
@@ -272,11 +296,17 @@ export function storefront() {
     }
     // Transom band over the shopfront: signage, canopy, or nothing.
     const [ty, th] = band(3.95, 4.45);
-    const sign = rand();
+    const sign = pick();
     x.fillStyle = sign < 0.30 ? '#3a3630' : sign < 0.55 ? '#5b544a' : '#7d766c';
     x.fillRect(bx + 2, ty, PX - 4, th);
     sx.fillStyle = STONE;
     sx.fillRect(bx + 2, ty, PX - 4, th);
+    // An illuminated fascia over about a third of them.
+    if (sign < 0.34) {
+      const t = 130 + Math.floor(rand() * 90);
+      lx.fillStyle = `rgb(${t},${Math.round(t * 0.82)},${Math.round(t * 0.55)})`;
+      lx.fillRect(bx + 4, ty + 2, PX - 8, th - 4);
+    }
   }
 
   // Plinth at the foot, fascia at the head. Both stone, both across the whole
@@ -299,7 +329,8 @@ export function storefront() {
   }
 
   const ru = 1 / (BAYS_S * STOREFRONT_BAY), rv = 1 / STOREFRONT_H;
-  return { map: finish(c, ru, rv), surface: finishData(sc, ru, rv) };
+  return { map: finish(c, ru, rv), surface: finishData(sc, ru, rv),
+           lights: finish(lc, ru, rv) };
 }
 
 /** Lit windows for the same tile grid, so night lights land on real windows. */

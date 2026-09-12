@@ -228,7 +228,15 @@ Manhattan actually shows.
 
 Lit windows fall off from ceiling to sill and are divided by mullions, because
 a flat rectangle of colour reads from the pavement as a luminous sticker
-rather than a room. Street lighting is two things at once: the lamp heads
+rather than a room. Most shops are lit, some with an illuminated fascia over
+them: at street level after dark the ground floor is the brightest thing on the
+block, and with it dark there was a band of pitch black under every building
+while the offices above glowed. The Brooklyn Bridge carries its necklace — the
+lamps strung from the main cables — and a row down each side of the roadway;
+unlit it was a black cut-out across a river carrying the whole city's light.
+A park is not lit, but it is not a hole in the city either: enough on the grass
+to separate it from the buildings round it, and more on the walks, so they read
+as the lit thing in a dark park. Street lighting is two things at once: the lamp heads
 themselves, and the pools they throw, painted once into a world-space texture
 the road, pavement and plaza materials read. An even glow over every paved
 surface gets the streets right from the air and is unmistakably wrong at eye
@@ -294,7 +302,7 @@ uniform slab. Those are massing, not survey.
 
 ## Performance
 
-About 168 draw calls and 986k triangles in daylight, and roughly 2 to 3 ms a
+About 169 draw calls and 1.01M triangles in daylight, and roughly 2 to 3 ms a
 frame on an M2 at 2800 × 1800 once shaders are warm, with the post-processing
 running at full resolution and 4x multisampling.
 

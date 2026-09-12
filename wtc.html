@@ -58066,6 +58066,15 @@ const BRIDGE_MATS = {
   }),
   deck: new THREE.MeshStandardMaterial({
     color: 0x4c4a46, roughness: 0.88, metalness: 0.06, name: 'bridge-deck',
+    emissive: new THREE.Color(0xffb463), emissiveIntensity: 0,
+  }),
+  // The necklace: the lamps strung from the main cables, which are what the
+  // bridge is after dark. Without them it was a black cut-out across a river
+  // carrying the whole city's light.
+  lamp: new THREE.MeshStandardMaterial({
+    color: 0xfff0d2, roughness: 0.4, metalness: 0.0,
+    emissive: new THREE.Color(0xffe0ad), emissiveIntensity: 0,
+    name: 'bridge-lamp',
   }),
 };
 
@@ -58302,6 +58311,35 @@ function buildBridge(spec) {
     }
   }
 
+  // ---- the necklace -----------------------------------------------------
+  const lamps = [];
+  for (const off of [CABLE_OFF[0], CABLE_OFF[3]]) {
+    for (let s = anchorA + 8; s <= anchorB - 8; s += 13) {
+      const top = cableY(s), bot = h(s);
+      // Hung a little below the cable, and only where there is room between
+      // cable and deck for anything to hang.
+      if (top - bot < 4) continue;
+      const b = new THREE.SphereGeometry(0.55, 8, 6);
+      b.translate(0, 0, 0);
+      const g2 = norm(b);
+      const p = at(s, off, top - 1.6);
+      g2.translate(p.x, p.y, p.z);
+      lamps.push(g2);
+    }
+  }
+  // And a row down each side of the roadway itself.
+  for (const off of [-DECK_W / 2 + 1.4, DECK_W / 2 - 1.4]) {
+    for (let s = s0 + 20; s <= s1 - 20; s += 26) {
+      const b = norm(new THREE.SphereGeometry(0.42, 8, 6));
+      const p = at(s, off, h(s) + 4.2);
+      b.translate(p.x, p.y, p.z);
+      lamps.push(b);
+      const post = norm(new THREE.CylinderGeometry(0.09, 0.11, 4.2, 5));
+      post.translate(p.x, h(s) + 2.1, p.z);
+      steel.push(post);
+    }
+  }
+
   const add = (parts, mat, name) => {
     if (!parts.length) return;
     const m = new THREE.Mesh(mergeGeometries(parts.map(norm)), mat);
@@ -58312,6 +58350,11 @@ function buildBridge(spec) {
   add(stone, BRIDGE_MATS.stone, 'bridge-towers');
   add(deck, BRIDGE_MATS.deck, 'bridge-deck');
   add(steel, BRIDGE_MATS.steel, 'bridge-cables');
+  if (lamps.length) {
+    const m = new THREE.Mesh(mergeGeometries(lamps.map(norm)), BRIDGE_MATS.lamp);
+    m.name = 'bridge-lights';
+    g.add(m);
+  }
   return g;
 }
 
@@ -58532,7 +58575,19 @@ function storefront() {
   const m = H / STOREFRONT_H;                      // pixels per metre
   const [c, x] = canvas(W, H);
   const [sc, sx] = canvas(W, H);
+  const [lc, lx] = canvas(W, H);                     // what is lit after dark
   const rand = rng(4801);
+  // A second generator, for the decisions rather than the detail.
+  //
+  // These used to share one stream, which meant adding a draw anywhere in the
+  // loop shifted every later decision. Adding the shop lights consumed two
+  // more numbers per bay and, by coincidence, walked every one of the four
+  // solid-bay rolls onto a low number: the whole ground floor turned to stone
+  // piers and not one shop window was left to light. Kept apart, a new detail
+  // cannot reshuffle the layout.
+  const pick = rng(31337);
+  lx.fillStyle = '#000';
+  lx.fillRect(0, 0, W, H);
 
   const surf = (r, mt) => `rgb(0,${clamp255(r * 255)},${clamp255(mt * 255)})`;
   const STONE = surf(0.88, 0.04);
@@ -58552,7 +58607,7 @@ function storefront() {
 
   for (let b = 0; b < BAYS_S; b++) {
     const bx = b * PX;
-    const solid = rand() < 0.22;                    // a blank bay: service, or a stair
+    const solid = pick() < 0.22;                    // a blank bay: service, or a stair
     const [gy, gh] = band(0.5, 3.95);
     if (solid) {
       // A stone pier rather than a painted panel: what actually interrupts a
@@ -58575,8 +58630,20 @@ function storefront() {
       x.fillRect(bx + 3, gy, PX - 6, gh);
       sx.fillStyle = GLASS;
       sx.fillRect(bx + 3, gy, PX - 6, gh);
+      // A lit shop. Most are: at street level after dark the ground floor is
+      // the brightest thing on the block, and leaving it unlit put a band of
+      // pitch black under every building while the offices above glowed.
+      if (pick() < 0.78) {
+        const lit = lx.createLinearGradient(0, gy, 0, gy + gh);
+        const v = 150 + Math.floor(rand() * 80);
+        lit.addColorStop(0, `rgb(${v},${Math.round(v * 0.88)},${Math.round(v * 0.68)})`);
+        lit.addColorStop(0.75, `rgb(${Math.round(v * 0.74)},${Math.round(v * 0.64)},${Math.round(v * 0.48)})`);
+        lit.addColorStop(1, `rgb(${Math.round(v * 0.42)},${Math.round(v * 0.36)},${Math.round(v * 0.28)})`);
+        lx.fillStyle = lit;
+        lx.fillRect(bx + 4, gy + 1, PX - 8, gh - 2);
+      }
       // A door in about a third of them, darker and full height.
-      if (rand() < 0.34) {
+      if (pick() < 0.34) {
         const dw = PX * 0.26, dx = bx + PX * (0.2 + rand() * 0.4);
         x.fillStyle = `rgb(${Math.round(v * 0.6)},${Math.round(v * 0.62)},${Math.round(v * 0.68)})`;
         x.fillRect(dx, gy + gh * 0.12, dw, gh * 0.88);
@@ -58592,11 +58659,17 @@ function storefront() {
     }
     // Transom band over the shopfront: signage, canopy, or nothing.
     const [ty, th] = band(3.95, 4.45);
-    const sign = rand();
+    const sign = pick();
     x.fillStyle = sign < 0.30 ? '#3a3630' : sign < 0.55 ? '#5b544a' : '#7d766c';
     x.fillRect(bx + 2, ty, PX - 4, th);
     sx.fillStyle = STONE;
     sx.fillRect(bx + 2, ty, PX - 4, th);
+    // An illuminated fascia over about a third of them.
+    if (sign < 0.34) {
+      const t = 130 + Math.floor(rand() * 90);
+      lx.fillStyle = `rgb(${t},${Math.round(t * 0.82)},${Math.round(t * 0.55)})`;
+      lx.fillRect(bx + 4, ty + 2, PX - 8, th - 4);
+    }
   }
 
   // Plinth at the foot, fascia at the head. Both stone, both across the whole
@@ -58619,7 +58692,8 @@ function storefront() {
   }
 
   const ru = 1 / (BAYS_S * STOREFRONT_BAY), rv = 1 / STOREFRONT_H;
-  return { map: finish(c, ru, rv), surface: finishData(sc, ru, rv) };
+  return { map: finish(c, ru, rv), surface: finishData(sc, ru, rv),
+           lights: finish(lc, ru, rv) };
 }
 
 /** Lit windows for the same tile grid, so night lights land on real windows. */
@@ -60215,6 +60289,8 @@ const CITY_MATS = {
     const f = storefront();
     return new THREE.MeshStandardMaterial({
       map: f.map, roughnessMap: f.surface, metalnessMap: f.surface,
+      emissiveMap: f.lights, emissive: new THREE.Color(0xffe2b6),
+      emissiveIntensity: 0,
       roughness: 1, metalness: 1, vertexColors: true });
   })(),
   // Roof crowns that are not storeys: the World Financial Center domes, and
@@ -60239,13 +60315,16 @@ const CITY_MATS = {
   sidewalk: new THREE.MeshStandardMaterial({
     map: sidewalkTexture(), roughness: 0.94, metalness: 0.0 }),
   park: new THREE.MeshStandardMaterial({
-    map: grassTexture(), roughness: 0.95, metalness: 0.0 }),
+    map: grassTexture(), roughness: 0.95, metalness: 0.0,
+    emissiveMap: grassTexture(), emissive: new THREE.Color(0x5a6a4a),
+    emissiveIntensity: 0 }),
   // The path network inside a park: rolled stone dust, a shade off the
   // pavement and a good deal warmer than the grass.
   // Coplanar with the grass a centimetre below it, so it needs the offset:
   // looking straight down the slope term is nil and the units do the work.
   parkPath: new THREE.MeshStandardMaterial({
     color: 0x9c907c, roughness: 0.95, metalness: 0.0,
+    emissive: new THREE.Color(0xffc98a), emissiveIntensity: 0,
     polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -24 }),
   water: makeWater(),
   // The shelf off every shoreline. Barely lighter than the open water and
@@ -62301,6 +62380,9 @@ function applyTime(hour) {
   // so the same intensity reads as almost unlit next to a plain curtain wall.
   const lit = 1 - smooth(e, -5.5, 5.0);
   WTC_MATS.glass.emissiveIntensity = lit * 2.6;
+  // A shop is lit from inside and stays lit late; at street level this is the
+  // brightest surface on the block.
+  CITY_MATS.shopfront.emissiveIntensity = lit * 0.62;
   WTC_MATS.lowrise.emissiveIntensity = lit * 0.95;
   WTC_MATS.wtc7.emissiveIntensity = lit * 0.95;
   for (const k of WALL_CLASSES) CITY_MATS[k].emissiveIntensity = lit * 0.95;
@@ -62311,6 +62393,8 @@ function applyTime(hour) {
   DETAIL_MATS.headlight.emissiveIntensity = lit * 2.4;
   DETAIL_MATS.tail.emissiveIntensity = lit * 1.5;
   DETAIL_MATS.signalLens.emissiveIntensity = 0.9 + lit * 1.9;
+  BRIDGE_MATS.lamp.emissiveIntensity = lit * 2.4;
+  BRIDGE_MATS.deck.emissiveIntensity = lit * 0.10;
 
   CITY_MATS.water.color.copy(WATER_DAY).lerp(WATER_NIGHT, dusk);
   // The shelf has to follow the water it is part of, or it stays a daytime
@@ -62356,10 +62440,15 @@ function applyTime(hour) {
  * and which is what the streets read as from above.
  */
 function setNightGround(lit) {
-  CITY_MATS.road.emissiveIntensity = lit * 0.11;
-  CITY_MATS.roadMinor.emissiveIntensity = lit * 0.10;
-  CITY_MATS.sidewalk.emissiveIntensity = lit * 0.07;
+  CITY_MATS.road.emissiveIntensity = lit * 0.14;
+  CITY_MATS.roadMinor.emissiveIntensity = lit * 0.12;
+  CITY_MATS.sidewalk.emissiveIntensity = lit * 0.09;
   CITY_MATS.ground.emissiveIntensity = lit * 0.03;
+  // A park is not lit, but it is not a hole in the city either: enough for the
+  // grass to separate from the buildings round it, and the walks a little more
+  // so they read as the lit thing in a dark park.
+  CITY_MATS.park.emissiveIntensity = lit * 0.045;
+  CITY_MATS.parkPath.emissiveIntensity = lit * 0.13;
   // Tobin Plaza was lit, and its granite is pale, so it is legitimately the
   // brightest ground here — but only if it reads warm. Lit by sky alone it
   // came out a flat blue-white and looked like snow.
