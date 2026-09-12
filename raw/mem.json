@@ -1,0 +1,1124 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-09-11T23:21:21Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "node",
+  "id": 561042174,
+  "lat": 40.7104974,
+  "lon": -74.0138892,
+  "tags": {
+    "artist:wikidata": "Q524205",
+    "artist_name": "Fritz Koenig",
+    "artwork_type": "sculpture",
+    "height": "7.64",
+    "historic": "memorial",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/1/1f/Liberty_Park_Sep_2018_06.jpg",
+    "material": "bronze",
+    "memorial": "sculpture",
+    "name": "The Sphere",
+    "note": "Twin Towers Memorial",
+    "start_date": "1971",
+    "tourism": "artwork",
+    "wheelchair": "yes",
+    "wikidata": "Q2164298",
+    "wikimedia_commons": "Category:The Sphere",
+    "wikipedia": "en:The Sphere"
+  }
+},
+{
+  "type": "node",
+  "id": 1279337146,
+  "lat": 40.7119004,
+  "lon": -74.0125270,
+  "tags": {
+    "level": "-4",
+    "name": "World Trade Center",
+    "name:ko": "세계무역센터",
+    "name:lt": "Pasaulio prekybos centras",
+    "network": "PATH",
+    "network:wikidata": "Q1055811",
+    "opening_hours": "24/7",
+    "operator": "Port Authority Trans-Hudson",
+    "operator:wikidata": "Q908666",
+    "public_transport": "station",
+    "railway": "station",
+    "station": "subway",
+    "subway": "yes",
+    "wheelchair": "yes",
+    "wikidata": "Q2001751",
+    "wikipedia": "en:World Trade Center station (PATH)"
+  }
+},
+{
+  "type": "node",
+  "id": 2164323024,
+  "lat": 40.7115025,
+  "lon": -74.0124388,
+  "tags": {
+    "name": "World Trade Center",
+    "name:ru": "Всемирный Торговый Центр",
+    "place": "locality",
+    "short_name": "WTC",
+    "short_name:ru": "ВТЦ"
+  }
+},
+{
+  "type": "node",
+  "id": 3070512789,
+  "lat": 40.7104591,
+  "lon": -74.0140533,
+  "tags": {
+    "artwork_type": "statue",
+    "historic": "memorial",
+    "memorial": "statue",
+    "name": "America's Response Monument",
+    "start_date": "2011",
+    "statue": "equestrian",
+    "tourism": "artwork",
+    "wikidata": "Q4742583",
+    "wikipedia": "en:America's Response Monument"
+  }
+},
+{
+  "type": "node",
+  "id": 4097207406,
+  "lat": 40.7116135,
+  "lon": -74.0124871,
+  "tags": {
+    "name": "Memorial Entrance",
+    "ref": "Memorial Entrance",
+    "tourism": "information"
+  }
+},
+{
+  "type": "node",
+  "id": 6479506185,
+  "lat": 40.7097904,
+  "lon": -74.0138914,
+  "tags": {
+    "addr:city": "New York",
+    "addr:country": "US",
+    "addr:housenumber": "140",
+    "addr:postcode": "10006",
+    "addr:state": "NY",
+    "addr:street": "Washington Street",
+    "brand": "Club Quarters Hotels",
+    "check_date": "2026-06-06",
+    "email": "memberservices@clubquarters.com",
+    "internet_access": "yes",
+    "internet_access:fee": "customers",
+    "name": "Club Quarters Hotel at World Trade Center",
+    "phone": "+1-212-577-1133",
+    "rooms": "252",
+    "tourism": "hotel",
+    "website": "https://www.clubquarters.com/",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 6573362692,
+  "lat": 40.7122023,
+  "lon": -74.0100170,
+  "tags": {
+    "internet_access": "wlan",
+    "internet_access:fee": "no",
+    "level": "-2",
+    "name": "World Trade Center",
+    "name:ko": "세계무역센터",
+    "network": "NYC Subway",
+    "opening_hours": "24/7",
+    "operator": "New York City Transit Authority",
+    "public_transport": "station",
+    "railway": "station",
+    "railway:ref": "171",
+    "station": "subway",
+    "subway": "yes",
+    "wheelchair": "yes",
+    "wikidata": "Q16237571",
+    "wikipedia": "en:Chambers Street–World Trade Center/Park Place/Cortlandt Street station"
+  }
+},
+{
+  "type": "node",
+  "id": 6709715886,
+  "lat": 40.7117244,
+  "lon": -74.0115690,
+  "tags": {
+    "addr:city": "New York",
+    "addr:housenumber": "185",
+    "addr:postcode": "10007",
+    "addr:state": "NY",
+    "addr:street": "Greenwich Street",
+    "brand": "Apple Store",
+    "brand:wikidata": "Q421253",
+    "check_date": "2026-06-05",
+    "internet_access": "wlan",
+    "level": "-2;-1",
+    "name": "Apple World Trade Center",
+    "name:de": "Apple Store, World Trade Centre",
+    "name:en": "Apple Store, World Trade Centre",
+    "opening_hours": "08:00-21:00; Dec 25 off; Dec 24 10:00-18:00",
+    "operator": "Apple, Inc.",
+    "phone": "+1-646-802-3800",
+    "shop": "electronics",
+    "short_name": "Apple",
+    "website": "https://www.apple.com/retail/worldtradecenter/",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 7218038717,
+  "lat": 40.7119605,
+  "lon": -74.0101331,
+  "tags": {
+    "name": "World Trade Center",
+    "network": "NYC Subway",
+    "operator": "New York City Transit Authority",
+    "public_transport": "stop_position",
+    "railway": "buffer_stop",
+    "subway": "yes",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 7218038718,
+  "lat": 40.7120063,
+  "lon": -74.0102351,
+  "tags": {
+    "name": "World Trade Center",
+    "network": "NYC Subway",
+    "operator": "New York City Transit Authority",
+    "public_transport": "stop_position",
+    "railway": "buffer_stop",
+    "subway": "yes",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 7507601655,
+  "lat": 40.7126623,
+  "lon": -74.0125229,
+  "tags": {
+    "name": "World Trade Center",
+    "network": "PATH",
+    "operator": "Port Authority of New York and New Jersey",
+    "operator:wikidata": "Q908666",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 7507629431,
+  "lat": 40.7126174,
+  "lon": -74.0121869,
+  "tags": {
+    "name": "World Trade Center",
+    "network": "PATH",
+    "operator": "Port Authority of New York and New Jersey",
+    "operator:wikidata": "Q908666",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 7507629433,
+  "lat": 40.7126050,
+  "lon": -74.0121236,
+  "tags": {
+    "name": "World Trade Center",
+    "network": "PATH",
+    "operator": "Port Authority of New York and New Jersey",
+    "operator:wikidata": "Q908666",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 7507629439,
+  "lat": 40.7126341,
+  "lon": -74.0123154,
+  "tags": {
+    "name": "World Trade Center",
+    "network": "PATH",
+    "operator": "Port Authority of New York and New Jersey",
+    "operator:wikidata": "Q908666",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 7507629441,
+  "lat": 40.7126416,
+  "lon": -74.0123800,
+  "tags": {
+    "name": "World Trade Center",
+    "network": "PATH",
+    "operator": "Port Authority of New York and New Jersey",
+    "operator:wikidata": "Q908666",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 10290106657,
+  "lat": 40.7114868,
+  "lon": -74.0095288,
+  "tags": {
+    "historic": "memorial",
+    "inscription": "In 2002 on the anniversary of the September 11 attacks, the Bell of Hope was presented to the people of New York by the Lord Mayor of London and the Archbishop of Canterbury. It was created by England’s renowned Whitechapel Foundry, which also cast the Li",
+    "material": "bronze",
+    "memorial": "sculpture",
+    "name": "Bell of Hope"
+  }
+},
+{
+  "type": "node",
+  "id": 11509114969,
+  "lat": 40.7095660,
+  "lon": -74.0097951,
+  "tags": {
+    "addr:city": "New York",
+    "addr:housenumber": "170",
+    "addr:postcode": "10007",
+    "addr:state": "NY",
+    "addr:street": "Broadway",
+    "branch": "New York Downtown Manhattan/World Trade Center Area",
+    "brand": "Residence Inn",
+    "brand:wikidata": "Q7315394",
+    "fax": "+1 212-600-8901",
+    "internet_access": "wlan",
+    "internet_access:fee": "no",
+    "name": "Residence Inn New York Downtown Manhattan/World Trade Center Area",
+    "official_name": "Residence Inn by Marriott",
+    "phone": "+1 212-600-8900",
+    "ref": "NYCRL",
+    "rooms": "242",
+    "tourism": "hotel",
+    "website": "https://www.marriott.com/en-us/hotels/nycrl-residence-inn-new-york-downtown-manhattan-world-trade-center-area/overview/",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 13910215566,
+  "lat": 40.7098666,
+  "lon": -74.0126161,
+  "tags": {
+    "historic": "memorial",
+    "inscription": "Deficated to those who fell and those who carry on. May we never forget.",
+    "material": "bronze",
+    "memorial": "plaque",
+    "name": "343 The City's Bravest",
+    "start_date": "2002-06-10"
+  }
+},
+{
+  "type": "node",
+  "id": 13910215567,
+  "lat": 40.7097550,
+  "lon": -74.0126607,
+  "tags": {
+    "historic": "memorial",
+    "inscription": "Deficated to those who fell and those who carry on. May we never forget.",
+    "material": "bronze",
+    "memorial": "plaque",
+    "name": "Memory of Robert C. Bedding and Joseph P. Graffagnino",
+    "start_date": "2002-06-10"
+  }
+},
+{
+  "type": "way",
+  "id": 40010491,
+  "center": {
+    "lat": 40.7097205,
+    "lon": -74.0133795
+  },
+  "tags": {
+    "alt_name": "5 WTC",
+    "landuse": "brownfield",
+    "name": "5 World Trade Center",
+    "start_date": "2011-11-09",
+    "wikidata": "Q1586672",
+    "wikipedia": "en:5 World Trade Center"
+  }
+},
+{
+  "type": "way",
+  "id": 129835611,
+  "center": {
+    "lat": 40.7115548,
+    "lon": -74.0131702
+  },
+  "tags": {
+    "addr:city": "New York",
+    "addr:housenumber": "180",
+    "addr:postcode": "10007",
+    "addr:state": "NY",
+    "addr:street": "Greenwich Street",
+    "alt_name": "World Trade Center Memorial;9/11 Memorial;Ground Zero",
+    "historic": "memorial",
+    "memorial": "memorial",
+    "name": "National September 11 Memorial & Museum",
+    "name:en": "National September 11 Memorial & Museum",
+    "name:lt": "Pasaulio prekybos centro memorialas",
+    "name:ru": "Национальный мемориал и музей 11 сентября",
+    "name:zh": "911世貿園區",
+    "official_name": "National September 11 Memorial & Museum at the World Trade Center",
+    "website": "https://www.911memorial.org/",
+    "wheelchair": "yes",
+    "wikidata": "Q1136137",
+    "wikipedia": "en:National September 11 Memorial & Museum"
+  }
+},
+{
+  "type": "way",
+  "id": 166839381,
+  "center": {
+    "lat": 40.7109777,
+    "lon": -74.0116459
+  },
+  "tags": {
+    "addr:city": "New York",
+    "addr:housenumber": "175",
+    "addr:postcode": "10048",
+    "addr:state": "NY",
+    "addr:street": "Greenwich Street",
+    "architect": "Rogers Stirk Harbour + Partners",
+    "building": "commercial",
+    "building:architecture": "modern",
+    "building:levels": "80",
+    "check_date": "2021-04-22",
+    "height": "320",
+    "name": "3 World Trade Center",
+    "name:en": "3 World Trade Center",
+    "name:zh": "世界貿易中心三號大樓",
+    "name:zh-Hans": "世界贸易中心三号大楼",
+    "nycdoitt:bin": "1088797",
+    "short_name": "3 WTC",
+    "start_date": "2018-06-11",
+    "wikidata": "Q941908",
+    "wikipedia": "en:3 World Trade Center"
+  }
+},
+{
+  "type": "way",
+  "id": 277890516,
+  "center": {
+    "lat": 40.7133962,
+    "lon": -74.0120768
+  },
+  "tags": {
+    "addr:city": "New York",
+    "addr:housenumber": "250",
+    "addr:state": "NY",
+    "addr:street": "Greenwich Street",
+    "building": "office",
+    "building:colour": "#8085a2",
+    "building:levels": "52",
+    "building:material": "glass",
+    "height": "228",
+    "name": "7 World Trade Center",
+    "name:zh": "世界貿易中心七號大樓",
+    "name:zh-Hans": "世界贸易中心七号大楼",
+    "nycdoitt:bin": "1086510",
+    "operator": "Silverstein Properties",
+    "roof:colour": "#dedcdb",
+    "roof:material": "concrete",
+    "roof:shape": "flat",
+    "short_name": "7 WTC",
+    "start_date": "2006",
+    "wikidata": "Q270066",
+    "wikipedia": "en:7 World Trade Center"
+  }
+},
+{
+  "type": "way",
+  "id": 278033587,
+  "center": {
+    "lat": 40.7102997,
+    "lon": -74.0119625
+  },
+  "tags": {
+    "addr:city": "New York",
+    "addr:country": "US",
+    "addr:housenumber": "150",
+    "addr:postcode": "10006",
+    "addr:state": "NY",
+    "addr:street": "Greenwich Street",
+    "architect": "Fumihiko Maki",
+    "building": "commercial",
+    "name": "4 World Trade Center",
+    "name:zh": "世界貿易中心四號大樓",
+    "name:zh-Hans": "世界贸易中心四号大楼",
+    "nycdoitt:bin": "1088795",
+    "short_name": "4 WTC",
+    "start_date": "2008",
+    "wikidata": "Q1351208",
+    "wikipedia": "en:4 World Trade Center"
+  }
+},
+{
+  "type": "way",
+  "id": 278033604,
+  "center": {
+    "lat": 40.7114560,
+    "lon": -74.0127418
+  },
+  "tags": {
+    "addr:city": "New York",
+    "addr:housenumber": "180",
+    "addr:postcode": "10007",
+    "addr:state": "NY",
+    "addr:street": "Greenwich Street",
+    "air_conditioning": "yes",
+    "alt_name": "9/11 Memorial Musuem",
+    "building": "museum",
+    "building:colour": "silver",
+    "fee": "yes",
+    "height": "4",
+    "min_height": "0",
+    "museum": "history",
+    "name": "9/11 Memorial & Museum",
+    "name:en": "9/11 Memorial & Museum",
+    "name:he": "אנדרטה לאירוע 11 בספטמבר",
+    "name:kn": "9/11 ಮೆಮೋರಿಯಲ್ ಮ್ಯೂಸೀಯಮ್",
+    "name:zh": "九一一國家紀念博物館",
+    "name:zh-Hans": "九幺幺国家纪念博物馆",
+    "nycdoitt:bin": "1088798",
+    "official_name": "National September 11 Memorial & Museum at the World Trade Center",
+    "opening_hours": "Mo-Th 09:00-20:00, Fr-Sa 09:00-21:00, Su 09:00-20:00",
+    "roof:colour": "silver",
+    "start_date": "2014-05-14",
+    "toilets:wheelchair": "yes",
+    "tourism": "museum",
+    "website": "https://www.911memorial.org/",
+    "wheelchair": "yes",
+    "wikidata": "Q10806",
+    "wikipedia": "en:September 11 attacks"
+  }
+},
+{
+  "type": "way",
+  "id": 278033606,
+  "center": {
+    "lat": 40.7115421,
+    "lon": -74.0114221
+  },
+  "tags": {
+    "addr:city": "New York",
+    "addr:housenumber": "185",
+    "addr:postcode": "10006",
+    "addr:state": "NY",
+    "addr:street": "Greenwich Street",
+    "alt_name": "The Oculus",
+    "architect": "Santiago Calatrava",
+    "building": "train_station",
+    "building:colour": "#f0efed",
+    "building:levels": "1",
+    "height": "47",
+    "name": "World Trade Center Transportation Hub - Oculus",
+    "nycdoitt:bin": "1089309",
+    "roof:colour": "#f0efed",
+    "roof:height": "45",
+    "roof:levels": "0",
+    "roof:shape": "dome",
+    "url": "https://youtu.be/CrUcb3300kg?t=562",
+    "wheelchair": "yes",
+    "wikidata": "Q2001751",
+    "wikipedia": "en:World Trade Center station (PATH)"
+  }
+},
+{
+  "type": "way",
+  "id": 278033607,
+  "center": {
+    "lat": 40.7121768,
+    "lon": -74.0111464
+  },
+  "tags": {
+    "addr:city": "New York",
+    "addr:housenumber": "200",
+    "addr:postcode": "10048",
+    "addr:state": "NY",
+    "addr:street": "Greenwich Street",
+    "building": "construction",
+    "building:levels": "1",
+    "check_date": "2026-08-17",
+    "height": "373.7",
+    "layer": "1",
+    "name": "2 World Trade Center",
+    "name:zh": "世界貿易中心二號大樓",
+    "name:zh-Hans": "世界贸易中心二号大楼",
+    "nycdoitt:bin": "1089308",
+    "opening_date": "2031",
+    "short_name": "2 WTC",
+    "wikidata": "Q1127212",
+    "wikipedia": "en:2 World Trade Center"
+  }
+},
+{
+  "type": "way",
+  "id": 515665874,
+  "center": {
+    "lat": 40.7127392,
+    "lon": -74.0096001
+  },
+  "tags": {
+    "area": "yes",
+    "bench": "yes",
+    "bin": "yes",
+    "covered": "yes",
+    "destination": "Uptown & Queens",
+    "layer": "-2",
+    "level": "-2",
+    "location": "underground",
+    "name": "World Trade Center",
+    "network": "NYC Subway",
+    "operator": "New York City Transit Authority",
+    "operator:wikidata": "Q1325591",
+    "public_transport": "platform",
+    "railway": "platform",
+    "subway": "yes",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 697722178,
+  "center": {
+    "lat": 40.7121392,
+    "lon": -74.0131756
+  },
+  "tags": {
+    "alt_name": "North Tower Pool;North Pool",
+    "amenity": "fountain",
+    "drinking_water": "no",
+    "fountain": "water",
+    "lit": "yes",
+    "name": "Memorial North Pool",
+    "natural": "water",
+    "url": "https://youtu.be/CrUcb3300kg?t=80",
+    "wikimedia_commons": "File:NYC - North Memorial Pool - Looking north - panoramio.jpg"
+  }
+},
+{
+  "type": "way",
+  "id": 697722181,
+  "center": {
+    "lat": 40.7110296,
+    "lon": -74.0130805
+  },
+  "tags": {
+    "alt_name": "South Tower Pool;South Pool",
+    "amenity": "fountain",
+    "drinking_water": "no",
+    "fountain": "water",
+    "lit": "yes",
+    "name": "Memorial South Pool",
+    "natural": "water",
+    "url": "https://youtu.be/CrUcb3300kg?t=716",
+    "wikimedia_commons": "File:New York - National September 11 Memorial South Pool - April 2012 - 9693C.jpg"
+  }
+},
+{
+  "type": "way",
+  "id": 713565776,
+  "center": {
+    "lat": 40.7129993,
+    "lon": -74.0131894
+  },
+  "tags": {
+    "addr:city": "New York",
+    "addr:housenumber": "285",
+    "addr:postcode": "10048",
+    "addr:state": "NY",
+    "addr:street": "Fulton Street",
+    "alt_name": "Freedom Tower",
+    "architect": "David Childs",
+    "building": "commercial",
+    "building:material": "glass",
+    "check_date": "2026-08-04",
+    "description": "The World Trade Center is the tallest building in New York State and New York City. its 1,776 feet is an astonishing achievement of engineering. built after the 9/11 terrorist attacks it's a symbol of freedom and remembrence.",
+    "height": "417",
+    "landmark": "12",
+    "name": "One World Trade Center",
+    "name:ar": "برج الحرية",
+    "name:bg": "Световен търговски център 1",
+    "name:de": "One World Trade Center",
+    "name:en": "One World Trade Center",
+    "name:he": "מרכז הסחר העולמי החדש",
+    "name:hi": "१ वर्ल्ड ट्रेड सेंटर",
+    "name:ja": "1 ワールドトレードセンター",
+    "name:kk": "1 Дүниежүзілік Сауда Орталығы",
+    "name:kn": "ವರ್ಲ್ಡ್ ಟ್ರೇಡ್ ಸೆಂಟರ್",
+    "name:lt": "One World Trade Center",
+    "name:ml": "1 വേൾഡ് ട്രേഡ് സെന്റർ",
+    "name:pl": "1 World Trade Center",
+    "name:ru": "Всемирный торговый центр 1",
+    "name:uk": "Всесвітній торговий центр 1",
+    "name:zh": "世界貿易中心一號大樓",
+    "name:zh-Hans": "世界贸易中心一号大楼",
+    "nycdoitt:bin": "1088469",
+    "roof:material": "concrete",
+    "roof:shape": "flat",
+    "short_name": "OWTC;1 WTC",
+    "start_date": "2014-11-03",
+    "tourism": "attraction",
+    "website": "https://www.wtc.com/",
+    "wikidata": "Q11245",
+    "wikipedia": "en:One World Trade Center"
+  }
+},
+{
+  "type": "way",
+  "id": 802613138,
+  "center": {
+    "lat": 40.7130616,
+    "lon": -74.0137568
+  },
+  "tags": {
+    "electrified": "rail",
+    "fixme": "location approximate",
+    "frequency": "0",
+    "gauge": "1435",
+    "layer": "-4",
+    "level": "-4",
+    "maxspeed": "12 mph",
+    "name": "Hoboken - World Trade Center",
+    "operator": "Port Authority of New York and New Jersey",
+    "operator:wikidata": "Q908666",
+    "railway": "subway",
+    "railway:cbtc": "yes",
+    "railway:preferred_direction": "forward",
+    "railway:ptc": "yes",
+    "railway:track_ref": "E",
+    "tunnel": "yes",
+    "tunnel:name": "Downtown Hudson Tubes",
+    "voltage": "650",
+    "wikipedia": "en:Downtown Hudson Tubes"
+  }
+},
+{
+  "type": "way",
+  "id": 802613142,
+  "center": {
+    "lat": 40.7114001,
+    "lon": -74.0141368
+  },
+  "tags": {
+    "electrified": "rail",
+    "fixme": "location approximate",
+    "frequency": "0",
+    "gauge": "1435",
+    "layer": "-4",
+    "level": "-4",
+    "maxspeed": "12 mph",
+    "name": "Newark - World Trade Center",
+    "operator": "Port Authority of New York and New Jersey",
+    "operator:wikidata": "Q908666",
+    "railway": "subway",
+    "railway:cbtc": "yes",
+    "railway:preferred_direction": "forward",
+    "railway:ptc": "yes",
+    "railway:track_ref": "F",
+    "tunnel": "yes",
+    "tunnel:name": "Downtown Hudson Tubes",
+    "voltage": "650",
+    "wikipedia": "en:Downtown Hudson Tubes"
+  }
+},
+{
+  "type": "way",
+  "id": 812927889,
+  "center": {
+    "lat": 40.7126659,
+    "lon": -74.0095461
+  },
+  "tags": {
+    "addr:city": "New York",
+    "addr:state": "NY",
+    "building": "train_station",
+    "height": "0",
+    "layer": "-2",
+    "location": "underground",
+    "name": "Chambers Street–World Trade Center–Park Place–Cortlandt Street",
+    "operator": "New York City Transit Authority",
+    "operator:wikidata": "Q1325591",
+    "wikidata": "Q16237571"
+  }
+},
+{
+  "type": "way",
+  "id": 1550448261,
+  "center": {
+    "lat": 40.7121923,
+    "lon": -74.0110777
+  },
+  "tags": {
+    "check_date": "2026-08-17",
+    "construction": "building",
+    "landuse": "construction",
+    "name": "2 World Trade Center",
+    "opening_date": "2031"
+  }
+},
+{
+  "type": "relation",
+  "id": 366776,
+  "center": {
+    "lat": 40.7315615,
+    "lon": -73.9052178
+  },
+  "tags": {
+    "alt_name": "8th Avenue Local",
+    "colour": "#0062cf",
+    "colour:text": "#FFFFFF",
+    "from": "World Trade Center",
+    "gtfs:feed": "US-NY-MTA-Subway",
+    "gtfs:route_id": "E",
+    "gtfs:shape_id": "E..N66R",
+    "gtfs:trip_id:sample": "BFA25GEN-E077-Weekday-00_042050_E..N66R",
+    "interval": "7",
+    "interval:conditional": "4 @ (Mo-Fr 06:30-09:30); 4 @ (Mo-Fr 15:30-20:00)",
+    "interval:note": "Approximate minutes from Wikipedia article",
+    "interval:source": "https://en.wikipedia.org/wiki/List_of_New_York_City_Subway_services#Train%20intervals",
+    "name": "NYCS - E Train: World Trade Center → Jamaica Center–Parsons/Archer",
+    "network": "NYC Subway",
+    "network:wikidata": "Q7733",
+    "network:wikipedia": "en:New York City Subway",
+    "opening_hours": "Mo-Fr 06:30-20:00",
+    "operator": "Metropolitan Transportation Authority",
+    "operator:wikidata": "Q1146109",
+    "operator:wikipedia": "en:Metropolitan Transportation Authority",
+    "owner": "City of New York",
+    "owner:wikidata": "Q60",
+    "public_transport:version": "2",
+    "ref": "E",
+    "route": "subway",
+    "to": "Jamaica Center–Parsons/Archer",
+    "type": "route",
+    "wikidata": "Q126368",
+    "wikipedia": "en:E (New York City Subway service)"
+  }
+},
+{
+  "type": "relation",
+  "id": 3599882,
+  "center": {
+    "lat": 40.7129993,
+    "lon": -74.0131894
+  },
+  "tags": {
+    "name": "One World Trade Center",
+    "type": "building"
+  }
+},
+{
+  "type": "relation",
+  "id": 3695230,
+  "center": {
+    "lat": 40.7102997,
+    "lon": -74.0119625
+  },
+  "tags": {
+    "building": "yes",
+    "check_date": "2021-04-22",
+    "name": "Four World Trade Center",
+    "type": "office",
+    "wikidata": "Q1351208",
+    "wikipedia": "en:4 World Trade Center"
+  }
+},
+{
+  "type": "relation",
+  "id": 7946005,
+  "center": {
+    "lat": 40.7127804,
+    "lon": -74.0098225
+  },
+  "tags": {
+    "name": "World Trade Center (E)",
+    "network": "NYC Subway",
+    "operator": "New York City Transit Authority",
+    "public_transport": "stop_area",
+    "railway": "facility",
+    "subway": "yes",
+    "type": "public_transport"
+  }
+},
+{
+  "type": "relation",
+  "id": 9769301,
+  "center": {
+    "lat": 40.7316247,
+    "lon": -73.9052440
+  },
+  "tags": {
+    "alt_name": "8th Avenue Local",
+    "colour": "#0062cf",
+    "colour:text": "#FFFFFF",
+    "from": "Jamaica Center–Parsons/Archer",
+    "gtfs:feed": "US-NY-MTA-Subway",
+    "gtfs:route_id": "E",
+    "gtfs:shape_id": "E..S71R",
+    "gtfs:trip_id:sample": "BFA25GEN-E077-Weekday-00_036750_E..S71R",
+    "interval": "7",
+    "interval:conditional": "4 @ (Mo-Fr 06:30-09:30); 4 @ (Mo-Fr 15:30-20:00)",
+    "interval:note": "Approximate minutes from Wikipedia article",
+    "interval:source": "https://en.wikipedia.org/wiki/List_of_New_York_City_Subway_services#Train%20intervals",
+    "name": "NYCS - E Train: Jamaica Center–Parsons/Archer → World Trade Center",
+    "network": "NYC Subway",
+    "network:wikidata": "Q7733",
+    "network:wikipedia": "en:New York City Subway",
+    "opening_hours": "Mo-Fr 06:30-20:00",
+    "operator": "Metropolitan Transportation Authority",
+    "operator:wikidata": "Q1146109",
+    "operator:wikipedia": "en:Metropolitan Transportation Authority",
+    "owner": "City of New York",
+    "owner:wikidata": "Q60",
+    "public_transport:version": "2",
+    "ref": "E",
+    "route": "subway",
+    "to": "World Trade Center",
+    "type": "route",
+    "wikidata": "Q126368",
+    "wikipedia": "en:E (New York City Subway service)"
+  }
+},
+{
+  "type": "relation",
+  "id": 9775885,
+  "center": {
+    "lat": 40.7119473,
+    "lon": -74.0119094
+  },
+  "tags": {
+    "name": "World Trade Center (PATH)",
+    "network": "PATH",
+    "operator": "PATH",
+    "public_transport": "stop_area",
+    "railway": "facility",
+    "type": "public_transport"
+  }
+},
+{
+  "type": "relation",
+  "id": 11256044,
+  "center": {
+    "lat": 40.7315615,
+    "lon": -73.9052178
+  },
+  "tags": {
+    "alt_name": "8th Avenue Local",
+    "colour": "#0062cf",
+    "colour:text": "#FFFFFF",
+    "from": "World Trade Center",
+    "gtfs:feed": "US-NY-MTA-Subway",
+    "gtfs:route_id": "E",
+    "gtfs:shape_id": "E..N05R",
+    "gtfs:trip_id:sample": "BFA25GEN-E043-Saturday-00_008850_E..N05R",
+    "interval": "20",
+    "name": "NYCS - E Train (late nights): World Trade Center → Jamaica Center–Parsons/Archer",
+    "network": "NYC Subway",
+    "network:wikidata": "Q7733",
+    "network:wikipedia": "en:New York City Subway",
+    "opening_hours": "Mo-Su 00:00-06:30",
+    "operator": "Metropolitan Transportation Authority",
+    "operator:wikidata": "Q1146109",
+    "operator:wikipedia": "en:Metropolitan Transportation Authority",
+    "owner": "City of New York",
+    "owner:wikidata": "Q60",
+    "public_transport:version": "2",
+    "ref": "E",
+    "route": "subway",
+    "to": "Jamaica Center–Parsons/Archer",
+    "type": "route",
+    "wikidata": "Q126368",
+    "wikipedia": "en:E (New York City Subway service)"
+  }
+},
+{
+  "type": "relation",
+  "id": 11256045,
+  "center": {
+    "lat": 40.7316247,
+    "lon": -73.9052440
+  },
+  "tags": {
+    "alt_name": "8th Avenue Local",
+    "colour": "#0062cf",
+    "colour:text": "#FFFFFF",
+    "from": "Jamaica Center–Parsons/Archer",
+    "gtfs:feed": "US-NY-MTA-Subway",
+    "gtfs:route_id": "E",
+    "gtfs:shape_id": "E..S04R",
+    "gtfs:trip_id:sample": "BFA25GEN-E077-Weekday-00_001150_E..S04R",
+    "interval": "20",
+    "name": "NYCS - E Train (late nights): Jamaica Center–Parsons/Archer → World Trade Center",
+    "network": "NYC Subway",
+    "network:wikidata": "Q7733",
+    "network:wikipedia": "en:New York City Subway",
+    "opening_hours": "Mo-Su 00:00-06:30",
+    "operator": "Metropolitan Transportation Authority",
+    "operator:wikidata": "Q1146109",
+    "operator:wikipedia": "en:Metropolitan Transportation Authority",
+    "owner": "City of New York",
+    "owner:wikidata": "Q60",
+    "public_transport:version": "2",
+    "ref": "E",
+    "route": "subway",
+    "to": "World Trade Center",
+    "type": "route",
+    "wikidata": "Q126368",
+    "wikipedia": "en:E (New York City Subway service)"
+  }
+},
+{
+  "type": "relation",
+  "id": 11256046,
+  "center": {
+    "lat": 40.7316247,
+    "lon": -73.9052440
+  },
+  "tags": {
+    "alt_name": "8th Avenue Local",
+    "colour": "#0062cf",
+    "colour:text": "#FFFFFF",
+    "from": "Jamaica Center–Parsons/Archer",
+    "gtfs:feed": "US-NY-MTA-Subway",
+    "gtfs:route_id": "E",
+    "gtfs:shape_id": "E..S69R",
+    "gtfs:trip_id:sample": "BFA25GEN-E077-Weekday-00_030950_E..S69R",
+    "interval": "10",
+    "interval:conditional": "7 @ (Mo-Fr 20:00-23:59)",
+    "name": "NYCS - E Train (evenings, weekends): Jamaica Center–Parsons/Archer → World Trade Center",
+    "network": "NYC Subway",
+    "network:wikidata": "Q7733",
+    "network:wikipedia": "en:New York City Subway",
+    "opening_hours": "Mo-Fr 20:00-23:59; Sa-Su 06:30-23:59",
+    "operator": "Metropolitan Transportation Authority",
+    "operator:wikidata": "Q1146109",
+    "operator:wikipedia": "en:Metropolitan Transportation Authority",
+    "owner": "City of New York",
+    "owner:wikidata": "Q60",
+    "public_transport:version": "2",
+    "ref": "E",
+    "route": "subway",
+    "to": "World Trade Center",
+    "type": "route",
+    "wikidata": "Q126368",
+    "wikipedia": "en:E (New York City Subway service)"
+  }
+},
+{
+  "type": "relation",
+  "id": 11256047,
+  "center": {
+    "lat": 40.7315615,
+    "lon": -73.9052178
+  },
+  "tags": {
+    "alt_name": "8th Avenue Local",
+    "colour": "#0062cf",
+    "colour:text": "#FFFFFF",
+    "from": "World Trade Center",
+    "gtfs:feed": "US-NY-MTA-Subway",
+    "gtfs:route_id": "E",
+    "gtfs:shape_id": "E..N72R",
+    "gtfs:trip_id:sample": "BFA25GEN-E077-Weekday-00_035450_E..N72R",
+    "interval": "10",
+    "interval:conditional": "7 @ (Mo-Fr 20:00-23:59)",
+    "name": "NYCS - E Train (evenings, weekends): World Trade Center → Jamaica Center–Parsons/Archer",
+    "network": "NYC Subway",
+    "network:wikidata": "Q7733",
+    "network:wikipedia": "en:New York City Subway",
+    "opening_hours": "Mo-Fr 20:00-23:59; Sa-Su 06:30-23:59",
+    "operator": "Metropolitan Transportation Authority",
+    "operator:wikidata": "Q1146109",
+    "operator:wikipedia": "en:Metropolitan Transportation Authority",
+    "owner": "City of New York",
+    "owner:wikidata": "Q60",
+    "public_transport:version": "2",
+    "ref": "E",
+    "route": "subway",
+    "to": "Jamaica Center–Parsons/Archer",
+    "type": "route",
+    "wikidata": "Q126368",
+    "wikipedia": "en:E (New York City Subway service)"
+  }
+},
+{
+  "type": "relation",
+  "id": 13594342,
+  "center": {
+    "lat": 40.7822137,
+    "lon": -73.9779587
+  },
+  "tags": {
+    "cycle_network": "US:USA",
+    "name": "9/11 National Memorial Trail (New York Manhattan)",
+    "network": "ncn",
+    "operator": "September 11th National Memorial Trail Alliance",
+    "ref": "9-11",
+    "route": "bicycle",
+    "source": "H.R. 2278, unanimously passed by House and Senate, signed by President Biden October 13, 2021",
+    "type": "route",
+    "website": "https://www.911trail.org"
+  }
+},
+{
+  "type": "relation",
+  "id": 15051920,
+  "center": {
+    "lat": 40.7108865,
+    "lon": -74.0105676
+  },
+  "tags": {
+    "addr:city": "New York",
+    "addr:housenumber": "185",
+    "addr:postcode": "10048",
+    "addr:state": "NY",
+    "addr:street": "Greenwich Street",
+    "brand": "Westfield",
+    "brand:wikidata": "Q106623253",
+    "landuse": "retail",
+    "name": "Westfield World Trade Center",
+    "operator": "Unibail-Rodamco-Westfield",
+    "operator:wikidata": "Q608518",
+    "owner": "Westfield",
+    "shop": "mall",
+    "start_date": "2016-08-16",
+    "type": "multipolygon",
+    "website": "https://www.westfield.com/westfieldworldtradecenter",
+    "wikidata": "Q378657",
+    "wikipedia": "en:Westfield World Trade Center"
+  }
+}
+
+  ]
+}

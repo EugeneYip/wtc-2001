@@ -1,0 +1,278 @@
+/**
+ * Lower Manhattan around the site: OpenStreetMap footprints extruded to
+ * height, the street grid, the Hudson and East rivers, and the open space.
+ *
+ * Walls and roofs are split apart so each gets its own material: a facade
+ * texture whose window rows land on real floor heights, and tar-and-gravel
+ * above. The roof deck is dropped just below the top of the walls, which
+ * leaves the parapet every one of these buildings actually has without any
+ * extra geometry.
+ *
+ * Everything merges down to one mesh per material, so the whole city is a
+ * couple of dozen draw calls.
+ */
+
+import * as THREE from 'three';
+import { mergeGeometries } from 'BufferGeometryUtils';
+import { norm, shapeFrom, flat, bounds } from './geo.js';
+import { facadeMaps, roofTexture, roadTexture, waterNormal } from './textures.js';
+
+const FACADE = facadeMaps();
+
+export const CITY_MATS = {
+  masonry_old:  new THREE.MeshStandardMaterial({ roughness: 0.86, metalness: 0.04 }),
+  masonry_deco: new THREE.MeshStandardMaterial({ roughness: 0.84, metalness: 0.05 }),
+  midrise:      new THREE.MeshStandardMaterial({ roughness: 0.78, metalness: 0.08 }),
+  lowrise:      new THREE.MeshStandardMaterial({ roughness: 0.88, metalness: 0.03 }),
+  tower_modern: new THREE.MeshStandardMaterial({ roughness: 0.32, metalness: 0.45 }),
+  dark:         new THREE.MeshStandardMaterial({ roughness: 0.28, metalness: 0.55 }),
+
+  roof: new THREE.MeshStandardMaterial({
+    map: roofTexture(), roughness: 0.93, metalness: 0.02 }),
+  // Everything that is not Manhattan: New Jersey and Brooklyn, read as a
+  // hazy band rather than a hard dark edge at the horizon.
+  //
+  // The rivers sit only 150 mm above this plane, which is far below depth
+  // precision a couple of kilometres out, so the ground would z-fight the
+  // water and win. Polygon offset biases it away from the camera by a few
+  // depth units, which scale with the local precision, so water always wins.
+  ground: new THREE.MeshStandardMaterial({
+    color: 0x6b6961, roughness: 0.98, metalness: 0.0,
+    polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 8 }),
+  road: new THREE.MeshStandardMaterial({
+    map: roadTexture(), color: 0xb9b7af, roughness: 0.9, metalness: 0.0 }),
+  roadMinor: new THREE.MeshStandardMaterial({
+    map: roadTexture(), color: 0xd0ccc1, roughness: 0.92, metalness: 0.0 }),
+  park: new THREE.MeshStandardMaterial({
+    color: 0x3d5130, roughness: 0.95, metalness: 0.0 }),
+  water: new THREE.MeshStandardMaterial({
+    color: 0x16303f, roughness: 0.07, metalness: 0.72,
+    normalMap: waterNormal(),
+    normalScale: new THREE.Vector2(0.4, 0.4) }),
+};
+
+// The classes that get a textured facade and lit windows after dark.
+export const WALL_CLASSES = Object.keys(FACADE);
+
+for (const k of WALL_CLASSES) {
+  CITY_MATS[k].map = FACADE[k].map;
+  CITY_MATS[k].emissiveMap = FACADE[k].lights;
+  CITY_MATS[k].emissive = new THREE.Color(0xffd6a4);
+  CITY_MATS[k].emissiveIntensity = 0;
+}
+
+// ---------------------------------------------------------------------------
+// Geometry
+// ---------------------------------------------------------------------------
+
+const PARAPET = 0.85;
+
+/**
+ * Extrude a footprint and hand back its walls and its roof separately.
+ * ExtrudeGeometry tags caps as material 0 and side walls as material 1; the
+ * underside cap is never visible, so it is dropped.
+ */
+function shell(poly, h) {
+  const g = new THREE.ExtrudeGeometry(shapeFrom(poly), {
+    depth: h, bevelEnabled: false,
+  });
+  g.rotateX(-Math.PI / 2);
+
+  const pos = g.getAttribute('position');
+  const nrm = g.getAttribute('normal');
+  const uv = g.getAttribute('uv');
+  const drop = Math.min(PARAPET, h * 0.14);
+  const parts = { wall: [[], [], []], roof: [[], [], []] };
+
+  for (const grp of g.groups) {
+    const cap = grp.materialIndex === 0;
+    const t = cap ? parts.roof : parts.wall;
+    for (let i = grp.start; i < grp.start + grp.count; i += 3) {
+      if (cap) {
+        const ay = (pos.getY(i) + pos.getY(i + 1) + pos.getY(i + 2)) / 3;
+        if (ay < h * 0.5) continue;                // underside, never seen
+      }
+      for (let k = 0; k < 3; k++) {
+        const v = i + k;
+        t[0].push(pos.getX(v), pos.getY(v) - (cap ? drop : 0), pos.getZ(v));
+        t[1].push(nrm.getX(v), nrm.getY(v), nrm.getZ(v));
+        t[2].push(uv.getX(v), uv.getY(v));
+      }
+    }
+  }
+  g.dispose();
+
+  const make = (t) => {
+    if (!t[0].length) return null;
+    const b = new THREE.BufferGeometry();
+    b.setAttribute('position', new THREE.Float32BufferAttribute(t[0], 3));
+    b.setAttribute('normal', new THREE.Float32BufferAttribute(t[1], 3));
+    b.setAttribute('uv', new THREE.Float32BufferAttribute(t[2], 2));
+    return b;
+  };
+  return { wall: make(parts.wall), roof: make(parts.roof) };
+}
+
+/** A plain box, for a tower shaft standing on a podium. */
+function boxShell(cx, cz, w, d, y0, y1) {
+  const g = new THREE.BoxGeometry(w, y1 - y0, d);
+  g.translate(cx, (y0 + y1) / 2, cz);
+  return norm(g);
+}
+
+// ---------------------------------------------------------------------------
+// Crowns
+// ---------------------------------------------------------------------------
+
+/**
+ * Distinctive tops, for the buildings where the silhouette is the point:
+ * Cesar Pelli's crowns on the World Financial Center, the Woolworth
+ * Building's terracotta tower, and Art Deco setbacks.
+ */
+function crown(style, rect, y0, hh) {
+  const parts = [];
+  const box = (w, d, ht, y) => {
+    const g = new THREE.BoxGeometry(w, ht, d);
+    g.translate(rect.cx, y + ht / 2, rect.cz);
+    parts.push(norm(g));
+  };
+
+  if (style === 'dome') {
+    const steps = 3, sh = (hh * 0.55) / steps;
+    for (let i = 0; i < steps; i++) {
+      const f = 1 - (i / steps) * 0.34;
+      box(rect.w * f, rect.d * f, sh, y0 + i * sh);
+    }
+    const r = Math.min(rect.w, rect.d) * 0.33;
+    const dome = new THREE.SphereGeometry(r, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2);
+    dome.scale(1, (hh * 0.45) / r, 1);
+    dome.translate(rect.cx, y0 + hh * 0.55, rect.cz);
+    parts.push(norm(dome));
+  } else if (style === 'steppyr') {
+    const steps = 7, sh = hh / steps;
+    for (let i = 0; i < steps; i++) {
+      const f = 1 - (i / steps) * 0.82;
+      box(rect.w * f, rect.d * f, sh, y0 + i * sh);
+    }
+  } else if (style === 'setback') {
+    const steps = 4, sh = hh / steps;
+    for (let i = 0; i < steps; i++) {
+      const f = 1 - (i / steps) * 0.58;
+      box(rect.w * f, rect.d * f, sh, y0 + i * sh);
+    }
+  } else if (style === 'spire') {
+    const steps = 5, sh = (hh * 0.62) / steps;
+    for (let i = 0; i < steps; i++) {
+      const f = 1 - (i / steps) * 0.66;
+      box(rect.w * f, rect.d * f, sh, y0 + i * sh);
+    }
+    const pin = new THREE.ConeGeometry(rect.w * 0.16, hh * 0.38, 8);
+    pin.translate(rect.cx, y0 + hh * 0.62 + hh * 0.19, rect.cz);
+    parts.push(norm(pin));
+  }
+  return parts;
+}
+
+// ---------------------------------------------------------------------------
+
+export function buildCity(data) {
+  const g = new THREE.Group();
+  g.name = 'city';
+
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(26000, 26000), CITY_MATS.ground);
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.4;
+  ground.receiveShadow = true;
+  ground.name = 'ground';
+  g.add(ground);
+
+  const layer = (polys, y, mat, name) => {
+    const geos = polys.map((p) => flat(p.p, y, p.h)).filter(Boolean);
+    if (!geos.length) return null;
+    const m = new THREE.Mesh(mergeGeometries(geos), mat);
+    m.receiveShadow = true;
+    m.name = name;
+    g.add(m);
+    return m;
+  };
+  const water = layer(data.water, -0.25, CITY_MATS.water, 'water');
+  layer(data.parks, -0.12, CITY_MATS.park, 'parks');
+
+  // Streets, as flat ribbons with world-scale UVs so the asphalt tiles evenly.
+  for (const kind of ['major', 'minor']) {
+    const geos = [];
+    for (const r of data.roads) {
+      if (r.k !== kind) continue;
+      for (let i = 0; i < r.p.length - 1; i++) {
+        const [x0, z0] = r.p[i], [x1, z1] = r.p[i + 1];
+        const dx = x1 - x0, dz = z1 - z0;
+        const len = Math.hypot(dx, dz);
+        if (len < 0.5) continue;
+        const q = new THREE.PlaneGeometry(len + r.w * 0.5, r.w);
+        const uv = q.getAttribute('uv');
+        for (let k = 0; k < uv.count; k++) {
+          uv.setXY(k, uv.getX(k) * len, uv.getY(k) * r.w);
+        }
+        q.rotateX(-Math.PI / 2);
+        q.rotateY(-Math.atan2(dz, dx));
+        q.translate((x0 + x1) / 2, 0, (z0 + z1) / 2);
+        geos.push(norm(q));
+      }
+    }
+    if (!geos.length) continue;
+    const m = new THREE.Mesh(mergeGeometries(geos),
+      kind === 'major' ? CITY_MATS.road : CITY_MATS.roadMinor);
+    m.position.y = kind === 'major' ? -0.05 : -0.08;
+    m.receiveShadow = true;
+    m.name = 'roads-' + kind;
+    g.add(m);
+  }
+
+  // Buildings: walls batched by facade family, roofs and crowns pooled.
+  const walls = {};
+  const roofs = [];
+  for (const b of data.buildings) {
+    const cls = WALL_CLASSES.includes(b.c) ? b.c : 'lowrise';
+    const into = (walls[cls] = walls[cls] || []);
+
+    const base = shell(b.p, b.h);
+    if (base.wall) into.push(base.wall);
+    if (base.roof) roofs.push(base.roof);
+
+    let rect = bounds(b.p);
+    let top = b.h;
+    if (b.t) {
+      into.push(boxShell(b.t.cx, b.t.cz, b.t.w, b.t.d, b.h, b.t.h));
+      rect = { cx: b.t.cx, cz: b.t.cz, w: b.t.w, d: b.t.d };
+      top = b.t.h;
+    }
+    if (b.r && b.r !== 'flat') into.push(...crown(b.r, rect, top, b.rh || 16));
+  }
+
+  for (const [cls, geos] of Object.entries(walls)) {
+    const m = new THREE.Mesh(mergeGeometries(geos), CITY_MATS[cls]);
+    m.castShadow = m.receiveShadow = true;
+    m.name = 'walls-' + cls;
+    g.add(m);
+  }
+  if (roofs.length) {
+    const m = new THREE.Mesh(mergeGeometries(roofs), CITY_MATS.roof);
+    m.receiveShadow = true;
+    m.name = 'roofs';
+    g.add(m);
+  }
+
+  return { group: g, water };
+}
+
+/** Named buildings tall enough to be worth a label. */
+export function cityLabels(data) {
+  const out = [];
+  for (const b of data.buildings) {
+    const top = (b.t ? b.t.h : b.h) + (b.rh || 0);
+    if (!b.n || top < 130) continue;
+    const bb = b.t ? { cx: b.t.cx, cz: b.t.cz } : bounds(b.p);
+    out.push({ name: b.n, x: bb.cx, y: top, z: bb.cz });
+  }
+  return out;
+}

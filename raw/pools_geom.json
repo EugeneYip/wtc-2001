@@ -1,0 +1,82 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-09-11T23:22:20Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "way",
+  "id": 697722178,
+  "bounds": {
+    "minlat": 40.7118076,
+    "minlon": -74.0136132,
+    "maxlat": 40.7124708,
+    "maxlon": -74.0127380
+  },
+  "nodes": [
+    6552543752,
+    6552543751,
+    6552543750,
+    6552543749,
+    6552543752
+  ],
+  "geometry": [
+    { "lat": 40.7124708, "lon": -74.0133003 },
+    { "lat": 40.7120450, "lon": -74.0136132 },
+    { "lat": 40.7118076, "lon": -74.0130509 },
+    { "lat": 40.7122334, "lon": -74.0127380 },
+    { "lat": 40.7124708, "lon": -74.0133003 }
+  ],
+  "tags": {
+    "alt_name": "North Tower Pool;North Pool",
+    "amenity": "fountain",
+    "drinking_water": "no",
+    "fountain": "water",
+    "lit": "yes",
+    "name": "Memorial North Pool",
+    "natural": "water",
+    "url": "https://youtu.be/CrUcb3300kg?t=80",
+    "wikimedia_commons": "File:NYC - North Memorial Pool - Looking north - panoramio.jpg"
+  }
+},
+{
+  "type": "way",
+  "id": 697722181,
+  "bounds": {
+    "minlat": 40.7106980,
+    "minlon": -74.0135181,
+    "maxlat": 40.7113612,
+    "maxlon": -74.0126429
+  },
+  "nodes": [
+    6552543780,
+    6552553587,
+    6552553586,
+    6552553585,
+    6552543780
+  ],
+  "geometry": [
+    { "lat": 40.7113612, "lon": -74.0132052 },
+    { "lat": 40.7109354, "lon": -74.0135181 },
+    { "lat": 40.7106980, "lon": -74.0129558 },
+    { "lat": 40.7111238, "lon": -74.0126429 },
+    { "lat": 40.7113612, "lon": -74.0132052 }
+  ],
+  "tags": {
+    "alt_name": "South Tower Pool;South Pool",
+    "amenity": "fountain",
+    "drinking_water": "no",
+    "fountain": "water",
+    "lit": "yes",
+    "name": "Memorial South Pool",
+    "natural": "water",
+    "url": "https://youtu.be/CrUcb3300kg?t=716",
+    "wikimedia_commons": "File:New York - National September 11 Memorial South Pool - April 2012 - 9693C.jpg"
+  }
+}
+
+  ]
+}
