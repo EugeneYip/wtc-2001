@@ -26,6 +26,7 @@ import { roofClutter, trees, traffic, parkedCars, manholes, vessels,
          kerbFurniture, obstacleIndex, DETAIL_MATS, VESSEL_MATS } from './details.js';
 import { makeNightSky } from './nightsky.js';
 import { buildBridge, BRIDGE_MATS } from './bridge.js';
+import { buildRelief } from './terrain.js';
 
 const DEG = Math.PI / 180;
 const LAMP_SPAN = 2600;   // world metres covered by the lamp-pool mask
@@ -553,6 +554,12 @@ async function init() {
 
   const bridge = buildBridge(data.bridge);
   if (bridge) scene.add(bridge);
+
+  // Relief on the far shores, laid over the flat land rather than displacing
+  // it: the coastline underneath is accurate to a few metres and a grid coarse
+  // enough to afford would have chewed it up.
+  const relief = buildRelief(data.relief, data.land || [], CITY_MATS.ground);
+  if (relief) scene.add(relief);
 
   status.textContent = 'Raising the towers…';
   await tick();

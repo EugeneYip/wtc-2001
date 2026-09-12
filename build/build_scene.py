@@ -1309,6 +1309,77 @@ def build_bridge(land):
     }
 
 
+# ---------------------------------------------------------------------------
+# Relief
+# ---------------------------------------------------------------------------
+#
+# The land across the rivers was a table. It met the sky in a ruled horizontal
+# line, which is the one thing no real shore does, and the eye reads that as a
+# mudflat or a fog bank rather than as New Jersey.
+#
+# The relief is not invented. OpenStreetMap carries the named hills around the
+# harbour with real elevations on them — Todt Hill, Battle Hill, Laurel Hill —
+# and the Palisades are mapped as a cliff line. Those two give high ground
+# where there is high ground; everything between them is a gentle undulation
+# with no claim attached to it.
+
+RELIEF_REACH = 16000.0      # metres from the origin worth carrying
+
+
+def build_relief():
+    path = os.path.join(RAW, "relief.json")
+    if not os.path.exists(path):
+        print("  relief                : no extract, skipped")
+        return None
+    els = json.load(open(path))["elements"]
+
+    peaks = []
+    for e in els:
+        if e.get("type") != "node":
+            continue
+        ele = e.get("tags", {}).get("ele")
+        if not ele:
+            continue
+        try:
+            h = float(ele)
+        except ValueError:
+            continue
+        if h < 25:                      # below this it is not a hill at 5 km
+            continue
+        x, z = project(e["lat"], e["lon"])
+        if math.hypot(x, z) > RELIEF_REACH:
+            continue
+        peaks.append([round(x, 1), round(z, 1), round(h, 1)])
+
+    ridges = []
+    for e in els:
+        if e.get("type") != "way":
+            continue
+        g = e.get("geometry") or []
+        if len(g) < 3:
+            continue
+        pts = [project(p["lat"], p["lon"]) for p in g]
+        if all(math.hypot(x, z) > RELIEF_REACH for x, z in pts):
+            continue
+        # Thin them: a cliff line mapped every few metres is far more detail
+        # than a ridge seen from three kilometres needs.
+        keep = [pts[0]]
+        for q in pts[1:]:
+            if math.dist(keep[-1], q) > 120:
+                keep.append(q)
+        if len(keep) < 2:
+            continue
+        named = bool(e.get("tags", {}).get("name"))
+        ridges.append({
+            "p": [[round(x, 1), round(z, 1)] for x, z in keep],
+            # The Palisades stand about sixty metres over the Hudson opposite
+            # the city; an unnamed scarp is treated as something smaller.
+            "h": 60.0 if named else 26.0,
+        })
+
+    return {"peaks": peaks, "ridges": ridges}
+
+
 def main():
     print("Building WTC scene (Lower Manhattan, September 2001)")
     buildings = build_buildings()
@@ -1324,6 +1395,10 @@ def main():
     water, parks = build_areas()
     land = build_land()
     bridge = build_bridge(land)
+    relief = build_relief()
+    if relief:
+        print("  relief                : %d hills, %d ridge lines"
+              % (len(relief["peaks"]), len(relief["ridges"])))
     if bridge:
         print("  brooklyn bridge       : span %.0f m, towers at %s"
               % (bridge["s1"] - bridge["s0"], bridge["towers"]))
@@ -1353,6 +1428,7 @@ def main():
                   "stairs": PLAZA_STAIRS},
         "land": land,
         "bridge": bridge,
+        "relief": relief,
         "buildings": buildings,
         "roads": roads,
         "water": water,

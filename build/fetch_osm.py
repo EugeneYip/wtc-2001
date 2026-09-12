@@ -70,6 +70,16 @@ QUERIES = {
         (way["man_made"="bridge"]["name"="Brooklyn Bridge"](40.69,-74.02,40.72,-73.96);
          way["highway"]["name"="Brooklyn Bridge"](40.69,-74.02,40.72,-73.96););
         out geom;""",
+
+    # High ground around the harbour. The named hills carry real elevations and
+    # the Palisades are mapped as a cliff line, so the far shore can be given
+    # relief that is where the relief actually is rather than invented.
+    "relief": """[out:json][timeout:90];
+        (node["natural"="peak"](40.45,-74.35,40.95,-73.70);
+         node["natural"="hill"](40.45,-74.35,40.95,-73.70);
+         way["natural"="cliff"](40.45,-74.35,40.95,-73.70);
+         way["natural"="ridge"](40.45,-74.35,40.95,-73.70););
+        out geom;""",
 }
 
 

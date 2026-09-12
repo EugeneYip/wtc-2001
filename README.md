@@ -168,6 +168,28 @@ rather than the brownstone around them — so they are given a facade family
 instead of a tint, because multiplying a colour lightens it without ever
 desaturating it.
 
+**Relief.** The land across the rivers was a table — a flat plane meeting the
+sky in a ruled horizontal line, which no real shore does, and the eye files
+that under mudflat rather than New Jersey.
+
+The high ground is not invented. OpenStreetMap carries the named hills around
+the harbour with real elevations on them — Todt Hill at 125 m, Battle Hill over
+Green-Wood, Laurel Hill behind Secaucus — and the Palisades are mapped as a
+cliff line. Those put hills where the hills are. Between them the ground
+undulates gently, and that part carries no claim; it is kept modest on purpose,
+because the near shores of this harbour really are low and flat and giving
+Jersey City a mountain range would be a worse lie than the table it replaces.
+
+It is a separate surface laid a couple of centimetres over the flat land rather
+than a displacement of it. The coastline is the most carefully built thing in
+this model and is accurate to a few metres; a grid coarse enough to afford
+would have chewed it up. So the height ramps to nothing before it reaches the
+water, and the last few hundred metres of every shore are still the exact flat
+ground underneath. From a low camera the effect is small, and correctly so: a
+coastal plain seen from ninety metres up really does present an almost straight
+horizon. From the towers, where you look down on the land, it is the difference
+between terrain and a plate.
+
 **The shoreline.** OpenStreetMap maps tidal water as `natural=coastline`, not
 as water polygons, so the model is built the way the data is: the world is
 sea, and land is drawn on top of it, assembled from the coastline itself.
@@ -325,7 +347,7 @@ uniform slab. Those are massing, not survey.
 
 ## Performance
 
-About 172 draw calls and 1.01M triangles in daylight, and roughly 2 to 3 ms a
+About 173 draw calls and 1.05M triangles in daylight, and roughly 2 to 3 ms a
 frame on an M2 at 2800 × 1800 once shaders are warm, with the post-processing
 running at full resolution and 4x multisampling.
 
@@ -351,6 +373,7 @@ wtc.html              the same thing inlined into one file
 src/
   main.js             renderer, sun, camera rig, UI
   bridge.js           the Brooklyn Bridge
+  terrain.js          relief on the far shores
   wtc.js              the towers, the complex, the plaza
   city.js             footprint extrusion, crowns, streets, water
   nightsky.js         the twilight and night dome
@@ -366,6 +389,7 @@ raw/                  cached Overpass responses
   water/green.json
   bridge.json           the Brooklyn Bridge carriageway, outside the
                         building box but inside the view
+  relief.json           named hills with elevations, and the Palisades
   coast.json            the coastline, which defines where land is
   pools_geom.json       memorial pool corners — the source of the
                         tower positions and the grid rotation
