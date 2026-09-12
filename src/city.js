@@ -385,9 +385,14 @@ export function buildCity(data) {
     m.name = 'shallows';
     g.add(m);
   }
+  // Ground stack, lowest first. Parks have to sit under the carriageway:
+  // above it they paint over the roads that run through them, and the traffic
+  // ends up apparently driving across a lawn.
+  //   land -0.30  <  pavement -0.26  <  parks -0.24
+  //              <  inland water -0.22  <  asphalt -0.20
   layer(data.land || [], -0.30, CITY_MATS.ground, 'land');
+  layer(data.parks, -0.24, CITY_MATS.park, 'parks');
   layer(data.water, -0.22, CITY_MATS.water, 'inland-water');
-  layer(data.parks, -0.16, CITY_MATS.park, 'parks');
 
   // Streets. The OSM width is the whole right of way, so the carriageway is
   // narrowed and the remainder becomes sidewalk either side, with a kerb face

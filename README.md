@@ -60,8 +60,10 @@ and 1 WTC carries its 360 ft transmission mast, added in 1978.
 **The complex.** All seven buildings: the two towers, 3 WTC (the Marriott),
 the low-rise 4, 5 and 6 WTC wrapping the plaza, and the original 47-storey
 7 WTC north of Vesey Street — which stood east of its 2006 replacement, over
-ground where Greenwich Street now runs. Austin J. Tobin Plaza is raised above
-street grade, with Fritz Koenig's *Sphere* on its fountain.
+ground where Greenwich Street now runs. Austin J. Tobin Plaza is raised 4.3 m
+above street grade, walled at its edge and reached from Liberty Street by a
+44 m flight notched into the deck, with Fritz Koenig's *Sphere* on its
+fountain.
 
 **Streets.** The OSM width is the whole right of way, so the carriageway is
 narrowed and the remainder becomes pavement either side, with lane markings
@@ -134,7 +136,7 @@ uniform slab. Those are massing, not survey.
 
 ## Performance
 
-The scene is about 109 draw calls and 473k triangles, and renders in about a
+The scene is about 113 draw calls and 474k triangles, and renders in about a
 third of a millisecond a frame on an M2 at 1078 × 1674 once shaders are warm. Detail
 scales automatically: phones get a smaller shadow map, no bloom and fewer
 cars; desktops get the full set. The preset in use is shown in the panel.

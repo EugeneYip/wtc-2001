@@ -155,6 +155,9 @@ export const MATS = {
   plaza: new THREE.MeshStandardMaterial({
     map: plazaTexture(), metalness: 0.02, roughness: 0.88,
   }),
+  plazaWall: new THREE.MeshStandardMaterial({
+    color: 0x9c9282, metalness: 0.02, roughness: 0.82,
+  }),
   // 4, 5 and 6 WTC were clad in the same aluminium as the towers, in
   // horizontal bands rather than the towers' vertical column grid.
   lowrise: new THREE.MeshStandardMaterial({
@@ -433,6 +436,82 @@ export function buildTower({ center, roof: roofY, mast, name, side }) {
 // Plaza and the low-rise buildings
 // ---------------------------------------------------------------------------
 
+/**
+ * The broad flight up from Liberty Street.
+ *
+ * The plaza stood 4.3 m above the street, and its edge was not a blank
+ * retaining wall — it was reached by flights of steps from the surrounding
+ * pavements. The treads are notched into the deck so the flight does not
+ * block the sidewalk, and the last few project out over it.
+ */
+function plazaStair(stair, level) {
+  const { x0, x1, z_top: zTop, z_bottom: zBot, steps } = stair;
+  const rise = level / steps;
+  const tread = (zBot - zTop) / steps;
+  const parts = [];
+
+  for (let i = 0; i < steps; i++) {
+    const top = (i + 1) * rise;
+    const z1 = zBot - i * tread;           // nosing, nearest the street
+    const z0 = z1 - tread;
+    const g = new THREE.BoxGeometry(x1 - x0, top + 0.3, tread);
+    g.translate((x0 + x1) / 2, (top + 0.3) / 2 - 0.3, (z0 + z1) / 2);
+    parts.push(norm(g));
+  }
+
+  // Cheek walls either side, following the rake of the flight.
+  for (const sx of [x0 - 0.9, x1 + 0.9]) {
+    for (let i = 0; i < steps; i++) {
+      const top = (i + 1) * rise + 0.75;
+      const z1 = zBot - i * tread;
+      const g = new THREE.BoxGeometry(1.8, top + 0.3, tread);
+      g.translate(sx, (top + 0.3) / 2 - 0.3, z1 - tread / 2);
+      parts.push(norm(g));
+    }
+  }
+  return mergeGeometries(parts);
+}
+
+/**
+ * The low wall around the edge of the deck. It follows the notch as well, so
+ * it flanks the stair without being placed by hand.
+ */
+function plazaParapet(poly, level, stair, height = 1.05, thick = 0.55) {
+  // The head of the flight is an edge of the plaza outline like any other, so
+  // without this the wall runs straight across the top of the steps and seals
+  // them off.
+  const isOpening = (p0, p1) => stair &&
+    Math.abs(p0[1] - stair.z_top) < 0.5 && Math.abs(p1[1] - stair.z_top) < 0.5 &&
+    Math.min(p0[0], p1[0]) >= stair.x0 - 0.5 &&
+    Math.max(p0[0], p1[0]) <= stair.x1 + 0.5;
+
+  let a = 0;
+  for (let i = 0; i < poly.length; i++) {
+    const [x0, z0] = poly[i];
+    const [x1, z1] = poly[(i + 1) % poly.length];
+    a += x0 * z1 - x1 * z0;
+  }
+  const inward = a > 0 ? -1 : 1;           // opposite the outward normal
+
+  const parts = [];
+  for (let i = 0; i < poly.length; i++) {
+    const p0 = poly[i], p1 = poly[(i + 1) % poly.length];
+    if (isOpening(p0, p1)) continue;
+    const [x0, z0] = p0;
+    const [x1, z1] = p1;
+    const dx = x1 - x0, dz = z1 - z0;
+    const len = Math.hypot(dx, dz);
+    if (len < 2) continue;
+    const nx = (dz / len) * inward, nz = (-dx / len) * inward;
+    const g = new THREE.BoxGeometry(len, height, thick);
+    g.rotateY(-Math.atan2(dz, dx));
+    g.translate((x0 + x1) / 2 + nx * (thick / 2), level + height / 2,
+                (z0 + z1) / 2 + nz * (thick / 2));
+    parts.push(norm(g));
+  }
+  return parts.length ? mergeGeometries(parts) : null;
+}
+
 /** The Sphere: Fritz Koenig's bronze, on the plaza fountain. */
 function sphere(x, z, y) {
   const g = new THREE.Group();
@@ -483,6 +562,22 @@ export function buildComplex(data) {
   deck.receiveShadow = true;
   deck.name = 'plaza';
   g.add(deck);
+
+  if (data.plaza.stair) {
+    const st = new THREE.Mesh(plazaStair(data.plaza.stair, data.plaza.y),
+                              MATS.plaza);
+    st.castShadow = true; st.receiveShadow = true;
+    st.name = 'plaza-stair';
+    g.add(st);
+  }
+
+  const wall = plazaParapet(data.plaza.p, data.plaza.y, data.plaza.stair);
+  if (wall) {
+    const m = new THREE.Mesh(wall, MATS.plazaWall);
+    m.castShadow = true; m.receiveShadow = true;
+    m.name = 'plaza-parapet';
+    g.add(m);
+  }
 
   // Walls by material, roofs pooled onto the same tar-and-gravel as the rest
   // of the city -- otherwise these read as blank white slabs from above.

@@ -239,7 +239,23 @@ WTC_COMPLEX = [
 ]
 
 # Austin J. Tobin Plaza: the five-acre elevated deck between the buildings.
-PLAZA_POLY = [(-110, -163), (186, -163), (186, 100), (-110, 100)]
+# Austin J. Tobin Plaza, with the Liberty Street stair notched out of its
+# south edge. The plaza stood 4.3 m above the street, and the open frontage on
+# Liberty runs from the east face of 3 WTC to the west face of 4 WTC; the
+# flight is centred on the South Tower within it.
+PLAZA_STAIR = {
+    "x0": 13.0, "x1": 57.0,       # 44 m wide
+    "z_top": 93.0,                # top tread, inside the plaza
+    "z_bottom": 104.0,            # foot of the flight, on the sidewalk
+    "steps": 22,        # 0.20 m risers on 0.50 m treads
+}
+
+PLAZA_POLY = [
+    (-110, -163), (186, -163), (186, 100),
+    (PLAZA_STAIR["x1"], 100), (PLAZA_STAIR["x1"], PLAZA_STAIR["z_top"]),
+    (PLAZA_STAIR["x0"], PLAZA_STAIR["z_top"]), (PLAZA_STAIR["x0"], 100),
+    (-110, 100),
+]
 
 # ---------------------------------------------------------------------------
 # Geometry helpers
@@ -1204,7 +1220,8 @@ def main():
              "c": b["cls"], "n": b["name"], "id": b["id"]}
             for b in WTC_COMPLEX
         ],
-        "plaza": {"p": [[x, z] for x, z in ccw(PLAZA_POLY)], "y": PLAZA_LEVEL},
+        "plaza": {"p": [[x, z] for x, z in ccw(PLAZA_POLY)], "y": PLAZA_LEVEL,
+                  "stair": PLAZA_STAIR},
         "land": land,
         "buildings": buildings,
         "roads": roads,
