@@ -70,6 +70,13 @@ One Liberty Plaza, the Barclay-Vesey Building, and the Deutsche Bank Building
 at 130 Liberty Street — damaged on 9/11 and since demolished, so re-added by
 hand.
 
+**The shoreline.** OpenStreetMap maps tidal water as `natural=coastline`, not
+as water polygons, so the model is built the way the data is: the world is
+sea, and land is drawn on top of it, assembled from the coastline itself.
+That is what gives Manhattan its real outline — the taper to the Battery, the
+pier fingers, the bulkhead lines — along with Governors Island, Liberty
+Island, and the Jersey and Brooklyn waterfronts with their slips.
+
 **Light and water.** The sun is placed from real solar geometry for 40.71° N
 on 11 September, so shadow directions through the day are the ones the site
 actually had. Reflections come from a cube probe rendered over the site, so
@@ -81,7 +88,9 @@ gives water its behaviour: its own dark blue-green looking down, turning to a
 sky mirror at grazing angles. Two normal maps drift across each other at
 different scales and headings — one layer alone only slides, two beating
 against each other read as chop — over a varying roughness map, because real
-water is never uniformly glassy.
+water is never uniformly glassy. A paler shelf runs off every shoreline, and
+a handful of tugs, ferries and barges work the harbour with wakes behind
+them.
 
 ## Accuracy notes
 
@@ -104,10 +113,10 @@ Four things are deliberately not raw OpenStreetMap:
    its retail podium height, which would extrude into a 140 m wide slab.
    Those buildings are modelled as a podium, a slender tower, and a crown.
 3. **Demolished buildings are added back**, in local grid coordinates.
-4. **Roof clutter, street trees and traffic are invented.** They are placed
-   from a fixed seed for plausibility, not from survey, and tested against
-   every building footprint so nothing grows through a wall or parks inside
-   one. Water tanks, stair bulkheads and plane trees are what those roofs and
+4. **Roof clutter, street trees, traffic and harbour vessels are invented.**
+   They are placed from a fixed seed for plausibility, not from survey, and
+   tested against every building footprint, or against the coastline, so
+   nothing grows through a wall, parks inside one, or runs aground. Water tanks, stair bulkheads and plane trees are what those roofs and
    streets had; their exact positions are not claimed. The land across the
    rivers is generic mottling for the same reason — there is no data behind
    it, so it stays deliberately vague rather than inventing a Jersey City
@@ -119,8 +128,8 @@ uniform slab. Those are massing, not survey.
 
 ## Performance
 
-The scene is about 100 draw calls and 259k triangles, and renders in about a
-millisecond a frame on an M2 at 1078 × 1674 once shaders are warm. Detail
+The scene is about 106 draw calls and 273k triangles, and renders in well
+under a millisecond a frame on an M2 at 1078 × 1674 once shaders are warm. Detail
 scales automatically: phones get a smaller shadow map, no bloom and fewer
 cars; desktops get the full set. The preset in use is shown in the panel.
 
@@ -143,6 +152,7 @@ build/
 raw/                  cached Overpass responses
   buildings/roads/      the extracts the build actually reads
   water/green.json
+  coast.json            the coastline, which defines where land is
   pools_geom.json       memorial pool corners — the source of the
                         tower positions and the grid rotation
   mem.json              memorial-area feature dump, for reference

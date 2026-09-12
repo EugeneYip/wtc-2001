@@ -320,3 +320,133 @@ export function traffic(roads, limit = 420, avoid) {
   mesh.name = 'traffic';
   return [mesh];
 }
+
+
+// ---------------------------------------------------------------------------
+// Harbour traffic
+// ---------------------------------------------------------------------------
+
+const HULL = [
+  { l: 34, w: 9,  h: 3.4, house: [7, 4.5, 5], colour: 0x6d2f28 },   // tug
+  { l: 62, w: 13, h: 4.2, house: [16, 6.0, 9], colour: 0xd8842a },  // ferry
+  { l: 88, w: 16, h: 3.0, house: [12, 4.0, 9], colour: 0x3c4a55 },  // barge
+  { l: 46, w: 11, h: 3.6, house: [10, 5.0, 7], colour: 0x2f4f6b },
+];
+
+export const VESSEL_MATS = {
+  hull: new THREE.MeshStandardMaterial({
+    color: 0xffffff, vertexColors: true, roughness: 0.62, metalness: 0.20 }),
+  wake: new THREE.MeshStandardMaterial({
+    color: 0x9fb6bd, roughness: 0.35, metalness: 0.0,
+    transparent: true, opacity: 0.5, depthWrite: false }),
+};
+
+/**
+ * A few vessels working the rivers and the harbour, each with a wake.
+ *
+ * Nothing here is from data. Empty water reads as a painted surface no matter
+ * how well the waves move, and the Hudson and the East River were never
+ * empty. Each one is placed in open water, clear of the shore, and headed
+ * along whichever bearing has the longest clear run -- which lands them in
+ * the channels without having to know anything about the channels.
+ */
+export function vessels(land, count = 16, reach = 2600) {
+  const rand = rng(60611);
+  const water = obstacleIndex(land.map((p) => p.p));
+  const clear = (x, z, margin) => !water.blocked(x, z, margin);
+
+  const runLength = (x, z, ang) => {
+    for (let d = 120; d <= 900; d += 120) {
+      if (water.blocked(x + Math.cos(ang) * d, z + Math.sin(ang) * d, 0)) return d;
+    }
+    return 900;
+  };
+
+  const picks = [];
+  for (let t = 0; t < count * 400 && picks.length < count; t++) {
+    const x = (rand() * 2 - 1) * reach;
+    const z = (rand() * 2 - 1) * reach;
+    if (!clear(x, z, 150)) continue;
+    if (picks.some((p) => Math.hypot(p.x - x, p.z - z) < 260)) continue;
+    // Head along the longest clear bearing, so vessels line up with channels.
+    let best = 0, bestRun = -1;
+    for (let k = 0; k < 12; k++) {
+      const a = (k / 12) * Math.PI * 2;
+      const run = runLength(x, z, a) + runLength(x, z, a + Math.PI);
+      if (run > bestRun) { bestRun = run; best = a; }
+    }
+    picks.push({ x, z, ang: best, kind: HULL[Math.floor(rand() * HULL.length)] });
+  }
+  if (!picks.length) return [];
+
+  const hulls = [];
+  const wakes = [];
+  const col = new THREE.Color();
+
+  for (const { x, z, ang, kind } of picks) {
+    const heading = ang + (rand() < 0.5 ? 0 : Math.PI);
+
+    const hull = new THREE.BoxGeometry(kind.l, kind.h, kind.w);
+    const bow = hull.getAttribute('position');
+    for (let i = 0; i < bow.count; i++) {          // taper the bow
+      if (bow.getX(i) > 0) bow.setZ(i, bow.getZ(i) * 0.45);
+    }
+    hull.rotateY(-heading);
+    hull.translate(x, kind.h / 2 - 1.1, z);
+    col.setHex(kind.colour);
+    hulls.push(paint(norm(hull), col));
+
+    const [hw, hh, hd] = kind.house;
+    const house = new THREE.BoxGeometry(hw, hh, hd);
+    house.rotateY(-heading);
+    house.translate(x - Math.cos(heading) * kind.l * 0.18, kind.h + hh / 2 - 1.1,
+                    z - Math.sin(heading) * kind.l * 0.18);
+    hulls.push(paint(norm(house), col.setHex(0xd7d9d4)));
+
+    // Wake: a wedge widening astern.
+    const len = kind.l * (4 + rand() * 3);
+    const wide = kind.w * 3.2;
+    const bx = x - Math.cos(heading) * kind.l * 0.5;
+    const bz = z - Math.sin(heading) * kind.l * 0.5;
+    const tx = bx - Math.cos(heading) * len;
+    const tz = bz - Math.sin(heading) * len;
+    const px = -Math.sin(heading), pz = Math.cos(heading);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute([
+      bx - px * kind.w * 0.4, 0, bz - pz * kind.w * 0.4,
+      bx + px * kind.w * 0.4, 0, bz + pz * kind.w * 0.4,
+      tx + px * wide, 0, tz + pz * wide,
+      bx - px * kind.w * 0.4, 0, bz - pz * kind.w * 0.4,
+      tx + px * wide, 0, tz + pz * wide,
+      tx - px * wide, 0, tz - pz * wide,
+    ], 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(
+      Array.from({ length: 18 }, (_, i) => (i % 3 === 1 ? 1 : 0)), 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(12), 2));
+    wakes.push(g);
+  }
+
+  const out = [];
+  const hullMesh = new THREE.Mesh(mergeGeometries(hulls), VESSEL_MATS.hull);
+  hullMesh.castShadow = true;
+  hullMesh.name = 'vessels';
+  out.push(hullMesh);
+
+  const wakeMesh = new THREE.Mesh(mergeGeometries(wakes), VESSEL_MATS.wake);
+  wakeMesh.position.y = -0.36;
+  wakeMesh.renderOrder = 1;
+  wakeMesh.name = 'wakes';
+  out.push(wakeMesh);
+  return out;
+}
+
+/** Bake a flat colour into a geometry so hulls can share one draw call. */
+function paint(geo, colour) {
+  const n = geo.getAttribute('position').count;
+  const c = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    c[i * 3] = colour.r; c[i * 3 + 1] = colour.g; c[i * 3 + 2] = colour.b;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(c, 3));
+  return geo;
+}

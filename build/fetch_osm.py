@@ -49,9 +49,14 @@ QUERIES = {
 
     "water": """[out:json][timeout:150];
         (way["natural"="water"](%s);
-         relation["natural"="water"](%s);
-         way["natural"="coastline"](%s););
-        out geom;""" % (WATER_BBOX, WATER_BBOX, WATER_BBOX),
+         relation["natural"="water"](%s););
+        out geom;""" % (WATER_BBOX, WATER_BBOX),
+
+    # The shoreline itself. OSM maps tidal water as coastline, not as water
+    # polygons, so this is what actually defines where Manhattan is.
+    "coast": """[out:json][timeout:180];
+        (way["natural"="coastline"](40.58,-74.22,40.86,-73.82););
+        out geom;""",
 
     "green": """[out:json][timeout:120];
         (way["leisure"="park"](%s);

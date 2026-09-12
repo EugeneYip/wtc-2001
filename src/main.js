@@ -19,7 +19,7 @@ import { UnrealBloomPass } from 'UnrealBloomPass';
 import { OutputPass } from 'OutputPass';
 import { buildCity, cityLabels, animateWater, CITY_MATS, WALL_CLASSES } from './city.js';
 import { buildComplex, MATS as WTC_MATS, PLAZA_TREE_SITES } from './wtc.js';
-import { roofClutter, trees, traffic, obstacleIndex } from './details.js';
+import { roofClutter, trees, traffic, vessels, obstacleIndex } from './details.js';
 
 const DEG = Math.PI / 180;
 const GRID_ROT = 29.11 * DEG;       // Manhattan grid offset from true north
@@ -41,9 +41,9 @@ const clock = new THREE.Clock();
 // ---------------------------------------------------------------------------
 
 const TIERS = {
-  low:    { dpr: 1.5,  shadow: 1024, bloom: false, probe: 128, cars: 140, shadowSpan: 800 },
-  medium: { dpr: 1.75, shadow: 2048, bloom: true,  probe: 192, cars: 300, shadowSpan: 950 },
-  high:   { dpr: 2.0,  shadow: 4096, bloom: true,  probe: 256, cars: 460, shadowSpan: 1050 },
+  low:    { dpr: 1.5,  shadow: 1024, bloom: false, probe: 128, cars: 140, boats: 8,  shadowSpan: 800 },
+  medium: { dpr: 1.75, shadow: 2048, bloom: true,  probe: 192, cars: 300, boats: 14, shadowSpan: 950 },
+  high:   { dpr: 2.0,  shadow: 4096, bloom: true,  probe: 256, cars: 460, boats: 18, shadowSpan: 1050 },
 };
 
 function detectQuality() {
@@ -442,6 +442,7 @@ async function init() {
     detail.add(m);
   }
   for (const m of traffic(data.roads, tier.cars, footprints)) detail.add(m);
+  for (const m of vessels(data.land || [], tier.boats)) detail.add(m);
   scene.add(detail);
 
   // Reflection probe, over the plaza and above the low-rise roofline.

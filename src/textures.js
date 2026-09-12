@@ -350,12 +350,12 @@ export function landTexture() {
   const BROWN = [98, 93, 84];
 
   for (let i = 0; i < N * N; i++) {
-    const u = Math.min(1, Math.max(0, (urban[i] - 0.12) * 2.4));  // built-up
+    const u = Math.min(1, Math.max(0, (urban[i] - 0.20) * 2.0));  // built-up
     const g = base[i];
     const warm = Math.min(1, Math.max(0, (g - 0.45) * 2.4));
     let col = GREEN.map((v, k) => v + (BROWN[k] - v) * warm);
     col = col.map((v, k) => v + (GREY[k] - v) * u);
-    const shade = 0.88 + g * 0.22;
+    const shade = 0.76 + g * 0.50;
     img.data[i * 4] = Math.min(255, col[0] * shade);
     img.data[i * 4 + 1] = Math.min(255, col[1] * shade);
     img.data[i * 4 + 2] = Math.min(255, col[2] * shade);

@@ -30,16 +30,10 @@ export const CITY_MATS = {
 
   roof: new THREE.MeshStandardMaterial({
     map: roofTexture(), roughness: 0.93, metalness: 0.02 }),
-  // Everything that is not Manhattan: New Jersey and Brooklyn, kilometres off
-  // and mostly haze. Generic land mottling, not invented buildings.
-  //
-  // The rivers sit only 150 mm above this plane, which is far below depth
-  // precision a couple of kilometres out, so the ground would z-fight the
-  // water and win. Polygon offset biases it away from the camera by a few
-  // depth units, which scale with the local precision, so water always wins.
+  // Land: Manhattan itself and everything across the rivers. Generic mottling
+  // beyond the mapped blocks, not invented buildings.
   ground: new THREE.MeshStandardMaterial({
-    map: landTexture(), roughness: 0.98, metalness: 0.0,
-    polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 8 }),
+    map: landTexture(), color: 0xb4b7b0, roughness: 0.98, metalness: 0.0 }),
   road: new THREE.MeshStandardMaterial({
     map: roadTexture(), color: 0xb9b7af, roughness: 0.9, metalness: 0.0 }),
   roadMinor: new THREE.MeshStandardMaterial({
@@ -47,7 +41,20 @@ export const CITY_MATS = {
   park: new THREE.MeshStandardMaterial({
     color: 0x3d5130, roughness: 0.95, metalness: 0.0 }),
   water: makeWater(),
+  // The shelf off every shoreline: same water, lighter and choppier.
+  shallows: new THREE.MeshStandardMaterial({
+    color: 0x2c4d58, metalness: 0.02, roughness: 0.42,
+    normalMap: waterNormal(4451),
+    normalScale: new THREE.Vector2(0.9, 0.9),
+    envMapIntensity: 1.0,
+  }),
 };
+
+// The sea sits only a couple of hundred millimetres under the land, which is
+// below depth precision out at the horizon. Bias it away so land always wins.
+CITY_MATS.water.polygonOffset = true;
+CITY_MATS.water.polygonOffsetFactor = 1;
+CITY_MATS.water.polygonOffsetUnits = 6;
 
 /**
  * River surface.
@@ -70,7 +77,7 @@ function makeWater() {
     roughness: 0.22,
     roughnessMap: waterRoughness(),
     normalMap: near,
-    normalScale: new THREE.Vector2(0.55, 0.55),
+    normalScale: new THREE.Vector2(0.78, 0.78),
     envMapIntensity: 1.15,
   });
 
@@ -108,8 +115,10 @@ function makeWater() {
         // Flatten the chop with distance. Mipmapping smooths the normal map
         // but not the specular lobe it drives, so far water otherwise breaks
         // into a crawling stipple of aliased highlights.
-        float far = smoothstep( 400.0, 2600.0, length( vViewPosition ) );
-        mapN = normalize( mix( mapN, vec3( 0.0, 0.0, 1.0 ), far * 0.7 ) );
+        // Hold the chop much further out than the roughness ramp needs, so
+        // the river still moves at the distances the camera actually sits at.
+        float far = smoothstep( 900.0, 5000.0, length( vViewPosition ) );
+        mapN = normalize( mix( mapN, vec3( 0.0, 0.0, 1.0 ), far * 0.55 ) );
         normal = normalize( tbn * mapN );
       `);
 
@@ -119,12 +128,62 @@ function makeWater() {
   return m;
 }
 
+/**
+ * A paler band of shallow water just off every shoreline.
+ *
+ * A hard line between land and open water reads as a cut-out. Real coast has
+ * a rim of lighter, broken water where it shelves, and that rim is most of
+ * what makes a coastline look alive from the air. Built as a ribbon along
+ * each land edge rather than by offsetting the polygon, which for a shape
+ * like Manhattan would be a great deal of work for the same result.
+ */
+function shallows(landPolys, width = 26) {
+  const geos = [];
+  for (const { p } of landPolys) {
+    // Signed area fixes which side of an edge faces the water.
+    let a = 0;
+    for (let i = 0; i < p.length; i++) {
+      const [x0, z0] = p[i];
+      const [x1, z1] = p[(i + 1) % p.length];
+      a += x0 * z1 - x1 * z0;
+    }
+    const out = a > 0 ? 1 : -1;
+
+    const pos = [];
+    for (let i = 0; i < p.length; i++) {
+      const [x0, z0] = p[i];
+      const [x1, z1] = p[(i + 1) % p.length];
+      const dx = x1 - x0, dz = z1 - z0;
+      const len = Math.hypot(dx, dz);
+      if (len < 1.5) continue;
+      const nx = (dz / len) * out * width;
+      const nz = (-dx / len) * out * width;
+      const ax = x0 + nx, az = z0 + nz;
+      const bx = x1 + nx, bz = z1 + nz;
+      // Two triangles, wound so they face up.
+      pos.push(x0, 0, z0, bx, 0, bz, x1, 0, z1);
+      pos.push(x0, 0, z0, ax, 0, az, bx, 0, bz);
+    }
+    if (!pos.length) continue;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    const n = pos.length / 3;
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(
+      Array.from({ length: n * 3 }, (_, i) => (i % 3 === 1 ? 1 : 0)), 3));
+    const uv = [];
+    for (let i = 0; i < n; i++) uv.push(pos[i * 3], pos[i * 3 + 2]);
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    geos.push(g);
+  }
+  return geos.length ? mergeGeometries(geos) : null;
+}
+
 /** Drift the two wave layers. Called once a frame. */
 export function animateWater(t) {
   const m = CITY_MATS.water;
-  m.normalMap.offset.set(t * 0.0021, t * 0.0011);
+  m.normalMap.offset.set(t * 0.0038, t * 0.0021);
   const sh = m.userData.shader;
-  if (sh) sh.uniforms.normalMap2Offset.value.set(-t * 0.0016, t * 0.0027);
+  if (sh) sh.uniforms.normalMap2Offset.value.set(-t * 0.0029, t * 0.0047);
 }
 
 // The classes that get a textured facade and lit windows after dark.
@@ -283,15 +342,24 @@ export function buildCity(data) {
   const g = new THREE.Group();
   g.name = 'city';
 
-  // Far larger than the fog reaches, so its own edge is never on the horizon.
-  const GROUND = 64000;
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(GROUND, GROUND), CITY_MATS.ground);
-  CITY_MATS.ground.map.repeat.setScalar(GROUND / LAND_TILE_M);
-  ground.rotation.x = -Math.PI / 2;
-  ground.position.y = -0.4;
-  ground.receiveShadow = true;
-  ground.name = 'ground';
-  g.add(ground);
+  // The world is sea, and land is drawn on top of it. The shoreline around
+  // New York is mapped as coastline rather than as water polygons, so
+  // painting water over a land plane got Manhattan's shape from the edges of
+  // river-channel polygons instead of from the coast.
+  const SEA = 64000;
+  const seaGeo = new THREE.PlaneGeometry(SEA, SEA);
+  // Plane UVs run 0..1; scale them to metres so the wave textures, which
+  // repeat in world units, tile correctly across it.
+  const suv = seaGeo.getAttribute('uv');
+  for (let i = 0; i < suv.count; i++) {
+    suv.setXY(i, suv.getX(i) * SEA, suv.getY(i) * SEA);
+  }
+  const sea = new THREE.Mesh(seaGeo, CITY_MATS.water);
+  sea.rotation.x = -Math.PI / 2;
+  sea.position.y = -0.55;
+  sea.receiveShadow = true;
+  sea.name = 'water';
+  g.add(sea);
 
   const layer = (polys, y, mat, name) => {
     const geos = polys.map((p) => flat(p.p, y, p.h)).filter(Boolean);
@@ -302,8 +370,22 @@ export function buildCity(data) {
     g.add(m);
     return m;
   };
-  const water = layer(data.water, -0.25, CITY_MATS.water, 'water');
-  layer(data.parks, -0.12, CITY_MATS.park, 'parks');
+
+  // ShapeGeometry gives these world-scale UVs, so the land texture tiles in
+  // metres without any plane-size fudge.
+  CITY_MATS.ground.map.repeat.setScalar(1 / LAND_TILE_M);
+
+  const shelf = shallows(data.land || []);
+  if (shelf) {
+    const m = new THREE.Mesh(shelf, CITY_MATS.shallows);
+    m.position.y = -0.44;
+    m.receiveShadow = true;
+    m.name = 'shallows';
+    g.add(m);
+  }
+  layer(data.land || [], -0.30, CITY_MATS.ground, 'land');
+  layer(data.water, -0.22, CITY_MATS.water, 'inland-water');
+  layer(data.parks, -0.16, CITY_MATS.park, 'parks');
 
   // Streets, as flat ribbons with world-scale UVs so the asphalt tiles evenly.
   for (const kind of ['major', 'minor']) {
@@ -329,7 +411,7 @@ export function buildCity(data) {
     if (!geos.length) continue;
     const m = new THREE.Mesh(mergeGeometries(geos),
       kind === 'major' ? CITY_MATS.road : CITY_MATS.roadMinor);
-    m.position.y = kind === 'major' ? -0.05 : -0.08;
+    m.position.y = kind === 'major' ? -0.08 : -0.11;
     m.receiveShadow = true;
     m.name = 'roads-' + kind;
     g.add(m);
@@ -375,7 +457,7 @@ export function buildCity(data) {
     g.add(m);
   }
 
-  return { group: g, water };
+  return { group: g, water: sea };
 }
 
 /** Named buildings tall enough to be worth a label. */

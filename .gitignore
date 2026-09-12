@@ -3,3 +3,5 @@
 node_modules/
 _site/
 .claude/
+__pycache__/
+*.pyc

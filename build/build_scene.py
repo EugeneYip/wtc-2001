@@ -24,6 +24,7 @@ Liberty Street), origin midway between the two tower centres.
 import json
 import math
 import os
+import random
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -632,25 +633,526 @@ def point_in(pt, poly):
     return hit
 
 
+# ---------------------------------------------------------------------------
+# Coastline -> land
+# ---------------------------------------------------------------------------
+#
+# The shoreline around New York is mapped in OpenStreetMap as `natural=
+# coastline`, not as water polygons. Drawing water polygons over a land plane
+# therefore got Manhattan's shape from the edges of river-channel polygons,
+# which left the East River missing entirely and the Hudson's edge ragged.
+#
+# This inverts the model: the world is sea, and land is drawn on top of it,
+# assembled from the coastline itself. The OSM convention is that a coastline
+# way runs with land on its left and water on its right, so stitched rings
+# come out counter-clockwise around land.
+
+LAND_CLIP = 14000.0
+
+
+def _stitch_chains(ways):
+    """Join coastline ways end to end into chains.
+
+    OSM coastline ways are all directed the same way round (land on the left),
+    so a chain is built by following tail to head only; nothing is ever
+    reversed. Chains are grown from the ways that no other way feeds into, so
+    a chain is never started from its middle, and whatever is left over after
+    that is a closed loop.
+    """
+    from collections import defaultdict
+
+    def key(p):
+        return (round(p[0], 6), round(p[1], 6))
+
+    segs = [list(w) for w in ways if len(w) > 1]
+    by_head = defaultdict(list)
+    tails = set()
+    for i, w in enumerate(segs):
+        by_head[key(w[0])].append(i)
+        tails.add(key(w[-1]))
+
+    used = [False] * len(segs)
+    closed, open_ = [], []
+
+    def grow(i):
+        used[i] = True
+        chain = list(segs[i])
+        while True:
+            nxt = next((j for j in by_head.get(key(chain[-1]), ()) if not used[j]),
+                       None)
+            if nxt is None:
+                break
+            used[nxt] = True
+            chain.extend(segs[nxt][1:])
+            if key(chain[0]) == key(chain[-1]):
+                break
+        return chain
+
+    # Open chains first: a way whose head nothing feeds into starts one.
+    for i, w in enumerate(segs):
+        if used[i] or key(w[0]) in tails:
+            continue
+        open_.append(grow(i))
+
+    # Anything still unused belongs to a closed loop.
+    for i in range(len(segs)):
+        if used[i]:
+            continue
+        chain = grow(i)
+        if len(chain) > 3 and key(chain[0]) == key(chain[-1]):
+            closed.append(chain[:-1])
+        else:
+            open_.append(chain)
+
+    return closed, open_
+
+
+def _clip_polyline(pts, R):
+    """Split a polyline into the runs that lie inside the box, with the
+    crossings placed exactly on the boundary."""
+    def inside(p):
+        return -R <= p[0] <= R and -R <= p[1] <= R
+
+    def cross(a, b):
+        # Walk the segment and bisect onto the boundary. Cheap and exact enough
+        # at these scales.
+        lo, hi = 0.0, 1.0
+        for _ in range(40):
+            mid = (lo + hi) / 2
+            m = (a[0] + (b[0] - a[0]) * mid, a[1] + (b[1] - a[1]) * mid)
+            if inside(m):
+                lo = mid
+            else:
+                hi = mid
+        t = lo
+        return (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)
+
+    runs, cur = [], []
+    for i, p in enumerate(pts):
+        if inside(p):
+            if not cur and i > 0:
+                cur.append(cross(p, pts[i - 1]))
+            cur.append(p)
+        else:
+            if cur:
+                cur.append(cross(cur[-1], p))
+                if len(cur) > 1:
+                    runs.append(cur)
+                cur = []
+    if len(cur) > 1:
+        runs.append(cur)
+    return runs
+
+
+def _perimeter_t(p, R):
+    """Position of a boundary point on the box perimeter, in [0, 4).
+    The box is walked counter-clockwise: bottom, right, top, left."""
+    x, y = p
+    e = R * 1e-6 + 0.5
+    if abs(y + R) <= e:
+        return 0.0 + (x + R) / (2 * R)
+    if abs(x - R) <= e:
+        return 1.0 + (y + R) / (2 * R)
+    if abs(y - R) <= e:
+        return 2.0 + (R - x) / (2 * R)
+    return 3.0 + (R - y) / (2 * R)
+
+
+def _corners(t0, t1, R, ccw=True):
+    """Corner points crossed walking round the box from t0 to t1."""
+    corner = {0: (-R, -R), 1: (R, -R), 2: (R, R), 3: (-R, R)}
+    pts = []
+    t = t0
+    span = (t1 - t0) % 4.0 if ccw else (t0 - t1) % 4.0
+    walked = 0.0
+    for _ in range(8):
+        if ccw:
+            nxt = math.floor(t) + 1.0
+            step = (nxt - t) % 4.0 or 4.0
+        else:
+            nxt = math.ceil(t) - 1.0
+            step = (t - nxt) % 4.0 or 4.0
+        if walked + step >= span:
+            break
+        walked += step
+        t = nxt % 4.0
+        pts.append(corner[int(round(t)) % 4] if ccw else corner[int(round(t)) % 4])
+    return pts
+
+
+def _point_in(pt, poly):
+    x, y = pt
+    hit = False
+    for i in range(len(poly)):
+        x0, y0 = poly[i]
+        x1, y1 = poly[i - 1]
+        if (y0 > y) != (y1 > y) and x < (x1 - x0) * (y - y0) / (y1 - y0) + x0:
+            hit = not hit
+    return hit
+
+
+def _land_probe(run):
+    """A point a few metres to the left of the run's first segment, which by
+    the OSM coastline convention is on land."""
+    (ax, ay), (bx, by) = run[0], run[1]
+    dx, dy = bx - ax, by - ay
+    n = math.hypot(dx, dy) or 1.0
+    return ((ax + bx) / 2 - dy / n * 6.0, (ay + by) / 2 + dx / n * 6.0)
+
+
+def _water_oracle():
+    """Large `natural=water` bodies, in (x, y) with y north, as a check on
+    which side of a coastline is actually wet.
+
+    These polygons are too coarse to define a shoreline but they are perfectly
+    reliable in open water, which is all that is needed to tell a land ring
+    from its complement.
+    """
+    bodies = []
+    for e in load("water.json"):
+        if e.get("tags", {}).get("natural") != "water":
+            continue
+        outers, _ = rings_from(e)
+        for ring in outers:
+            poly = [(x, -z) for x, z in
+                    (project(la, lo) for la, lo in ring)]
+            if len(poly) < 4:
+                continue
+            poly = simplify(poly, 25.0)
+            if len(poly) < 3 or _ring_area(poly) < 250000:
+                continue
+            xs = [p[0] for p in poly]
+            ys = [p[1] for p in poly]
+            bodies.append((min(xs), max(xs), min(ys), max(ys), poly))
+    return bodies
+
+
+def _is_wet(pt, oracle):
+    x, y = pt
+    for x0, x1, y0, y1, poly in oracle:
+        if x0 <= x <= x1 and y0 <= y <= y1 and _point_in(pt, poly):
+            return True
+    return False
+
+
+def _wet_fraction(ring, oracle, samples=80):
+    """Roughly how much of a ring's interior sits in known open water."""
+    xs = [p[0] for p in ring]
+    ys = [p[1] for p in ring]
+    x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
+    rnd = random.Random(12345)
+    inside_n = wet = 0
+    for _ in range(samples * 12):
+        if inside_n >= samples:
+            break
+        p = (rnd.uniform(x0, x1), rnd.uniform(y0, y1))
+        if not _point_in(p, ring):
+            continue
+        inside_n += 1
+        if _is_wet(p, oracle):
+            wet += 1
+    return (wet / inside_n) if inside_n else 0.0
+
+
+def _ring_area(poly):
+    a = 0.0
+    for i in range(len(poly)):
+        x0, y0 = poly[i]
+        x1, y1 = poly[(i + 1) % len(poly)]
+        a += x0 * y1 - x1 * y0
+    return abs(a) / 2.0
+
+
+def _close_run(run, R, oracle):
+    """Close an open coastline run against the box, on its land side.
+
+    Both ways round the box are built and the one that encloses the land is
+    kept, decided locally from the coastline direction rather than from any
+    global winding convention.
+
+    The two closures of a run partition the box between them, so a wrong pick
+    yields "the whole box minus a sliver". Runs that merely clip a corner are
+    too short to decide reliably and are dropped; anything that still comes
+    out covering most of the box is rejected in favour of its complement.
+    """
+    if len(run) < 3:
+        return None
+    length = sum(math.dist(run[i], run[i + 1]) for i in range(len(run) - 1))
+    if length < 250.0:
+        return None
+
+    t_end = _perimeter_t(run[-1], R)
+    t_start = _perimeter_t(run[0], R)
+    box_area = (2.0 * R) ** 2
+    probe = _land_probe(run)
+
+    cands = []
+    for ccw in (True, False):
+        ring = run + _corners(t_end, t_start, R, ccw)
+        if len(ring) > 3:
+            cands.append(ring)
+    if not cands:
+        return None
+
+    ordered = [r for r in cands if _point_in(probe, r)]
+    ordered += [r for r in cands if r not in ordered]
+    ordered = [r for r in ordered if _ring_area(r) <= 0.6 * box_area]
+    if not ordered:
+        return None
+    # The local land-on-the-left test is right near the site but goes wrong on
+    # runs that skim the box, so confirm against the water data and take
+    # whichever closure is actually the drier one.
+    best, best_wet = None, 1.1
+    for ring in ordered:
+        w = _wet_fraction(ring, oracle)
+        if w < best_wet:
+            best, best_wet = ring, w
+    return best if best_wet < 0.45 else None
+
+
+def build_land():
+    """Land polygons, assembled from the coastline.
+
+    Every ring produced here encloses land, so rings may overlap freely and no
+    nesting has to be worked out: the harbour and the rivers are simply where
+    no ring covers.
+    """
+    ways = []
+    for e in load("coast.json"):
+        g = e.get("geometry")
+        if not g or len(g) < 2:
+            continue
+        # (x, y) with y north, so "left of the way" is a plain +90 rotation.
+        ways.append([(x, -z) for x, z in
+                     (project(p["lat"], p["lon"]) for p in g)])
+
+    closed, open_ = _stitch_chains(ways)
+    oracle = _water_oracle()
+    R = LAND_CLIP
+    rings = []
+    dropped = 0
+
+    for ring in closed:
+        runs = _clip_polyline(ring + [ring[0]], R)
+        if len(runs) == 1 and len(runs[0]) > 3 and \
+           math.dist(runs[0][0], runs[0][-1]) < 1.0:
+            island = runs[0][:-1]
+            # A closed coastline ring is land unless it is drawn the other way
+            # round, which would make it a hole; none are expected here.
+            if (_point_in(_land_probe(island), island)
+                    and _wet_fraction(island, oracle) < 0.45):
+                rings.append(island)
+            else:
+                dropped += 1
+        else:
+            open_.extend([r for r in runs if len(r) > 1])
+
+    for chain in open_:
+        for run in _clip_polyline(chain, R):
+            ring = _close_run(run, R, oracle)
+            if ring:
+                rings.append(ring)
+
+    out = []
+    for ring in rings:
+        poly = [(x, -y) for x, y in ring]          # back to (x, z), z south
+        poly = simplify(poly, 4.0)
+        if len(poly) < 3 or area_of(poly) < 4000:
+            continue
+        out.append({"p": [[round(x, 1), round(z, 1)] for x, z in ccw(poly)]})
+
+    pts = sum(len(p["p"]) for p in out)
+    print("  land polygons         : %d  (%d points, %d reversed rings dropped)"
+          % (len(out), pts, dropped))
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Water and open space
+# ---------------------------------------------------------------------------
+
+# The rivers run far past the site. This sits beyond the fog limit, so the
+# edge of the extract is never visible.
+WATER_CLIP = 14000.0
+
+
+def clip_ring(poly, limit):
+    """Clamp a ring into a box. Coarse, but these are flat distant polygons."""
+    out = [(max(-limit, min(limit, x)), max(-limit, min(limit, z))) for x, z in poly]
+    dedup = [out[0]]
+    for p in out[1:]:
+        if abs(p[0] - dedup[-1][0]) > 0.5 or abs(p[1] - dedup[-1][1]) > 0.5:
+            dedup.append(p)
+    return dedup
+
+
+def prep(ring, tol, limit=None):
+    poly = [project(la, lo) for la, lo in ring]
+    if poly and poly[0] == poly[-1]:
+        poly.pop()
+    if limit:
+        poly = clip_ring(poly, limit)
+    poly = simplify(poly, tol)
+    return poly if len(poly) >= 3 else None
+
+
+def point_in(pt, poly):
+    x, z = pt
+    hit = False
+    for i in range(len(poly)):
+        x0, z0 = poly[i]
+        x1, z1 = poly[i - 1]
+        if (z0 > z) != (z1 > z) and x < (x1 - x0) * (z - z0) / (z1 - z0) + x0:
+            hit = not hit
+    return hit
+
+
+# ---------------------------------------------------------------------------
+# Coastline -> land
+# ---------------------------------------------------------------------------
+#
+# The shoreline around New York is mapped in OpenStreetMap as `natural=
+# coastline`, not as water polygons. Drawing water polygons over a land plane
+# therefore got Manhattan's shape from the edges of river-channel polygons,
+# which left the East River missing entirely and the Hudson's edge ragged.
+#
+# This inverts the model: the world is sea, and land is drawn on top of it,
+# assembled from the coastline itself. The OSM convention is that a coastline
+# way runs with land on its left and water on its right, so stitched rings
+# come out counter-clockwise around land.
+
+LAND_CLIP = 14000.0
+
+
+def _stitch_chains(ways):
+    """Join coastline ways end to end into chains.
+
+    OSM coastline ways are all directed the same way round (land on the left),
+    so a chain is built by following tail to head only; nothing is ever
+    reversed. Chains are grown from the ways that no other way feeds into, so
+    a chain is never started from its middle, and whatever is left over after
+    that is a closed loop.
+    """
+    from collections import defaultdict
+
+    def key(p):
+        return (round(p[0], 6), round(p[1], 6))
+
+    segs = [list(w) for w in ways if len(w) > 1]
+    by_head = defaultdict(list)
+    tails = set()
+    for i, w in enumerate(segs):
+        by_head[key(w[0])].append(i)
+        tails.add(key(w[-1]))
+
+    used = [False] * len(segs)
+    closed, open_ = [], []
+
+    def grow(i):
+        used[i] = True
+        chain = list(segs[i])
+        while True:
+            nxt = next((j for j in by_head.get(key(chain[-1]), ()) if not used[j]),
+                       None)
+            if nxt is None:
+                break
+            used[nxt] = True
+            chain.extend(segs[nxt][1:])
+            if key(chain[0]) == key(chain[-1]):
+                break
+        return chain
+
+    # Open chains first: a way whose head nothing feeds into starts one.
+    for i, w in enumerate(segs):
+        if used[i] or key(w[0]) in tails:
+            continue
+        open_.append(grow(i))
+
+    # Anything still unused belongs to a closed loop.
+    for i in range(len(segs)):
+        if used[i]:
+            continue
+        chain = grow(i)
+        if len(chain) > 3 and key(chain[0]) == key(chain[-1]):
+            closed.append(chain[:-1])
+        else:
+            open_.append(chain)
+
+    return closed, open_
+
+
+def _clip_polyline(pts, R):
+    """Split a polyline into the runs that lie inside the box, with the
+    crossings placed exactly on the boundary."""
+    def inside(p):
+        return -R <= p[0] <= R and -R <= p[1] <= R
+
+    def cross(a, b):
+        # Walk the segment and bisect onto the boundary. Cheap and exact enough
+        # at these scales.
+        lo, hi = 0.0, 1.0
+        for _ in range(40):
+            mid = (lo + hi) / 2
+            m = (a[0] + (b[0] - a[0]) * mid, a[1] + (b[1] - a[1]) * mid)
+            if inside(m):
+                lo = mid
+            else:
+                hi = mid
+        t = lo
+        return (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)
+
+    runs, cur = [], []
+    for i, p in enumerate(pts):
+        if inside(p):
+            if not cur and i > 0:
+                cur.append(cross(p, pts[i - 1]))
+            cur.append(p)
+        else:
+            if cur:
+                cur.append(cross(cur[-1], p))
+                if len(cur) > 1:
+                    runs.append(cur)
+                cur = []
+    if len(cur) > 1:
+        runs.append(cur)
+    return runs
+
+
+def _perimeter_t(p, R):
+    """Position of a boundary point on the box perimeter, in [0, 4).
+    The box is walked counter-clockwise: bottom, right, top, left."""
+    x, y = p
+    e = R * 1e-6 + 0.5
+    if abs(y + R) <= e:
+        return 0.0 + (x + R) / (2 * R)
+    if abs(x - R) <= e:
+        return 1.0 + (y + R) / (2 * R)
+    if abs(y - R) <= e:
+        return 2.0 + (R - x) / (2 * R)
+    return 3.0 + (R - y) / (2 * R)
+
+
 def build_areas():
-    """Water, with islands kept as holes so they do not end up submerged."""
+    """Inland water only.
+
+    The rivers and the harbour are now simply where the land polygons are not,
+    so the big `natural=water` bodies would only z-fight the sea plane. What
+    is left worth keeping is the basins cut into the land, above all North
+    Cove at the World Financial Center.
+    """
     water = []
     for e in load("water.json"):
         tags = e.get("tags", {})
         if tags.get("natural") != "water":
             continue
-        outers, inners = rings_from(e)
-        outs = [p for p in (prep(r, 14.0, WATER_CLIP) for r in outers) if p]
-        ins = [p for p in (prep(r, 14.0, WATER_CLIP) for r in inners) if p]
-        for o in outs:
-            if area_of(o) < 12000:
+        outers, _ = rings_from(e)
+        for o in (prep(r, 2.0, 3000.0) for r in outers):
+            if not o:
                 continue
-            holes = [h for h in ins if area_of(h) > 12000 and point_in(h[0], o)]
-            rec = {"p": [[round(x, 1), round(z, 1)] for x, z in ccw(o)]}
-            if holes:
-                rec["h"] = [[[round(x, 1), round(z, 1)] for x, z in ccw(h)[::-1]]
-                            for h in holes]
-            water.append(rec)
+            a = area_of(o)
+            if a < 1200 or a > 200000:      # ponds and basins, not rivers
+                continue
+            water.append({"p": [[round(x, 1), round(z, 1)] for x, z in ccw(o)]})
 
     parks = []
     for e in load("green.json"):
@@ -659,8 +1161,7 @@ def build_areas():
             continue
         parks.append({"p": [[round(x, 1), round(z, 1)] for x, z in ccw(poly)]})
 
-    pts = sum(len(w["p"]) + sum(len(h) for h in w.get("h", [])) for w in water)
-    print("  water polygons        : %d  (%d points)" % (len(water), pts))
+    print("  inland water          : %d" % len(water))
     print("  park polygons         : %d" % len(parks))
     return water, parks
 
@@ -680,6 +1181,7 @@ def main():
 
     roads = build_roads()
     water, parks = build_areas()
+    land = build_land()
 
     scene = {
         "meta": {
@@ -703,6 +1205,7 @@ def main():
             for b in WTC_COMPLEX
         ],
         "plaza": {"p": [[x, z] for x, z in ccw(PLAZA_POLY)], "y": PLAZA_LEVEL},
+        "land": land,
         "buildings": buildings,
         "roads": roads,
         "water": water,

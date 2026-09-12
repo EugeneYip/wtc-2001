@@ -2,8 +2,10 @@
 
 ## Data
 
-Building footprints, street centrelines, water bodies and parks are extracted
-from **OpenStreetMap** via the Overpass API. © OpenStreetMap contributors,
+Building footprints, street centrelines, the coastline, water bodies and
+parks are extracted from **OpenStreetMap** via the Overpass API. The land
+masses — Manhattan, the islands in the harbour, and the Jersey and Brooklyn
+shores — are assembled from the `natural=coastline` ways. © OpenStreetMap contributors,
 licensed under the [Open Database License](https://www.openstreetmap.org/copyright).
 The cached extracts in `raw/` and the derived `data/city.json` carry the same
 licence.
@@ -31,5 +33,5 @@ dimensions and historic site plans, and any error in them is mine:
 - Height and massing corrections for the World Financial Center, the
   Woolworth Building and the Barclay-Vesey Building
 
-Roof clutter, street trees and traffic are procedurally placed for
-plausibility and are not survey data.
+Roof clutter, street trees, traffic and the harbour vessels are procedurally
+placed for plausibility and are not survey data.
