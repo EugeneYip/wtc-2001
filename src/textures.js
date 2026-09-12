@@ -205,18 +205,77 @@ export function plazaTexture() {
   return finish(c, 1 / 12, 1 / 12, 4);
 }
 
-/** Asphalt, with a worn centre-of-lane sheen. */
-export function roadTexture() {
-  const [c, x] = canvas(128, 128);
+/**
+ * Carriageway, as a cross-section.
+ *
+ * u runs across the road (0 to 1, kerb to kerb) and v along it in metres, so
+ * the markings sit at fixed positions across the width whatever the street
+ * is, and the asphalt still tiles along its length.
+ */
+export function roadTexture(marked) {
+  const W = 128, H = 256;                   // across, along
+  const [c, x] = canvas(W, H);
   const rand = rng(617);
-  x.fillStyle = '#32312d';
-  x.fillRect(0, 0, 128, 128);
-  for (let i = 0; i < 4000; i++) {
-    const g = 30 + Math.floor(rand() * 40);
-    x.fillStyle = `rgba(${g},${g},${g - 2},${0.2 + rand() * 0.4})`;
-    x.fillRect(rand() * 128, rand() * 128, 1 + rand() * 2, 1);
+  x.fillStyle = '#34332f';
+  x.fillRect(0, 0, W, H);
+  for (let i = 0; i < 7000; i++) {
+    const g = 32 + Math.floor(rand() * 42);
+    x.fillStyle = `rgba(${g},${g},${g - 2},${0.18 + rand() * 0.4})`;
+    x.fillRect(rand() * W, rand() * H, 1 + rand() * 2, 1);
   }
-  return finish(c, 1 / 11, 1 / 11, 4);
+  // Darker wheel tracks either side of the crown.
+  x.fillStyle = 'rgba(20,20,19,0.16)';
+  for (const u of [0.28, 0.72]) x.fillRect(u * W - 7, 0, 14, H);
+  // Gutters. The kerb is not geometry, so the shadow line at the edge of the
+  // carriageway has to come from here.
+  const gut = x.createLinearGradient(0, 0, W, 0);
+  gut.addColorStop(0.00, 'rgba(12,12,11,0.75)');
+  gut.addColorStop(0.05, 'rgba(12,12,11,0.12)');
+  gut.addColorStop(0.95, 'rgba(12,12,11,0.12)');
+  gut.addColorStop(1.00, 'rgba(12,12,11,0.75)');
+  x.fillStyle = gut;
+  x.fillRect(0, 0, W, H);
+
+  if (marked) {
+    // Dashed white lane lines. Most of this grid ran one way, so white
+    // dashes are the typical marking here rather than a double yellow.
+    // The tile is 12 m along, so one dash and one gap per tile.
+    x.fillStyle = 'rgba(214,214,206,0.80)';
+    for (const u of [0.34, 0.66]) x.fillRect(u * W - 1.2, 0, 2.4, H * 0.55);
+    // Solid edge lines, kept inboard of the gutter.
+    x.fillStyle = 'rgba(206,206,198,0.45)';
+    x.fillRect(W * 0.075, 0, 2, H);
+    x.fillRect(W * 0.925 - 2, 0, 2, H);
+  }
+
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.repeat.set(1, 1 / 12);                  // across once, along every 12 m
+  t.anisotropy = 8;
+  return t;
+}
+
+/** Sidewalk: concrete flags with joints, scored every 1.5 m. */
+export function sidewalkTexture() {
+  const N = 256;
+  const [c, x] = canvas(N, N);
+  const rand = rng(8821);
+  x.fillStyle = '#8e8d87';
+  x.fillRect(0, 0, N, N);
+  for (let i = 0; i < 9000; i++) {
+    const g = 120 + Math.floor(rand() * 40);
+    x.fillStyle = `rgba(${g},${g},${g - 4},${0.12 + rand() * 0.3})`;
+    x.fillRect(rand() * N, rand() * N, 1 + rand() * 2, 1 + rand() * 2);
+  }
+  x.strokeStyle = 'rgba(90,89,84,0.55)';
+  x.lineWidth = 1.4;
+  for (let i = 0; i <= 4; i++) {
+    const p = i * (N / 4);
+    x.beginPath(); x.moveTo(p, 0); x.lineTo(p, N); x.stroke();
+    x.beginPath(); x.moveTo(0, p); x.lineTo(N, p); x.stroke();
+  }
+  return finish(c, 1 / 6, 1 / 6, 8);
 }
 
 // ---------------------------------------------------------------------------

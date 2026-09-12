@@ -63,6 +63,12 @@ the low-rise 4, 5 and 6 WTC wrapping the plaza, and the original 47-storey
 ground where Greenwich Street now runs. Austin J. Tobin Plaza is raised above
 street grade, with Fritz Koenig's *Sphere* on its fountain.
 
+**Streets.** The OSM width is the whole right of way, so the carriageway is
+narrowed and the remainder becomes pavement either side, with lane markings
+down the middle and a gutter line at the kerb. A wide avenue is often several
+parallel ways in the data, so asphalt is laid over pavement rather than beside
+it — otherwise each way's pavement buries its neighbour's roadway.
+
 **Around it.** 814 building footprints, the street grid, the Hudson and East
 rivers and the harbour out to about fifteen kilometres, and the parks. Cesar Pelli's World Financial Center
 towers with their dome and stepped-pyramid crowns, the Woolworth Building,
@@ -128,8 +134,8 @@ uniform slab. Those are massing, not survey.
 
 ## Performance
 
-The scene is about 106 draw calls and 273k triangles, and renders in well
-under a millisecond a frame on an M2 at 1078 × 1674 once shaders are warm. Detail
+The scene is about 109 draw calls and 473k triangles, and renders in about a
+third of a millisecond a frame on an M2 at 1078 × 1674 once shaders are warm. Detail
 scales automatically: phones get a smaller shadow map, no bloom and fewer
 cars; desktops get the full set. The preset in use is shown in the panel.
 

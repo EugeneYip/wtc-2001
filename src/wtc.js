@@ -400,8 +400,13 @@ export function buildTower({ center, roof: roofY, mast, name, side }) {
   }
 
   // Base: a dark core with the arcade screens standing in front of it.
+  //
+  // The core has to come right up to the back of the screens. Set back, it
+  // leaves an open gap behind the arcade, and from the plaza you can see
+  // daylight straight through the bottom of the tower. The reveal in the
+  // arches is the thickness of the screen itself.
   const core = new THREE.Mesh(
-    new THREE.BoxGeometry(side - 1.6, BASE_TOP, side - 1.6), MATS.baseDark);
+    new THREE.BoxGeometry(side - 0.06, BASE_TOP, side - 0.06), MATS.baseDark);
   core.position.y = BASE_TOP / 2;
   core.receiveShadow = true;
   g.add(core);

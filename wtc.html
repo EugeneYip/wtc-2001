@@ -58099,18 +58099,77 @@ function plazaTexture() {
   return finish(c, 1 / 12, 1 / 12, 4);
 }
 
-/** Asphalt, with a worn centre-of-lane sheen. */
-function roadTexture() {
-  const [c, x] = canvas(128, 128);
+/**
+ * Carriageway, as a cross-section.
+ *
+ * u runs across the road (0 to 1, kerb to kerb) and v along it in metres, so
+ * the markings sit at fixed positions across the width whatever the street
+ * is, and the asphalt still tiles along its length.
+ */
+function roadTexture(marked) {
+  const W = 128, H = 256;                   // across, along
+  const [c, x] = canvas(W, H);
   const rand = rng(617);
-  x.fillStyle = '#32312d';
-  x.fillRect(0, 0, 128, 128);
-  for (let i = 0; i < 4000; i++) {
-    const g = 30 + Math.floor(rand() * 40);
-    x.fillStyle = `rgba(${g},${g},${g - 2},${0.2 + rand() * 0.4})`;
-    x.fillRect(rand() * 128, rand() * 128, 1 + rand() * 2, 1);
+  x.fillStyle = '#34332f';
+  x.fillRect(0, 0, W, H);
+  for (let i = 0; i < 7000; i++) {
+    const g = 32 + Math.floor(rand() * 42);
+    x.fillStyle = `rgba(${g},${g},${g - 2},${0.18 + rand() * 0.4})`;
+    x.fillRect(rand() * W, rand() * H, 1 + rand() * 2, 1);
   }
-  return finish(c, 1 / 11, 1 / 11, 4);
+  // Darker wheel tracks either side of the crown.
+  x.fillStyle = 'rgba(20,20,19,0.16)';
+  for (const u of [0.28, 0.72]) x.fillRect(u * W - 7, 0, 14, H);
+  // Gutters. The kerb is not geometry, so the shadow line at the edge of the
+  // carriageway has to come from here.
+  const gut = x.createLinearGradient(0, 0, W, 0);
+  gut.addColorStop(0.00, 'rgba(12,12,11,0.75)');
+  gut.addColorStop(0.05, 'rgba(12,12,11,0.12)');
+  gut.addColorStop(0.95, 'rgba(12,12,11,0.12)');
+  gut.addColorStop(1.00, 'rgba(12,12,11,0.75)');
+  x.fillStyle = gut;
+  x.fillRect(0, 0, W, H);
+
+  if (marked) {
+    // Dashed white lane lines. Most of this grid ran one way, so white
+    // dashes are the typical marking here rather than a double yellow.
+    // The tile is 12 m along, so one dash and one gap per tile.
+    x.fillStyle = 'rgba(214,214,206,0.80)';
+    for (const u of [0.34, 0.66]) x.fillRect(u * W - 1.2, 0, 2.4, H * 0.55);
+    // Solid edge lines, kept inboard of the gutter.
+    x.fillStyle = 'rgba(206,206,198,0.45)';
+    x.fillRect(W * 0.075, 0, 2, H);
+    x.fillRect(W * 0.925 - 2, 0, 2, H);
+  }
+
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.repeat.set(1, 1 / 12);                  // across once, along every 12 m
+  t.anisotropy = 8;
+  return t;
+}
+
+/** Sidewalk: concrete flags with joints, scored every 1.5 m. */
+function sidewalkTexture() {
+  const N = 256;
+  const [c, x] = canvas(N, N);
+  const rand = rng(8821);
+  x.fillStyle = '#8e8d87';
+  x.fillRect(0, 0, N, N);
+  for (let i = 0; i < 9000; i++) {
+    const g = 120 + Math.floor(rand() * 40);
+    x.fillStyle = `rgba(${g},${g},${g - 4},${0.12 + rand() * 0.3})`;
+    x.fillRect(rand() * N, rand() * N, 1 + rand() * 2, 1 + rand() * 2);
+  }
+  x.strokeStyle = 'rgba(90,89,84,0.55)';
+  x.lineWidth = 1.4;
+  for (let i = 0; i <= 4; i++) {
+    const p = i * (N / 4);
+    x.beginPath(); x.moveTo(p, 0); x.lineTo(p, N); x.stroke();
+    x.beginPath(); x.moveTo(0, p); x.lineTo(N, p); x.stroke();
+  }
+  return finish(c, 1 / 6, 1 / 6, 8);
 }
 
 // ---------------------------------------------------------------------------
@@ -58281,7 +58340,7 @@ function landTexture() {
 /** Metres of ground covered by one tile of landTexture(). */
 const LAND_TILE_M = 620;
 
-return { facade, facadeLights, facadeMaps, roofTexture, plazaTexture, roadTexture, waterNormal, waterRoughness, landTexture, LAND_TILE_M };
+return { facade, facadeLights, facadeMaps, roofTexture, plazaTexture, roadTexture, sidewalkTexture, waterNormal, waterRoughness, landTexture, LAND_TILE_M };
 });
 __def(["./details.js"], function () {
 /**
@@ -58496,9 +58555,12 @@ function trees(parks, extraSites, avoid) {
   }
   if (!spots.length) return [];
 
-  const trunkGeo = new THREE.CylinderGeometry(0.17, 0.24, 2.6, 6);
-  trunkGeo.translate(0, 1.3, 0);
-  const leafGeo = new THREE.IcosahedronGeometry(1, 0);
+  const trunkGeo = new THREE.CylinderGeometry(0.15, 0.23, 3.0, 6);
+  trunkGeo.translate(0, 1.5, 0);
+  // One subdivision: at street level a bare icosahedron reads as a faceted
+  // lump rather than a crown, and these stand right next to the camera in the
+  // parks along the waterfront.
+  const leafGeo = new THREE.IcosahedronGeometry(1, 1);
 
   const trunks = new THREE.InstancedMesh(trunkGeo, DETAIL_MATS.trunk, spots.length);
   const crowns = new THREE.InstancedMesh(leafGeo, DETAIL_MATS.leaf, spots.length);
@@ -58520,9 +58582,12 @@ function trees(parks, extraSites, avoid) {
     m.compose(pos, q, scl);
     trunks.setMatrixAt(i, m);
 
-    const r = (1.7 + rand() * 1.0) * s;
-    pos.set(x, y0 + 2.6 * h + r * 0.55, z);
-    scl.set(r, r * (0.78 + rand() * 0.3), r);
+    const r = (1.5 + rand() * 1.1) * s;
+    // Lift the crown clear of the trunk, or the trunk is swallowed and the
+    // tree reads as a blob floating on the grass.
+    pos.set(x, y0 + 3.0 * h + r * 0.72, z);
+    scl.set(r * (0.9 + rand() * 0.25), r * (0.72 + rand() * 0.34),
+            r * (0.9 + rand() * 0.25));
     m.compose(pos, q, scl);
     crowns.setMatrixAt(i, m);
 
@@ -58548,11 +58613,19 @@ const CAR_COLORS = [
   0xd8d8d8, 0xb4b7ba, 0x2e3236, 0x8e1b1b, 0x1d3f6e, 0x36503a,
 ];
 
-/** Cars and cabs along the street centrelines, for scale and a little life. */
-function traffic(roads, limit = 420, avoid) {
+/**
+ * Cars and cabs along the street centrelines, for scale and a little life.
+ *
+ * Body and cabin are separate instanced meshes sharing the same transforms:
+ * per-instance colour applies to a whole mesh, so a single box would make the
+ * glass the same colour as the paint and every car read as a solid block.
+ */
+function traffic(roads, limit = 420, avoid, deck = 0) {
   const rand = rng(1313);
-  const geo = new THREE.BoxGeometry(4.4, 1.45, 1.85);
-  geo.translate(0, 0.72, 0);
+  const geo = new THREE.BoxGeometry(4.4, 1.05, 1.85);
+  geo.translate(0, 0.52, 0);
+  const cabGeo = new THREE.BoxGeometry(2.3, 0.85, 1.62);
+  cabGeo.translate(-0.25, 1.42, 0);
 
   const picks = [];
   for (const r of roads) {
@@ -58574,7 +58647,9 @@ function traffic(roads, limit = 420, avoid) {
   }
 
   const mesh = new THREE.InstancedMesh(geo, DETAIL_MATS.car, chosen.length);
+  const cabs = new THREE.InstancedMesh(cabGeo, DETAIL_MATS.cabin, chosen.length);
   mesh.castShadow = true;
+  cabs.castShadow = true;
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   const pos = new THREE.Vector3();
@@ -58592,19 +58667,23 @@ function traffic(roads, limit = 420, avoid) {
     // Some streets pass under buildings; a car parked inside one reads badly.
     if (avoid && avoid.blocked(x, z)) return;
     q.setFromAxisAngle(up, -ang);
-    pos.set(x, 0, z);
+    pos.set(x, deck, z);
     m.compose(pos, q, scl);
     mesh.setMatrixAt(placed, m);
+    cabs.setMatrixAt(placed, m);
     col.setHex(CAR_COLORS[Math.floor(rand() * CAR_COLORS.length)]);
     mesh.setColorAt(placed, col);
     placed++;
   });
   mesh.count = placed;
+  cabs.count = placed;
 
   mesh.instanceMatrix.needsUpdate = true;
+  cabs.instanceMatrix.needsUpdate = true;
   if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   mesh.name = 'traffic';
-  return [mesh];
+  cabs.name = 'traffic-cabins';
+  return [mesh, cabs];
 }
 
 
@@ -58757,7 +58836,7 @@ __def(["./city.js"], function () {
 const THREE = __req("three");
 const { mergeGeometries } = __req("BufferGeometryUtils");
 const { norm, shapeFrom, flat, extrude, bounds } = __req("./geo.js");
-const { facadeMaps, roofTexture, roadTexture, waterNormal, waterRoughness, landTexture, LAND_TILE_M } = __req("./textures.js");
+const { facadeMaps, roofTexture, roadTexture, sidewalkTexture, waterNormal, waterRoughness, landTexture, LAND_TILE_M } = __req("./textures.js");
 
 const FACADE = facadeMaps();
 
@@ -58776,9 +58855,11 @@ const CITY_MATS = {
   ground: new THREE.MeshStandardMaterial({
     map: landTexture(), color: 0xb4b7b0, roughness: 0.98, metalness: 0.0 }),
   road: new THREE.MeshStandardMaterial({
-    map: roadTexture(), color: 0xb9b7af, roughness: 0.9, metalness: 0.0 }),
+    map: roadTexture(true), color: 0xc4c2ba, roughness: 0.9, metalness: 0.0 }),
   roadMinor: new THREE.MeshStandardMaterial({
-    map: roadTexture(), color: 0xd0ccc1, roughness: 0.92, metalness: 0.0 }),
+    map: roadTexture(false), color: 0xd0ccc1, roughness: 0.92, metalness: 0.0 }),
+  sidewalk: new THREE.MeshStandardMaterial({
+    map: sidewalkTexture(), roughness: 0.94, metalness: 0.0 }),
   park: new THREE.MeshStandardMaterial({
     color: 0x3d5130, roughness: 0.95, metalness: 0.0 }),
   water: makeWater(),
@@ -59128,36 +59209,74 @@ function buildCity(data) {
   layer(data.water, -0.22, CITY_MATS.water, 'inland-water');
   layer(data.parks, -0.16, CITY_MATS.park, 'parks');
 
-  // Streets, as flat ribbons with world-scale UVs so the asphalt tiles evenly.
+  // Streets. The OSM width is the whole right of way, so the carriageway is
+  // narrowed and the remainder becomes sidewalk either side, with a kerb face
+  // between them. Without that, asphalt runs straight into the building line
+  // and the street reads as a painted strip from any low viewpoint.
+  // A wide avenue is often several parallel ways in OSM, so each way's
+  // pavement would bury its neighbour's carriageway. Asphalt is therefore
+  // laid over the pavement rather than beside it, and the kerb line lives in
+  // the road texture instead of in geometry.
+  const ASPHALT_Y = -0.20;
+  const SIDEWALK_Y = -0.26;
+  const walks = [];
+
   for (const kind of ['major', 'minor']) {
     const geos = [];
     for (const r of data.roads) {
       if (r.k !== kind) continue;
+      const walk = Math.min(4.0, Math.max(2.0, r.w * 0.22));
+      const lane = Math.max(4.0, r.w - 2 * walk);
+
       for (let i = 0; i < r.p.length - 1; i++) {
         const [x0, z0] = r.p[i], [x1, z1] = r.p[i + 1];
         const dx = x1 - x0, dz = z1 - z0;
         const len = Math.hypot(dx, dz);
         if (len < 0.5) continue;
-        const q = new THREE.PlaneGeometry(len + r.w * 0.5, r.w);
+        const ang = -Math.atan2(dz, dx);
+        const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+        const px = -dz / len, pz = dx / len;   // across the road
+        const over = r.w * 0.5;            // overlap so corners close up
+
+        // Carriageway: u across the road, v along it in metres.
+        const q = new THREE.PlaneGeometry(len + over, lane);
         const uv = q.getAttribute('uv');
         for (let k = 0; k < uv.count; k++) {
-          uv.setXY(k, uv.getX(k) * len, uv.getY(k) * r.w);
+          uv.setXY(k, uv.getY(k), uv.getX(k) * (len + over));
         }
-        q.rotateX(-Math.PI / 2);
-        q.rotateY(-Math.atan2(dz, dx));
-        q.translate((x0 + x1) / 2, 0, (z0 + z1) / 2);
+        q.rotateX(-Math.PI / 2); q.rotateY(ang); q.translate(cx, 0, cz);
         geos.push(norm(q));
+
+        // Sidewalk slabs either side, world-scale UVs.
+        for (const side of [-1, 1]) {
+          const off = side * (lane / 2 + walk / 2);
+          const w = new THREE.PlaneGeometry(len + walk, walk);
+          const wuv = w.getAttribute('uv');
+          for (let k = 0; k < wuv.count; k++) {
+            wuv.setXY(k, wuv.getX(k) * (len + over), wuv.getY(k) * walk);
+          }
+          w.rotateX(-Math.PI / 2); w.rotateY(ang);
+          w.translate(cx + px * off, 0, cz + pz * off);
+          walks.push(norm(w));
+        }
       }
     }
     if (!geos.length) continue;
     const m = new THREE.Mesh(mergeGeometries(geos),
       kind === 'major' ? CITY_MATS.road : CITY_MATS.roadMinor);
-    m.position.y = kind === 'major' ? -0.08 : -0.11;
+    m.position.y = ASPHALT_Y;
     m.receiveShadow = true;
     m.name = 'roads-' + kind;
     g.add(m);
   }
 
+  if (walks.length) {
+    const m = new THREE.Mesh(mergeGeometries(walks), CITY_MATS.sidewalk);
+    m.position.y = SIDEWALK_Y;
+    m.receiveShadow = true;
+    m.name = 'sidewalks';
+    g.add(m);
+  }
   // Buildings: walls batched by facade family, roofs and crowns pooled.
   const walls = {};
   const roofs = [];
@@ -59618,8 +59737,13 @@ function buildTower({ center, roof: roofY, mast, name, side }) {
   }
 
   // Base: a dark core with the arcade screens standing in front of it.
+  //
+  // The core has to come right up to the back of the screens. Set back, it
+  // leaves an open gap behind the arcade, and from the plaza you can see
+  // daylight straight through the bottom of the tower. The reveal in the
+  // arches is the thickness of the screen itself.
   const core = new THREE.Mesh(
-    new THREE.BoxGeometry(side - 1.6, BASE_TOP, side - 1.6), MATS.baseDark);
+    new THREE.BoxGeometry(side - 0.06, BASE_TOP, side - 0.06), MATS.baseDark);
   core.position.y = BASE_TOP / 2;
   core.receiveShadow = true;
   g.add(core);
@@ -60180,7 +60304,8 @@ async function init() {
   for (const m of trees(data.parks, PLAZA_TREE_SITES(data, obstacleIndex), footprints)) {
     detail.add(m);
   }
-  for (const m of traffic(data.roads, tier.cars, footprints)) detail.add(m);
+  // Sit them on the carriageway, not on the pavement level.
+  for (const m of traffic(data.roads, tier.cars, footprints, -0.20)) detail.add(m);
   for (const m of vessels(data.land || [], tier.boats)) detail.add(m);
   scene.add(detail);
 

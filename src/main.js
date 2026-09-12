@@ -441,7 +441,8 @@ async function init() {
   for (const m of trees(data.parks, PLAZA_TREE_SITES(data, obstacleIndex), footprints)) {
     detail.add(m);
   }
-  for (const m of traffic(data.roads, tier.cars, footprints)) detail.add(m);
+  // Sit them on the carriageway, not on the pavement level.
+  for (const m of traffic(data.roads, tier.cars, footprints, -0.20)) detail.add(m);
   for (const m of vessels(data.land || [], tier.boats)) detail.add(m);
   scene.add(detail);
 

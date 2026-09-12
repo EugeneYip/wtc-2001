@@ -210,9 +210,12 @@ export function trees(parks, extraSites, avoid) {
   }
   if (!spots.length) return [];
 
-  const trunkGeo = new THREE.CylinderGeometry(0.17, 0.24, 2.6, 6);
-  trunkGeo.translate(0, 1.3, 0);
-  const leafGeo = new THREE.IcosahedronGeometry(1, 0);
+  const trunkGeo = new THREE.CylinderGeometry(0.15, 0.23, 3.0, 6);
+  trunkGeo.translate(0, 1.5, 0);
+  // One subdivision: at street level a bare icosahedron reads as a faceted
+  // lump rather than a crown, and these stand right next to the camera in the
+  // parks along the waterfront.
+  const leafGeo = new THREE.IcosahedronGeometry(1, 1);
 
   const trunks = new THREE.InstancedMesh(trunkGeo, DETAIL_MATS.trunk, spots.length);
   const crowns = new THREE.InstancedMesh(leafGeo, DETAIL_MATS.leaf, spots.length);
@@ -234,9 +237,12 @@ export function trees(parks, extraSites, avoid) {
     m.compose(pos, q, scl);
     trunks.setMatrixAt(i, m);
 
-    const r = (1.7 + rand() * 1.0) * s;
-    pos.set(x, y0 + 2.6 * h + r * 0.55, z);
-    scl.set(r, r * (0.78 + rand() * 0.3), r);
+    const r = (1.5 + rand() * 1.1) * s;
+    // Lift the crown clear of the trunk, or the trunk is swallowed and the
+    // tree reads as a blob floating on the grass.
+    pos.set(x, y0 + 3.0 * h + r * 0.72, z);
+    scl.set(r * (0.9 + rand() * 0.25), r * (0.72 + rand() * 0.34),
+            r * (0.9 + rand() * 0.25));
     m.compose(pos, q, scl);
     crowns.setMatrixAt(i, m);
 
@@ -262,11 +268,19 @@ const CAR_COLORS = [
   0xd8d8d8, 0xb4b7ba, 0x2e3236, 0x8e1b1b, 0x1d3f6e, 0x36503a,
 ];
 
-/** Cars and cabs along the street centrelines, for scale and a little life. */
-export function traffic(roads, limit = 420, avoid) {
+/**
+ * Cars and cabs along the street centrelines, for scale and a little life.
+ *
+ * Body and cabin are separate instanced meshes sharing the same transforms:
+ * per-instance colour applies to a whole mesh, so a single box would make the
+ * glass the same colour as the paint and every car read as a solid block.
+ */
+export function traffic(roads, limit = 420, avoid, deck = 0) {
   const rand = rng(1313);
-  const geo = new THREE.BoxGeometry(4.4, 1.45, 1.85);
-  geo.translate(0, 0.72, 0);
+  const geo = new THREE.BoxGeometry(4.4, 1.05, 1.85);
+  geo.translate(0, 0.52, 0);
+  const cabGeo = new THREE.BoxGeometry(2.3, 0.85, 1.62);
+  cabGeo.translate(-0.25, 1.42, 0);
 
   const picks = [];
   for (const r of roads) {
@@ -288,7 +302,9 @@ export function traffic(roads, limit = 420, avoid) {
   }
 
   const mesh = new THREE.InstancedMesh(geo, DETAIL_MATS.car, chosen.length);
+  const cabs = new THREE.InstancedMesh(cabGeo, DETAIL_MATS.cabin, chosen.length);
   mesh.castShadow = true;
+  cabs.castShadow = true;
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   const pos = new THREE.Vector3();
@@ -306,19 +322,23 @@ export function traffic(roads, limit = 420, avoid) {
     // Some streets pass under buildings; a car parked inside one reads badly.
     if (avoid && avoid.blocked(x, z)) return;
     q.setFromAxisAngle(up, -ang);
-    pos.set(x, 0, z);
+    pos.set(x, deck, z);
     m.compose(pos, q, scl);
     mesh.setMatrixAt(placed, m);
+    cabs.setMatrixAt(placed, m);
     col.setHex(CAR_COLORS[Math.floor(rand() * CAR_COLORS.length)]);
     mesh.setColorAt(placed, col);
     placed++;
   });
   mesh.count = placed;
+  cabs.count = placed;
 
   mesh.instanceMatrix.needsUpdate = true;
+  cabs.instanceMatrix.needsUpdate = true;
   if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   mesh.name = 'traffic';
-  return [mesh];
+  cabs.name = 'traffic-cabins';
+  return [mesh, cabs];
 }
 
 

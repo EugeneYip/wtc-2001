@@ -15,8 +15,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'BufferGeometryUtils';
 import { norm, shapeFrom, flat, extrude, bounds } from './geo.js';
-import { facadeMaps, roofTexture, roadTexture, waterNormal, waterRoughness,
-         landTexture, LAND_TILE_M } from './textures.js';
+import { facadeMaps, roofTexture, roadTexture, sidewalkTexture, waterNormal,
+         waterRoughness, landTexture, LAND_TILE_M } from './textures.js';
 
 const FACADE = facadeMaps();
 
@@ -35,9 +35,11 @@ export const CITY_MATS = {
   ground: new THREE.MeshStandardMaterial({
     map: landTexture(), color: 0xb4b7b0, roughness: 0.98, metalness: 0.0 }),
   road: new THREE.MeshStandardMaterial({
-    map: roadTexture(), color: 0xb9b7af, roughness: 0.9, metalness: 0.0 }),
+    map: roadTexture(true), color: 0xc4c2ba, roughness: 0.9, metalness: 0.0 }),
   roadMinor: new THREE.MeshStandardMaterial({
-    map: roadTexture(), color: 0xd0ccc1, roughness: 0.92, metalness: 0.0 }),
+    map: roadTexture(false), color: 0xd0ccc1, roughness: 0.92, metalness: 0.0 }),
+  sidewalk: new THREE.MeshStandardMaterial({
+    map: sidewalkTexture(), roughness: 0.94, metalness: 0.0 }),
   park: new THREE.MeshStandardMaterial({
     color: 0x3d5130, roughness: 0.95, metalness: 0.0 }),
   water: makeWater(),
@@ -387,36 +389,74 @@ export function buildCity(data) {
   layer(data.water, -0.22, CITY_MATS.water, 'inland-water');
   layer(data.parks, -0.16, CITY_MATS.park, 'parks');
 
-  // Streets, as flat ribbons with world-scale UVs so the asphalt tiles evenly.
+  // Streets. The OSM width is the whole right of way, so the carriageway is
+  // narrowed and the remainder becomes sidewalk either side, with a kerb face
+  // between them. Without that, asphalt runs straight into the building line
+  // and the street reads as a painted strip from any low viewpoint.
+  // A wide avenue is often several parallel ways in OSM, so each way's
+  // pavement would bury its neighbour's carriageway. Asphalt is therefore
+  // laid over the pavement rather than beside it, and the kerb line lives in
+  // the road texture instead of in geometry.
+  const ASPHALT_Y = -0.20;
+  const SIDEWALK_Y = -0.26;
+  const walks = [];
+
   for (const kind of ['major', 'minor']) {
     const geos = [];
     for (const r of data.roads) {
       if (r.k !== kind) continue;
+      const walk = Math.min(4.0, Math.max(2.0, r.w * 0.22));
+      const lane = Math.max(4.0, r.w - 2 * walk);
+
       for (let i = 0; i < r.p.length - 1; i++) {
         const [x0, z0] = r.p[i], [x1, z1] = r.p[i + 1];
         const dx = x1 - x0, dz = z1 - z0;
         const len = Math.hypot(dx, dz);
         if (len < 0.5) continue;
-        const q = new THREE.PlaneGeometry(len + r.w * 0.5, r.w);
+        const ang = -Math.atan2(dz, dx);
+        const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+        const px = -dz / len, pz = dx / len;   // across the road
+        const over = r.w * 0.5;            // overlap so corners close up
+
+        // Carriageway: u across the road, v along it in metres.
+        const q = new THREE.PlaneGeometry(len + over, lane);
         const uv = q.getAttribute('uv');
         for (let k = 0; k < uv.count; k++) {
-          uv.setXY(k, uv.getX(k) * len, uv.getY(k) * r.w);
+          uv.setXY(k, uv.getY(k), uv.getX(k) * (len + over));
         }
-        q.rotateX(-Math.PI / 2);
-        q.rotateY(-Math.atan2(dz, dx));
-        q.translate((x0 + x1) / 2, 0, (z0 + z1) / 2);
+        q.rotateX(-Math.PI / 2); q.rotateY(ang); q.translate(cx, 0, cz);
         geos.push(norm(q));
+
+        // Sidewalk slabs either side, world-scale UVs.
+        for (const side of [-1, 1]) {
+          const off = side * (lane / 2 + walk / 2);
+          const w = new THREE.PlaneGeometry(len + walk, walk);
+          const wuv = w.getAttribute('uv');
+          for (let k = 0; k < wuv.count; k++) {
+            wuv.setXY(k, wuv.getX(k) * (len + over), wuv.getY(k) * walk);
+          }
+          w.rotateX(-Math.PI / 2); w.rotateY(ang);
+          w.translate(cx + px * off, 0, cz + pz * off);
+          walks.push(norm(w));
+        }
       }
     }
     if (!geos.length) continue;
     const m = new THREE.Mesh(mergeGeometries(geos),
       kind === 'major' ? CITY_MATS.road : CITY_MATS.roadMinor);
-    m.position.y = kind === 'major' ? -0.08 : -0.11;
+    m.position.y = ASPHALT_Y;
     m.receiveShadow = true;
     m.name = 'roads-' + kind;
     g.add(m);
   }
 
+  if (walks.length) {
+    const m = new THREE.Mesh(mergeGeometries(walks), CITY_MATS.sidewalk);
+    m.position.y = SIDEWALK_Y;
+    m.receiveShadow = true;
+    m.name = 'sidewalks';
+    g.add(m);
+  }
   // Buildings: walls batched by facade family, roofs and crowns pooled.
   const walls = {};
   const roofs = [];
