@@ -523,6 +523,59 @@ About 173 draw calls and 1.05M triangles in daylight, and roughly 2 to 3 ms a
 frame on an M2 at 2800 × 1800 once shaders are warm, with the post-processing
 running at full resolution and 4x multisampling.
 
+**What the frame is actually made of.** Measured with real GPU timings
+(`EXT_disjoint_timer_query_webgl2`), which is independent of the animation loop
+— the absolute numbers below come from a throttled context and are inflated
+several times over, so what matters is the proportions, not the milliseconds.
+
+The first thing that fell out is that triangles are not the problem. Skipping
+the entire shadow pass — 63 draw calls and 436,032 triangles, 42% of everything
+drawn — changed the frame by 0.3 ms. **This frame is fill-bound, not
+geometry-bound**, and counting triangles was measuring the wrong thing.
+
+Three expensive things turn out to be worth their cost, which is worth writing
+down so nobody re-litigates them:
+
+- **Bloom** is about 40% of the frame. It also changes 40 to 66% of the pixels
+  at every hour tested, so it is not idling through the daylight. Halving the
+  resolution of its blur chain saved only 6 ms of 110, because the cost is in
+  touching the full-resolution buffer twice, not in the blurs.
+- **4x multisampling** costs 18.5 ms of a 42 ms scene render, and dropping to
+  2x would give 12 ms back. Against a 2x supersampled reference, though, it
+  costs 41% more error on a tower facade — mean absolute error 3.25 against
+  4.58 — and that facade is the entire point of the model. Left alone.
+- **Half-float** is free without multisampling (23.9 ms against 23.4 for
+  8-bit), and the HDR bloom needs it.
+
+**What was actually wrong** was the pixel budget. A device pixel ratio says
+nothing on its own about how much work it is:
+
+| frame | megapixels | scene | MSAA buffer |
+|---|---|---|---|
+| 1440 × 900 | 1.3 | 20 ms | 40 MB |
+| 2880 × 1800 | 5.2 | 49 ms | 158 MB |
+| 3840 × 2160 | 8.3 | 66 ms | 253 MB |
+| 5120 × 2880 | 14.7 | 93 ms | 450 MB |
+
+Two device pixels per CSS pixel is 5.2 megapixels on a laptop and 14.7 on a 5K
+desktop. The quality tier picked the ratio from pointer type, core count and
+memory, and never asked how many pixels that came to — so a machine was
+punished for having a better screen, and a Pro Display XDR would have asked for
+621 MB for the multisampled colour buffer alone, before its depth buffer, the
+resolve target and the bloom chain. Some of them would simply have failed to
+allocate.
+
+The cap is now on pixels, with the ratio derived from it. Below a 4K frame
+nothing changes at all. At 5K the frame drops from 14.7 to 8.3 megapixels, the
+buffer from 450 to 253 MB, and the measured GPU time from 280 ms to 163 ms — a
+42% saving, almost exactly the pixel ratio, which is what fill-bound means.
+
+That change also turned up a bug it had been hiding: `EffectComposer` multiplies
+the size it is given by its own pixel ratio and never rounds, so a fractional
+ratio handed it render targets 3841.29 × 2160.72 — fractions of a pixel wide,
+against a canvas floored to whole ones. It is now given the drawing buffer's
+real dimensions and a ratio of one.
+
 Earlier versions of this file claimed well under a millisecond at that size.
 That was wrong, and worth saying plainly: those numbers were taken on a machine
 reporting a device pixel ratio of 1, so the effect composer had built its

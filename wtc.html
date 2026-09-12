@@ -62637,9 +62637,9 @@ const clock = new THREE.Clock();
 // ---------------------------------------------------------------------------
 
 const TIERS = {
-  low:    { dpr: 1.5,  shadow: 1024, bloom: false, probe: 128, cars: 190, parked: 900,  parkReach: 450, boats: 14, lamps: 260, props: 110, pool: 512,  shadowSpan: 800 },
-  medium: { dpr: 1.75, shadow: 2048, bloom: true,  probe: 192, cars: 420, parked: 2100, parkReach: 650, boats: 26, lamps: 480, props: 200, pool: 1024, shadowSpan: 950 },
-  high:   { dpr: 2.0,  shadow: 4096, bloom: true,  probe: 256, cars: 620, parked: 4100, parkReach: 900, boats: 38, lamps: 700, props: 300, pool: 1024, shadowSpan: 1050 },
+  low:    { dpr: 1.5,  maxPx: 2.3e6, shadow: 1024, bloom: false, probe: 128, cars: 190, parked: 900,  parkReach: 450, boats: 14, lamps: 260, props: 110, pool: 512,  shadowSpan: 800 },
+  medium: { dpr: 1.75, maxPx: 4.5e6, shadow: 2048, bloom: true,  probe: 192, cars: 420, parked: 2100, parkReach: 650, boats: 26, lamps: 480, props: 200, pool: 1024, shadowSpan: 950 },
+  high:   { dpr: 2.0,  maxPx: 8.3e6, shadow: 4096, bloom: true,  probe: 256, cars: 620, parked: 4100, parkReach: 900, boats: 38, lamps: 700, props: 300, pool: 1024, shadowSpan: 1050 },
 };
 
 function detectQuality() {
@@ -63285,7 +63285,7 @@ async function init() {
   renderer = new THREE.WebGLRenderer({
     antialias: quality !== 'low', powerPreference: 'high-performance',
   });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, tier.dpr));
+  renderer.setPixelRatio(pixelRatioFor(tier));
   renderer.setSize(innerWidth, innerHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -63427,7 +63427,7 @@ async function init() {
       new THREE.Vector2(innerWidth, innerHeight), 0.28, 0.6, 0.8);
     composer.addPass(bloom);
     composer.addPass(new OutputPass());
-    composer.setSize(innerWidth, innerHeight);
+    sizeComposer();
   }
 
   makeLabels();
@@ -63484,6 +63484,40 @@ async function loadData() {
 }
 
 /**
+ * How many device pixels to draw, expressed as a ratio.
+ *
+ * A device pixel ratio on its own says nothing about how much work it is. Two
+ * device pixels per CSS pixel is 5.2 megapixels on a laptop and 14.7 on a 5K
+ * desktop, and this frame is fill-bound rather than geometry-bound: the second
+ * one costs four and a half times as much to draw, and its multisampled colour
+ * buffer alone is 450 MB before the depth buffer, the resolve target and the
+ * bloom chain. A Pro Display XDR would ask for 621 MB. So a machine with a
+ * better screen was being punished for it, to the point where some of them
+ * would simply fail to allocate.
+ *
+ * Cap the pixels and derive the ratio from that. On everything up to a 4K
+ * frame this changes nothing at all.
+ */
+/**
+ * EffectComposer multiplies the size it is given by its own pixel ratio and
+ * does not round, so a fractional ratio gave it targets 3841.29 x 2160.72 —
+ * fractions of a pixel wide, against a canvas that had been floored to whole
+ * ones. Hand it the drawing buffer's real dimensions and a ratio of one.
+ */
+function sizeComposer() {
+  if (!composer) return;
+  const size = renderer.getDrawingBufferSize(_size);
+  composer.setPixelRatio(1);
+  composer.setSize(size.x, size.y);
+}
+
+function pixelRatioFor(tier) {
+  const want = Math.min(devicePixelRatio, tier.dpr);
+  const css = Math.max(1, innerWidth * innerHeight);
+  return Math.max(1, Math.min(want, Math.sqrt(tier.maxPx / css)));
+}
+
+/**
  * A fixed vertical field of view wastes a portrait screen on empty sky and
  * water, so narrow it as the frame gets taller and the towers keep filling it.
  */
@@ -63491,6 +63525,7 @@ function fovFor(aspect) {
   return 50 * THREE.MathUtils.clamp(aspect / 1.5, 0.72, 1);
 }
 
+const _size = new THREE.Vector2();
 let lastW = 0, lastH = 0;
 function onResize() {
   if (innerWidth === lastW && innerHeight === lastH) return;
@@ -63498,8 +63533,16 @@ function onResize() {
   camera.aspect = innerWidth / innerHeight;
   camera.fov = fovFor(camera.aspect);
   camera.updateProjectionMatrix();
+  // Dragging a window onto a larger screen changes how many pixels two device
+  // pixels amounts to, so the cap has to be re-applied, and the composer told
+  // about it or its targets stay the old size.
+  const ratio = pixelRatioFor(TIERS[quality]);
+  if (Math.abs(renderer.getPixelRatio() - ratio) > 0.001) {
+    renderer.setPixelRatio(ratio);
+    if (composer) composer.setPixelRatio(ratio);
+  }
   renderer.setSize(innerWidth, innerHeight);
-  if (composer) composer.setSize(innerWidth, innerHeight);
+  sizeComposer();
   relabel();
   measureLabels();
 }
