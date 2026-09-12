@@ -235,6 +235,32 @@ a less accurate one. Reflections come from a cube probe rendered over the site, 
 the towers' aluminium and the surface of the river pick up the actual skyline
 rather than just the sky.
 
+**Shadows.** For a long time nothing smaller than a street lamp had one. A
+car sat on the road like a sticker, and so did every hydrant, litter bin and
+traffic signal in the city. Two separate faults, both of them measured rather
+than guessed at.
+
+The first was the depth bias. three.js takes it in normalised depth, so the
+number means nothing on its own — it has to be read against the shadow
+camera's near/far range, and across the 6800 m this one spanned, the -0.0004
+sitting in the code was 2.7 m of slack. Anything shorter than that could not
+put a shadow on the ground it stood on, and a car is 1.5 m tall. The companion
+setting, normalBias, is in world units and was 1.1: about two shadow-map
+texels, which erodes a shadow by a metre and a half in raking light. Between
+them they erased everything at street level. The bias is now written in metres
+and converted, and normalBias is tied to the texel footprint it actually has
+to cover, so it tracks the frustum as that widens through the day.
+
+The second was simpler and worse. Every vehicle, lamp post, signal, hydrant,
+bin, tree trunk and boat was set to *cast* shadows and never to *receive*
+them. Most of these streets are in the shade of something for most of the day,
+so the result was a city of brightly sunlit cars parked in shadow. Turning
+receiving on costs nothing measurable — these things cover very few pixels —
+and it is the single change in this pass you are most likely to notice.
+
+Together the two are worth about 11% of the pixels in a mid-afternoon street
+view.
+
 Nothing switches at sunset. Direct sunlight is extinguished through the last
 couple of degrees above the horizon rather than being turned off at it, and
 every night setting — sky, ambient, exposure, haze, bloom, the colour of the

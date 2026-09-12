@@ -658,7 +658,7 @@ function sphere(x, z, y) {
 
   const ball = new THREE.Mesh(new THREE.SphereGeometry(3.8, 32, 22), MATS.bronze);
   ball.position.set(x, y + 1.4 + 3.8, z);
-  ball.castShadow = true;
+  ball.castShadow = ball.receiveShadow = true;
   ball.name = 'the-sphere';
   g.add(ball);
   return g;

@@ -295,9 +295,8 @@ export function trees(parks, extraSites, avoid) {
 
   const trunks = new THREE.InstancedMesh(trunkGeo, DETAIL_MATS.trunk, spots.length);
   const crowns = new THREE.InstancedMesh(leafGeo, DETAIL_MATS.leaf, spots.length);
-  crowns.castShadow = true;
-  trunks.castShadow = true;
-  crowns.receiveShadow = true;
+  crowns.castShadow = crowns.receiveShadow = true;
+  trunks.castShadow = trunks.receiveShadow = true;
 
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
@@ -452,7 +451,11 @@ export function traffic(roads, limit = 420, avoid, deck = 0) {
   const buses = new THREE.InstancedMesh(G.bus, DETAIL_MATS.car, Math.ceil(cap * 0.09));
   const heads = new THREE.InstancedMesh(headGeo, DETAIL_MATS.headlight, cap);
   const tails = new THREE.InstancedMesh(tailGeo, DETAIL_MATS.tail, cap);
-  for (const im of [cars, vans, buses]) im.castShadow = true;
+  // Receiving matters more than casting down here. Most of these streets are
+  // in the shade of something for most of the day, and a car that only casts
+  // is a car lit by a sun the street it is parked on cannot see.
+  for (const im of [cars, vans, buses]) im.castShadow = im.receiveShadow = true;
+  heads.receiveShadow = tails.receiveShadow = true;
 
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
@@ -581,7 +584,8 @@ export function parkedCars(roads, limit = 900, avoid, deck = 0, reach = 1100) {
   const nVan = chosen.filter((c) => c[3] < 0.16).length;
   const cars = new THREE.InstancedMesh(G.car, DETAIL_MATS.car, chosen.length - nVan);
   const vans = new THREE.InstancedMesh(G.van, DETAIL_MATS.car, Math.max(1, nVan));
-  cars.castShadow = vans.castShadow = true;
+  cars.castShadow = cars.receiveShadow = true;
+  vans.castShadow = vans.receiveShadow = true;
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   const pos = new THREE.Vector3();
@@ -648,6 +652,10 @@ export function manholes(roads, limit = 220, avoid, deck = 0, reach = 900) {
     chosen.push(spots[Math.floor(i)]);
   }
   const im = new THREE.InstancedMesh(g, DETAIL_MATS.manhole, chosen.length);
+  // Flat on the carriageway, so it never casts; but it is on a road that
+  // spends half the day in shadow, and an iron cover that stayed sunlit
+  // through all of it read as a light rather than a lid.
+  im.receiveShadow = true;
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   const pos = new THREE.Vector3();
@@ -736,7 +744,7 @@ export function streetLamps(roads, limit = 700, avoid, extra = [], reach = 1150)
 
   const posts = new THREE.InstancedMesh(postGeo, DETAIL_MATS.lampPost, chosen.length);
   const heads = new THREE.InstancedMesh(headGeo, DETAIL_MATS.lampHead, chosen.length);
-  posts.castShadow = true;
+  posts.castShadow = posts.receiveShadow = true;
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   const pos = new THREE.Vector3();
@@ -823,7 +831,8 @@ export function trafficSignals(junctionList, avoid) {
   const posts = new THREE.InstancedMesh(postGeo, DETAIL_MATS.lampPost, sites.length);
   const heads = new THREE.InstancedMesh(headGeo, DETAIL_MATS.signalBody, sites.length);
   const lenses = new THREE.InstancedMesh(lensGeo, DETAIL_MATS.signalLens, sites.length);
-  posts.castShadow = true;
+  posts.castShadow = posts.receiveShadow = true;
+  heads.receiveShadow = true;
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   const pos = new THREE.Vector3();
@@ -915,7 +924,7 @@ export function kerbFurniture(roads, limit = 260, avoid, reach = 900) {
   const build = (geo, mat, list, name) => {
     if (!list.length) return null;
     const im = new THREE.InstancedMesh(geo, mat, list.length);
-    im.castShadow = true;
+    im.castShadow = im.receiveShadow = true;
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
     const pos = new THREE.Vector3();
@@ -1099,7 +1108,8 @@ export function vessels(land, count = 16, reach = 2600) {
   const wakes = new THREE.InstancedMesh(wakeGeo, VESSEL_MATS.wake, n);
   const lamps = new THREE.InstancedMesh(
     norm(new THREE.SphereGeometry(0.5, 6, 5)), VESSEL_MATS.navLight, n);
-  hulls.castShadow = houses.castShadow = true;
+  hulls.castShadow = hulls.receiveShadow = true;
+  houses.castShadow = houses.receiveShadow = true;
   wakes.renderOrder = 1;
   hulls.name = 'vessels';
   houses.name = 'vessel-houses';

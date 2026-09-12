@@ -59631,9 +59631,8 @@ function trees(parks, extraSites, avoid) {
 
   const trunks = new THREE.InstancedMesh(trunkGeo, DETAIL_MATS.trunk, spots.length);
   const crowns = new THREE.InstancedMesh(leafGeo, DETAIL_MATS.leaf, spots.length);
-  crowns.castShadow = true;
-  trunks.castShadow = true;
-  crowns.receiveShadow = true;
+  crowns.castShadow = crowns.receiveShadow = true;
+  trunks.castShadow = trunks.receiveShadow = true;
 
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
@@ -59788,7 +59787,11 @@ function traffic(roads, limit = 420, avoid, deck = 0) {
   const buses = new THREE.InstancedMesh(G.bus, DETAIL_MATS.car, Math.ceil(cap * 0.09));
   const heads = new THREE.InstancedMesh(headGeo, DETAIL_MATS.headlight, cap);
   const tails = new THREE.InstancedMesh(tailGeo, DETAIL_MATS.tail, cap);
-  for (const im of [cars, vans, buses]) im.castShadow = true;
+  // Receiving matters more than casting down here. Most of these streets are
+  // in the shade of something for most of the day, and a car that only casts
+  // is a car lit by a sun the street it is parked on cannot see.
+  for (const im of [cars, vans, buses]) im.castShadow = im.receiveShadow = true;
+  heads.receiveShadow = tails.receiveShadow = true;
 
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
@@ -59917,7 +59920,8 @@ function parkedCars(roads, limit = 900, avoid, deck = 0, reach = 1100) {
   const nVan = chosen.filter((c) => c[3] < 0.16).length;
   const cars = new THREE.InstancedMesh(G.car, DETAIL_MATS.car, chosen.length - nVan);
   const vans = new THREE.InstancedMesh(G.van, DETAIL_MATS.car, Math.max(1, nVan));
-  cars.castShadow = vans.castShadow = true;
+  cars.castShadow = cars.receiveShadow = true;
+  vans.castShadow = vans.receiveShadow = true;
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   const pos = new THREE.Vector3();
@@ -59984,6 +59988,10 @@ function manholes(roads, limit = 220, avoid, deck = 0, reach = 900) {
     chosen.push(spots[Math.floor(i)]);
   }
   const im = new THREE.InstancedMesh(g, DETAIL_MATS.manhole, chosen.length);
+  // Flat on the carriageway, so it never casts; but it is on a road that
+  // spends half the day in shadow, and an iron cover that stayed sunlit
+  // through all of it read as a light rather than a lid.
+  im.receiveShadow = true;
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   const pos = new THREE.Vector3();
@@ -60072,7 +60080,7 @@ function streetLamps(roads, limit = 700, avoid, extra = [], reach = 1150) {
 
   const posts = new THREE.InstancedMesh(postGeo, DETAIL_MATS.lampPost, chosen.length);
   const heads = new THREE.InstancedMesh(headGeo, DETAIL_MATS.lampHead, chosen.length);
-  posts.castShadow = true;
+  posts.castShadow = posts.receiveShadow = true;
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   const pos = new THREE.Vector3();
@@ -60159,7 +60167,8 @@ function trafficSignals(junctionList, avoid) {
   const posts = new THREE.InstancedMesh(postGeo, DETAIL_MATS.lampPost, sites.length);
   const heads = new THREE.InstancedMesh(headGeo, DETAIL_MATS.signalBody, sites.length);
   const lenses = new THREE.InstancedMesh(lensGeo, DETAIL_MATS.signalLens, sites.length);
-  posts.castShadow = true;
+  posts.castShadow = posts.receiveShadow = true;
+  heads.receiveShadow = true;
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   const pos = new THREE.Vector3();
@@ -60251,7 +60260,7 @@ function kerbFurniture(roads, limit = 260, avoid, reach = 900) {
   const build = (geo, mat, list, name) => {
     if (!list.length) return null;
     const im = new THREE.InstancedMesh(geo, mat, list.length);
-    im.castShadow = true;
+    im.castShadow = im.receiveShadow = true;
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
     const pos = new THREE.Vector3();
@@ -60435,7 +60444,8 @@ function vessels(land, count = 16, reach = 2600) {
   const wakes = new THREE.InstancedMesh(wakeGeo, VESSEL_MATS.wake, n);
   const lamps = new THREE.InstancedMesh(
     norm(new THREE.SphereGeometry(0.5, 6, 5)), VESSEL_MATS.navLight, n);
-  hulls.castShadow = houses.castShadow = true;
+  hulls.castShadow = hulls.receiveShadow = true;
+  houses.castShadow = houses.receiveShadow = true;
   wakes.renderOrder = 1;
   hulls.name = 'vessels';
   houses.name = 'vessel-houses';
@@ -62318,7 +62328,7 @@ function sphere(x, z, y) {
 
   const ball = new THREE.Mesh(new THREE.SphereGeometry(3.8, 32, 22), MATS.bronze);
   ball.position.set(x, y + 1.4 + 3.8, z);
-  ball.castShadow = true;
+  ball.castShadow = ball.receiveShadow = true;
   ball.name = 'the-sphere';
   g.add(ball);
   return g;
@@ -62494,6 +62504,11 @@ const DECL = 4.5 * DEG;             // solar declination, mid-September
 let renderer, scene, camera, controls, sky, nightSky, sun, hemi, fill, pmrem;
 let composer, bloom, cubeCam, cubeRT;
 let shadowSpan = 1050;
+let shadowTexels = 4096;
+// How much slack the depth comparison gets, in metres. three.js wants this in
+// normalised depth, where the number means nothing without knowing the shadow
+// camera's near/far range; kept here in the unit it is actually about.
+const SHADOW_BIAS_M = 0.05;
 let labels = [], labelLayer, data, waterMesh;
 let showLabels = true;
 let beaconLevel = 0;
@@ -62568,6 +62583,14 @@ const _hz = new THREE.Color();
 const smooth = THREE.MathUtils.smoothstep;
 const mix = THREE.MathUtils.lerp;
 
+// normalBias is in world units, and what it has to cover is the shadow map's
+// own texel footprint on the ground. At the 1.1 this used to carry it was two
+// texels wide, which erodes a shadow by about a metre and a half of raking
+// sun: enough to erase anything shorter than a street lamp.
+function setShadowNormalBias(reach) {
+  sun.shadow.normalBias = (2 * reach / shadowTexels) * 0.35;
+}
+
 function applyTime(hour) {
   timeOfDay = hour;
   const { elev, dir } = sunVector(hour);
@@ -62598,6 +62621,9 @@ function applyTime(hour) {
   if (Math.abs(cam.right - reach) > 1) {
     cam.left = -reach; cam.right = reach; cam.top = reach; cam.bottom = -reach;
     cam.updateProjectionMatrix();
+    // Widening the frustum makes every texel cover more ground, so the offset
+    // that keeps a surface from shadowing itself has to grow with it.
+    setShadowNormalBias(reach);
   }
   // No floor under this: the old `1.1 + ...` meant a sun below the horizon
   // still lit the city at better than a quarter strength right up to the
@@ -62991,10 +63017,19 @@ async function init() {
   shadowSpan = tier.shadowSpan;
   Object.assign(sun.shadow.camera, {
     left: -shadowSpan, right: shadowSpan, top: shadowSpan, bottom: -shadowSpan,
-    near: 400, far: 7200,
+    // Far used to be 7200. The light sits 2600 out, so that reached 4.6 km
+    // past the site — less than the 6.8 km shadow a 417 m tower throws at a
+    // three-and-a-half degree sun, and the longest shadows of the day were
+    // cut off mid-stride. The depth is packed into RGBA, so the extra range
+    // costs no precision worth measuring.
+    near: 400, far: 12000,
   });
-  sun.shadow.bias = -0.0004;
-  sun.shadow.normalBias = 1.1;
+  shadowTexels = tier.shadow;
+  // -0.0004 used to sit here, against the 400..7200 range above. That is
+  // 2.7 m of slack, which is taller than a car — so no car, no lamp post and
+  // no litter bin in the city could put a shadow on the ground it stood on.
+  sun.shadow.bias = -SHADOW_BIAS_M / (sun.shadow.camera.far - sun.shadow.camera.near);
+  setShadowNormalBias(shadowSpan);
   scene.add(sun, sun.target);
 
   hemi = new THREE.HemisphereLight(0x9dbdd8, 0x3a332a, 0.6);

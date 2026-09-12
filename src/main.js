@@ -37,6 +37,11 @@ const DECL = 4.5 * DEG;             // solar declination, mid-September
 let renderer, scene, camera, controls, sky, nightSky, sun, hemi, fill, pmrem;
 let composer, bloom, cubeCam, cubeRT;
 let shadowSpan = 1050;
+let shadowTexels = 4096;
+// How much slack the depth comparison gets, in metres. three.js wants this in
+// normalised depth, where the number means nothing without knowing the shadow
+// camera's near/far range; kept here in the unit it is actually about.
+const SHADOW_BIAS_M = 0.05;
 let labels = [], labelLayer, data, waterMesh;
 let showLabels = true;
 let beaconLevel = 0;
@@ -111,6 +116,14 @@ const _hz = new THREE.Color();
 const smooth = THREE.MathUtils.smoothstep;
 const mix = THREE.MathUtils.lerp;
 
+// normalBias is in world units, and what it has to cover is the shadow map's
+// own texel footprint on the ground. At the 1.1 this used to carry it was two
+// texels wide, which erodes a shadow by about a metre and a half of raking
+// sun: enough to erase anything shorter than a street lamp.
+function setShadowNormalBias(reach) {
+  sun.shadow.normalBias = (2 * reach / shadowTexels) * 0.35;
+}
+
 function applyTime(hour) {
   timeOfDay = hour;
   const { elev, dir } = sunVector(hour);
@@ -141,6 +154,9 @@ function applyTime(hour) {
   if (Math.abs(cam.right - reach) > 1) {
     cam.left = -reach; cam.right = reach; cam.top = reach; cam.bottom = -reach;
     cam.updateProjectionMatrix();
+    // Widening the frustum makes every texel cover more ground, so the offset
+    // that keeps a surface from shadowing itself has to grow with it.
+    setShadowNormalBias(reach);
   }
   // No floor under this: the old `1.1 + ...` meant a sun below the horizon
   // still lit the city at better than a quarter strength right up to the
@@ -534,10 +550,19 @@ async function init() {
   shadowSpan = tier.shadowSpan;
   Object.assign(sun.shadow.camera, {
     left: -shadowSpan, right: shadowSpan, top: shadowSpan, bottom: -shadowSpan,
-    near: 400, far: 7200,
+    // Far used to be 7200. The light sits 2600 out, so that reached 4.6 km
+    // past the site — less than the 6.8 km shadow a 417 m tower throws at a
+    // three-and-a-half degree sun, and the longest shadows of the day were
+    // cut off mid-stride. The depth is packed into RGBA, so the extra range
+    // costs no precision worth measuring.
+    near: 400, far: 12000,
   });
-  sun.shadow.bias = -0.0004;
-  sun.shadow.normalBias = 1.1;
+  shadowTexels = tier.shadow;
+  // -0.0004 used to sit here, against the 400..7200 range above. That is
+  // 2.7 m of slack, which is taller than a car — so no car, no lamp post and
+  // no litter bin in the city could put a shadow on the ground it stood on.
+  sun.shadow.bias = -SHADOW_BIAS_M / (sun.shadow.camera.far - sun.shadow.camera.near);
+  setShadowNormalBias(shadowSpan);
   scene.add(sun, sun.target);
 
   hemi = new THREE.HemisphereLight(0x9dbdd8, 0x3a332a, 0.6);
