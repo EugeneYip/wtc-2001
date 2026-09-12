@@ -332,7 +332,7 @@ function updateLabels() {
 
 // The loading screen carries a dedication, so it is held long enough to be
 // read even when the scene is ready sooner.
-const MIN_LOADER_MS = 2600;
+const MIN_LOADER_MS = 5000;
 const bootAt = performance.now();
 let loaderHeldMs = 0;
 
@@ -448,7 +448,12 @@ async function init() {
   document.getElementById('quality').textContent = quality;
   renderer.setAnimationLoop(render);
 
-  status.textContent = 'Ready';
+  // Once there is nothing left to report, the last line stops being a
+  // progress indicator and becomes part of the dedication — otherwise
+  // "Ready" sits there for the rest of the hold looking stuck.
+  status.textContent = '11 September 2001';
+  status.classList.add('dedication');
+
   const built = performance.now() - bootAt;
   if (built < MIN_LOADER_MS) await wait(MIN_LOADER_MS - built);
   document.getElementById('loader').classList.add('gone');
