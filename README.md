@@ -61,9 +61,16 @@ and 1 WTC carries its 360 ft transmission mast, added in 1978.
 the low-rise 4, 5 and 6 WTC wrapping the plaza, and the original 47-storey
 7 WTC north of Vesey Street — which stood east of its 2006 replacement, over
 ground where Greenwich Street now runs. Austin J. Tobin Plaza is raised 4.3 m
-above street grade, walled at its edge and reached from Liberty Street by a
-44 m flight notched into the deck, with Fritz Koenig's *Sphere* on its
+above street grade, walled at its edge, with Fritz Koenig's *Sphere* on its
 fountain.
+
+Two flights climb to the deck, each in the only stretch of its frontage that
+is not a building: a broad one from Liberty Street, centred on the South
+Tower, and the Vesey Street stair on the north — the **Survivors' Staircase**,
+which carried hundreds of people off the site on 11 September and was the last
+original structure left standing above ground there, moved into the memorial
+museum in 2008. It is modelled as it was, steps beside a bank of escalators,
+on the line Greenwich Street would take through the site.
 
 **Streets.** The OSM width is the whole right of way, so the carriageway is
 narrowed and the remainder becomes pavement either side, with lane markings
@@ -121,6 +128,10 @@ Four things are deliberately not raw OpenStreetMap:
    its retail podium height, which would extrude into a 140 m wide slab.
    Those buildings are modelled as a podium, a slender tower, and a crown.
 3. **Demolished buildings are added back**, in local grid coordinates.
+   The two plaza flights are reconstructions rather than surveyed: they are
+   placed and proportioned to read correctly, and this model holds every
+   street at one level, where Lower Manhattan in fact slopes — the grade at
+   the north-east of the site was not the grade at Liberty Street.
 4. **Roof clutter, street trees, traffic and harbour vessels are invented.**
    They are placed from a fixed seed for plausibility, not from survey, and
    tested against every building footprint, or against the coastline, so
@@ -136,7 +147,7 @@ uniform slab. Those are massing, not survey.
 
 ## Performance
 
-The scene is about 113 draw calls and 474k triangles, and renders in about a
+The scene is about 117 draw calls and 474k triangles, and renders in about a
 third of a millisecond a frame on an M2 at 1078 × 1674 once shaders are warm. Detail
 scales automatically: phones get a smaller shadow map, no bloom and fewer
 cars; desktops get the full set. The preset in use is shown in the panel.

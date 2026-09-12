@@ -239,23 +239,69 @@ WTC_COMPLEX = [
 ]
 
 # Austin J. Tobin Plaza: the five-acre elevated deck between the buildings.
-# Austin J. Tobin Plaza, with the Liberty Street stair notched out of its
-# south edge. The plaza stood 4.3 m above the street, and the open frontage on
-# Liberty runs from the east face of 3 WTC to the west face of 4 WTC; the
-# flight is centred on the South Tower within it.
-PLAZA_STAIR = {
-    "x0": 13.0, "x1": 57.0,       # 44 m wide
-    "z_top": 93.0,                # top tread, inside the plaza
-    "z_bottom": 104.0,            # foot of the flight, on the sidewalk
-    "steps": 22,        # 0.20 m risers on 0.50 m treads
-}
+# Austin J. Tobin Plaza and its steps.
+#
+# The deck stood 4.3 m above the street and was reached by flights from the
+# pavements around it. Two are modelled, each in the only stretch of its
+# frontage that is not a building:
+#
+#   Liberty Street, south, between 3 WTC and 4 WTC, centred on the South Tower.
+#   Vesey Street, north, between 6 WTC and 5 WTC, on the line Greenwich Street
+#   would take through the site. This is the Vesey Street stair -- the
+#   "Survivors' Staircase" -- the last original structure left standing above
+#   ground on the site, moved into the memorial museum in 2008.
+#
+# One caveat on the Vesey flight: this model puts every street at one level,
+# but Lower Manhattan slopes, and the grade at the north-east of the site was
+# not the same as at Liberty Street. The flight is placed and sized to read
+# correctly; its rise is the model's uniform 4.3 m, not a surveyed figure.
 
-PLAZA_POLY = [
-    (-110, -163), (186, -163), (186, 100),
-    (PLAZA_STAIR["x1"], 100), (PLAZA_STAIR["x1"], PLAZA_STAIR["z_top"]),
-    (PLAZA_STAIR["x0"], PLAZA_STAIR["z_top"]), (PLAZA_STAIR["x0"], 100),
-    (-110, 100),
+PLAZA_STAIRS = [
+    {   # Liberty Street, rising north into the deck
+        "name": "Liberty Street",
+        "x0": 13.0, "x1": 57.0,
+        "z_top": 93.0, "z_bottom": 104.0,
+        "steps": 22,                 # 0.20 m risers on 0.50 m treads
+    },
+    {   # Vesey Street, rising south into the deck.
+        #
+        # The real thing was a stair with a bank of escalators alongside it,
+        # so the opening carries both: steps on the west side, a smooth
+        # inclined bank on the east. Modelling the whole 13 m opening as
+        # treads would overstate the staircase, which was about 5.5 m wide.
+        "name": "Vesey Street",
+        "x0": 65.0, "x1": 78.0,
+        "z_top": -156.0, "z_bottom": -167.0,
+        "steps": 22,
+        "escalator": {"x0": 71.5, "x1": 78.0},
+    },
 ]
+
+PLAZA_EDGE = {"west": -110.0, "east": 186.0, "north": -163.0, "south": 100.0}
+
+
+def _plaza_outline():
+    """The deck outline, with a notch cut for each flight."""
+    w, e = PLAZA_EDGE["west"], PLAZA_EDGE["east"]
+    n, s = PLAZA_EDGE["north"], PLAZA_EDGE["south"]
+    north_stairs = sorted((st for st in PLAZA_STAIRS if st["z_bottom"] < st["z_top"]),
+                          key=lambda st: st["x0"])
+    south_stairs = sorted((st for st in PLAZA_STAIRS if st["z_bottom"] > st["z_top"]),
+                          key=lambda st: -st["x0"])
+
+    pts = [(w, n)]
+    for st in north_stairs:                      # west to east along Vesey
+        pts += [(st["x0"], n), (st["x0"], st["z_top"]),
+                (st["x1"], st["z_top"]), (st["x1"], n)]
+    pts += [(e, n), (e, s)]
+    for st in south_stairs:                      # east to west along Liberty
+        pts += [(st["x1"], s), (st["x1"], st["z_top"]),
+                (st["x0"], st["z_top"]), (st["x0"], s)]
+    pts.append((w, s))
+    return pts
+
+
+PLAZA_POLY = _plaza_outline()
 
 # ---------------------------------------------------------------------------
 # Geometry helpers
@@ -1221,7 +1267,7 @@ def main():
             for b in WTC_COMPLEX
         ],
         "plaza": {"p": [[x, z] for x, z in ccw(PLAZA_POLY)], "y": PLAZA_LEVEL,
-                  "stair": PLAZA_STAIR},
+                  "stairs": PLAZA_STAIRS},
         "land": land,
         "buildings": buildings,
         "roads": roads,

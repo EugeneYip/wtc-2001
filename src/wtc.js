@@ -158,6 +158,9 @@ export const MATS = {
   plazaWall: new THREE.MeshStandardMaterial({
     color: 0x9c9282, metalness: 0.02, roughness: 0.82,
   }),
+  escalator: new THREE.MeshStandardMaterial({
+    color: 0x8d9296, metalness: 0.55, roughness: 0.38,
+  }),
   // 4, 5 and 6 WTC were clad in the same aluminium as the towers, in
   // horizontal bands rather than the towers' vertical column grid.
   lowrise: new THREE.MeshStandardMaterial({
@@ -437,53 +440,92 @@ export function buildTower({ center, roof: roofY, mast, name, side }) {
 // ---------------------------------------------------------------------------
 
 /**
- * The broad flight up from Liberty Street.
+ * A flight up from the street to the deck.
  *
  * The plaza stood 4.3 m above the street, and its edge was not a blank
- * retaining wall — it was reached by flights of steps from the surrounding
- * pavements. The treads are notched into the deck so the flight does not
- * block the sidewalk, and the last few project out over it.
+ * retaining wall — it was reached by flights of steps from the pavements
+ * around it. Each flight is notched into the deck so it does not block the
+ * sidewalk, with the last treads projecting over it.
+ *
+ * Works on either frontage: `z_bottom` is the street end whichever way that
+ * lies, so the Vesey flight climbs south and the Liberty one climbs north.
  */
 function plazaStair(stair, level) {
   const { x0, x1, z_top: zTop, z_bottom: zBot, steps } = stair;
   const rise = level / steps;
-  const tread = (zBot - zTop) / steps;
+  const tread = Math.abs(zTop - zBot) / steps;
+  const dir = Math.sign(zTop - zBot);      // street -> deck
   const parts = [];
+
+  const band = (i) => {
+    const a = zBot + dir * i * tread;
+    const b = a + dir * tread;
+    return (a + b) / 2;
+  };
+
+  // Where an escalator bank shares the opening, the treads stop short of it.
+  const esc = stair.escalator;
+  const treadEnd = esc ? esc.x0 - 0.6 : x1;
 
   for (let i = 0; i < steps; i++) {
     const top = (i + 1) * rise;
-    const z1 = zBot - i * tread;           // nosing, nearest the street
-    const z0 = z1 - tread;
-    const g = new THREE.BoxGeometry(x1 - x0, top + 0.3, tread);
-    g.translate((x0 + x1) / 2, (top + 0.3) / 2 - 0.3, (z0 + z1) / 2);
+    const g = new THREE.BoxGeometry(treadEnd - x0, top + 0.3, tread);
+    g.translate((x0 + treadEnd) / 2, (top + 0.3) / 2 - 0.3, band(i));
     parts.push(norm(g));
   }
 
-  // Cheek walls either side, following the rake of the flight.
+  const metal = [];
+  if (esc) {
+    // A smooth inclined slab with balustrades either side reads as a bank of
+    // escalators without pretending to model the machinery.
+    const run = Math.abs(zTop - zBot);
+    const angle = Math.atan2(level, run);
+    const slope = Math.hypot(level, run);
+    const midZ = (zTop + zBot) / 2;
+
+    const deck = new THREE.BoxGeometry(esc.x1 - esc.x0, 0.55, slope);
+    deck.rotateX(-dir * angle);
+    deck.translate((esc.x0 + esc.x1) / 2, level / 2, midZ);
+    metal.push(norm(deck));
+
+    for (const bx of [esc.x0 + 0.35, esc.x1 - 0.35]) {
+      const rail = new THREE.BoxGeometry(0.7, 1.0, slope);
+      rail.rotateX(-dir * angle);
+      rail.translate(bx, level / 2 + 0.72, midZ);
+      metal.push(norm(rail));
+    }
+    // Divider between the treads and the bank.
+    const wall = new THREE.BoxGeometry(0.7, 1.0, slope);
+    wall.rotateX(-dir * angle);
+    wall.translate(esc.x0 - 0.3, level / 2 + 0.72, midZ);
+    parts.push(norm(wall));
+  }
+  // Treads are stone, the bank is not, so they come back separately.
+  return { stone: mergeGeometries(parts), metal: metal.length ? mergeGeometries(metal) : null };
+
+  // Cheek walls either side of the whole opening, following the rake.
   for (const sx of [x0 - 0.9, x1 + 0.9]) {
     for (let i = 0; i < steps; i++) {
       const top = (i + 1) * rise + 0.75;
-      const z1 = zBot - i * tread;
       const g = new THREE.BoxGeometry(1.8, top + 0.3, tread);
-      g.translate(sx, (top + 0.3) / 2 - 0.3, z1 - tread / 2);
+      g.translate(sx, (top + 0.3) / 2 - 0.3, band(i));
       parts.push(norm(g));
     }
   }
-  return mergeGeometries(parts);
 }
 
 /**
  * The low wall around the edge of the deck. It follows the notch as well, so
  * it flanks the stair without being placed by hand.
  */
-function plazaParapet(poly, level, stair, height = 1.05, thick = 0.55) {
-  // The head of the flight is an edge of the plaza outline like any other, so
-  // without this the wall runs straight across the top of the steps and seals
-  // them off.
-  const isOpening = (p0, p1) => stair &&
-    Math.abs(p0[1] - stair.z_top) < 0.5 && Math.abs(p1[1] - stair.z_top) < 0.5 &&
-    Math.min(p0[0], p1[0]) >= stair.x0 - 0.5 &&
-    Math.max(p0[0], p1[0]) <= stair.x1 + 0.5;
+function plazaParapet(poly, level, stairs, height = 1.05, thick = 0.55) {
+  // The head of each flight is an edge of the plaza outline like any other,
+  // so without this the wall runs straight across the top of the steps and
+  // seals them off.
+  const isOpening = (p0, p1) => (stairs || []).some((st) =>
+    Math.abs(p0[1] - st.z_top) < 0.5 && Math.abs(p1[1] - st.z_top) < 0.5 &&
+    Math.min(p0[0], p1[0]) >= st.x0 - 0.5 &&
+    Math.max(p0[0], p1[0]) <= st.x1 + 0.5);
 
   let a = 0;
   for (let i = 0; i < poly.length; i++) {
@@ -563,15 +605,19 @@ export function buildComplex(data) {
   deck.name = 'plaza';
   g.add(deck);
 
-  if (data.plaza.stair) {
-    const st = new THREE.Mesh(plazaStair(data.plaza.stair, data.plaza.y),
-                              MATS.plaza);
-    st.castShadow = true; st.receiveShadow = true;
-    st.name = 'plaza-stair';
-    g.add(st);
+  for (const stair of data.plaza.stairs || []) {
+    const built = plazaStair(stair, data.plaza.y);
+    for (const [geo, mat, name] of [[built.stone, MATS.plaza, 'plaza-stair'],
+                                    [built.metal, MATS.escalator, 'plaza-escalator']]) {
+      if (!geo) continue;
+      const m = new THREE.Mesh(geo, mat);
+      m.castShadow = true; m.receiveShadow = true;
+      m.name = name;
+      g.add(m);
+    }
   }
 
-  const wall = plazaParapet(data.plaza.p, data.plaza.y, data.plaza.stair);
+  const wall = plazaParapet(data.plaza.p, data.plaza.y, data.plaza.stairs);
   if (wall) {
     const m = new THREE.Mesh(wall, MATS.plazaWall);
     m.castShadow = true; m.receiveShadow = true;
