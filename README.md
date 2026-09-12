@@ -68,11 +68,18 @@ One Liberty Plaza, the Barclay-Vesey Building, and the Deutsche Bank Building
 at 130 Liberty Street — damaged on 9/11 and since demolished, so re-added by
 hand.
 
-**Light.** The sun is placed from real solar geometry for 40.71° N on
-11 September, so shadow directions through the day are the ones the site
+**Light and water.** The sun is placed from real solar geometry for 40.71° N
+on 11 September, so shadow directions through the day are the ones the site
 actually had. Reflections come from a cube probe rendered over the site, so
-the towers' aluminium and the surface of the river pick up the actual
-skyline rather than just the sky.
+the towers' aluminium and the surface of the river pick up the actual skyline
+rather than just the sky.
+
+The rivers are modelled as a dielectric rather than a metal, which is what
+gives water its behaviour: its own dark blue-green looking down, turning to a
+sky mirror at grazing angles. Two normal maps drift across each other at
+different scales and headings — one layer alone only slides, two beating
+against each other read as chop — over a varying roughness map, because real
+water is never uniformly glassy.
 
 ## Accuracy notes
 
@@ -98,7 +105,9 @@ Four things are deliberately not raw OpenStreetMap:
 4. **Roof clutter, street trees and traffic are invented.** They are placed
    from a fixed seed for plausibility, not from survey. Water tanks, stair
    bulkheads and plane trees are what those roofs and streets had; their
-   exact positions are not claimed.
+   exact positions are not claimed. The land across the rivers is generic
+   mottling for the same reason — there is no data behind it, so it stays
+   deliberately vague rather than inventing a Jersey City skyline.
 
 Background buildings with no height in OSM get a deterministic estimate from
 their id and footprint area, so the fabric varies instead of reading as one
@@ -106,10 +115,10 @@ uniform slab. Those are massing, not survey.
 
 ## Performance
 
-The scene is about 100 draw calls and 260k triangles, and renders in roughly
-2.5 ms a frame on an M2 at 1080p. Detail scales automatically: phones get a
-smaller shadow map, no bloom and fewer cars; desktops get the full set. The
-preset in use is shown in the panel.
+The scene is about 100 draw calls and 258k triangles, and renders in roughly
+1.3 ms a frame on an M2 at 1078 × 1674 once shaders are warm. Detail scales
+automatically: phones get a smaller shadow map, no bloom and fewer cars;
+desktops get the full set. The preset in use is shown in the panel.
 
 ## Layout
 

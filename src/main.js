@@ -17,7 +17,7 @@ import { EffectComposer } from 'EffectComposer';
 import { RenderPass } from 'RenderPass';
 import { UnrealBloomPass } from 'UnrealBloomPass';
 import { OutputPass } from 'OutputPass';
-import { buildCity, cityLabels, CITY_MATS, WALL_CLASSES } from './city.js';
+import { buildCity, cityLabels, animateWater, CITY_MATS, WALL_CLASSES } from './city.js';
 import { buildComplex, MATS as WTC_MATS, PLAZA_TREE_SITES } from './wtc.js';
 import { roofClutter, trees, traffic } from './details.js';
 
@@ -330,6 +330,12 @@ function updateLabels() {
 // Boot
 // ---------------------------------------------------------------------------
 
+// The loading screen carries a dedication, so it is held long enough to be
+// read even when the scene is ready sooner.
+const MIN_LOADER_MS = 2600;
+const bootAt = performance.now();
+let loaderHeldMs = 0;
+
 async function init() {
   const status = document.getElementById('status');
   quality = detectQuality();
@@ -440,13 +446,20 @@ async function init() {
 
   addEventListener('resize', onResize);
   document.getElementById('quality').textContent = quality;
-  document.getElementById('loader').classList.add('gone');
   renderer.setAnimationLoop(render);
 
-  window.WTC = { scene, camera, controls, renderer, goTo, applyTime, VIEWS, data, quality };
+  status.textContent = 'Ready';
+  const built = performance.now() - bootAt;
+  if (built < MIN_LOADER_MS) await wait(MIN_LOADER_MS - built);
+  document.getElementById('loader').classList.add('gone');
+  loaderHeldMs = Math.round(performance.now() - bootAt);
+
+  window.WTC = { scene, camera, controls, renderer, goTo, applyTime, VIEWS, data,
+                 quality, get loaderHeldMs() { return loaderHeldMs; } };
 }
 
-function tick() { return new Promise((r) => setTimeout(r, 16)); }
+function tick() { return wait(16); }
+function wait(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
 async function loadData() {
   if (window.__CITY__) return window.__CITY__;      // inlined in the standalone build
@@ -543,9 +556,7 @@ function render() {
   controls.update();
 
   const t = clock.getElapsedTime();
-  if (CITY_MATS.water.normalMap) {
-    CITY_MATS.water.normalMap.offset.set(t * 0.0016, t * 0.0009);
-  }
+  animateWater(t);
   if (warningLight) {
     const on = (t % 2.0) < 0.55;
     warningLight.material.color.setHex(on ? 0xff2a1a : 0x3a0c06);

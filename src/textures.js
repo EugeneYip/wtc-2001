@@ -217,37 +217,55 @@ export function roadTexture() {
   return finish(c, 1 / 11, 1 / 11, 4);
 }
 
-/** Gentle chop on the rivers, as a normal map. */
-export function waterNormal() {
-  const N = 256;
+// ---------------------------------------------------------------------------
+// Noise
+// ---------------------------------------------------------------------------
+
+/** Tileable value noise at a given cell size, as a Float32Array of N*N. */
+function valueNoise(N, cells, seed) {
+  const rand = rng(seed);
+  const g = new Float32Array(cells * cells);
+  for (let i = 0; i < g.length; i++) g[i] = rand();
+  const out = new Float32Array(N * N);
+  const smooth = (t) => t * t * (3 - 2 * t);
+  const step = cells / N;
+  for (let y = 0; y < N; y++) {
+    const fy = y * step, y0 = Math.floor(fy), ty = smooth(fy - y0);
+    for (let x = 0; x < N; x++) {
+      const fx = x * step, x0 = Math.floor(fx), tx = smooth(fx - x0);
+      const x1 = (x0 + 1) % cells, y1 = (y0 + 1) % cells;
+      const a = g[y0 * cells + x0], b = g[y0 * cells + x1];
+      const c2 = g[y1 * cells + x0], d = g[y1 * cells + x1];
+      out[y * N + x] = (a + (b - a) * tx) * (1 - ty) + (c2 + (d - c2) * tx) * ty;
+    }
+  }
+  return out;
+}
+
+/** Sum several octaves of tileable value noise into a 0..1 height field. */
+function fbm(N, octaves, seed) {
+  const h = new Float32Array(N * N);
+  let amp = 1, total = 0, cells = octaves[0];
+  for (let o = 0; o < octaves.length; o++) {
+    cells = octaves[o];
+    const layer = valueNoise(N, cells, seed + o * 131);
+    for (let i = 0; i < h.length; i++) h[i] += layer[i] * amp;
+    total += amp;
+    amp *= 0.5;
+  }
+  for (let i = 0; i < h.length; i++) h[i] /= total;
+  return h;
+}
+
+function normalFromHeight(h, N, strength) {
   const [c, x] = canvas(N, N);
   const img = x.createImageData(N, N);
-  const rand = rng(7717);
-  const h = new Float32Array(N * N);
-  for (let i = 0; i < N * N; i++) h[i] = rand();
-  // A couple of smoothing passes turn white noise into rolling swell.
-  for (let pass = 0; pass < 3; pass++) {
-    const s = new Float32Array(N * N);
-    for (let y = 0; y < N; y++) {
-      for (let x0 = 0; x0 < N; x0++) {
-        let a = 0;
-        for (let dy = -1; dy <= 1; dy++) {
-          for (let dx = -1; dx <= 1; dx++) {
-            a += h[((y + dy + N) % N) * N + ((x0 + dx + N) % N)];
-          }
-        }
-        s[y * N + x0] = a / 9;
-      }
-    }
-    h.set(s);
-  }
-  const S = 2.2;
   for (let y = 0; y < N; y++) {
     for (let x0 = 0; x0 < N; x0++) {
       const i = y * N + x0;
       const dx = h[y * N + ((x0 + 1) % N)] - h[y * N + ((x0 - 1 + N) % N)];
       const dy = h[((y + 1) % N) * N + x0] - h[((y - 1 + N) % N) * N + x0];
-      const nx = -dx * S, ny = -dy * S, nz = 1;
+      const nx = -dx * strength, ny = -dy * strength, nz = 1;
       const l = Math.hypot(nx, ny, nz);
       img.data[i * 4] = ((nx / l) * 0.5 + 0.5) * 255;
       img.data[i * 4 + 1] = ((ny / l) * 0.5 + 0.5) * 255;
@@ -256,8 +274,99 @@ export function waterNormal() {
     }
   }
   x.putImageData(img, 0, 0);
-  const t = new THREE.CanvasTexture(c);
+  return c;
+}
+
+// ---------------------------------------------------------------------------
+// Water
+// ---------------------------------------------------------------------------
+
+/**
+ * Chop on the rivers. Several octaves, so the surface carries both a long
+ * swell and fine ripple; the viewer scrolls two copies of this at different
+ * scales and headings, which is what stops it reading as one sliding sheet.
+ */
+export function waterNormal(seed = 7717) {
+  const N = 256;
+  // Three octaves, not five: the finest octaves read as static rather than
+  // chop once the tile is stretched over 60 m of river.
+  const h = fbm(N, [3, 6, 12], seed);
+  const t = new THREE.CanvasTexture(normalFromHeight(h, N, 1.9));
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(1 / 60, 1 / 60);
+  t.anisotropy = 4;
   return t;
+}
+
+/**
+ * Slick and rough patches. Real water is never uniformly glassy, and varying
+ * roughness is what breaks a reflection into something that reads as water
+ * rather than a mirror.
+ */
+export function waterRoughness() {
+  const N = 256;
+  const h = fbm(N, [2, 4, 8], 3391);
+  const [c, x] = canvas(N, N);
+  const img = x.createImageData(N, N);
+  for (let i = 0; i < N * N; i++) {
+    const v = Math.round(50 + h[i] * 150);       // roughness 0.2 .. 0.8
+    img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = v;
+    img.data[i * 4 + 3] = 255;
+  }
+  x.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(1 / 900, 1 / 900);
+  return t;
+}
+
+// ---------------------------------------------------------------------------
+// Distant land
+// ---------------------------------------------------------------------------
+
+/**
+ * New Jersey and Brooklyn, kilometres off and mostly lost in haze. There is
+ * no data behind this, so it stays deliberately generic: low-frequency
+ * mottling in the greens, greys and browns of built-up land, with a faint
+ * block grid. It exists so the horizon is not a dead grey plane.
+ */
+export function landTexture() {
+  const N = 512;
+  const base = fbm(N, [3, 6, 12, 24], 881);
+  const urban = fbm(N, [2, 5, 11], 1777);
+  const [c, x] = canvas(N, N);
+  const img = x.createImageData(N, N);
+
+  // Brighter than it looks right: this is multiplied by the material colour
+  // and then dimmed again by low afternoon sun and haze.
+  const GREEN = [96, 110, 82];
+  const GREY = [150, 148, 141];
+  const BROWN = [142, 128, 106];
+
+  for (let i = 0; i < N * N; i++) {
+    const u = Math.min(1, Math.max(0, (urban[i] - 0.35) * 2.2));  // built-up
+    const g = base[i];
+    const warm = Math.min(1, Math.max(0, (g - 0.45) * 2.4));
+    let col = GREEN.map((v, k) => v + (BROWN[k] - v) * warm);
+    col = col.map((v, k) => v + (GREY[k] - v) * u);
+    const shade = 0.82 + g * 0.36;
+    img.data[i * 4] = Math.min(255, col[0] * shade);
+    img.data[i * 4 + 1] = Math.min(255, col[1] * shade);
+    img.data[i * 4 + 2] = Math.min(255, col[2] * shade);
+    img.data[i * 4 + 3] = 255;
+  }
+  x.putImageData(img, 0, 0);
+
+  // A faint street grid, enough to read as built-up at distance.
+  x.globalAlpha = 0.10;
+  x.strokeStyle = '#2e2f2c';
+  x.lineWidth = 1.5;
+  for (let i = 0; i < 16; i++) {
+    const p = (i + 0.5) * (N / 16);
+    x.beginPath(); x.moveTo(p, 0); x.lineTo(p, N); x.stroke();
+    x.beginPath(); x.moveTo(0, p); x.lineTo(N, p); x.stroke();
+  }
+  x.globalAlpha = 1;
+
+  return finish(c, 1 / 1400, 1 / 1400, 4);
 }

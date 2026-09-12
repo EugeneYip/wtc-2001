@@ -170,18 +170,40 @@
 
   /* ---------- loader ---------- */
   #loader{position:fixed;inset:0;z-index:50;display:grid;place-content:center;
-    justify-items:center;gap:20px;background:#05070b;transition:opacity .8s;
-    padding:24px;text-align:center}
+    justify-items:center;gap:0;transition:opacity .9s ease;
+    padding:24px;text-align:center;
+    background:radial-gradient(120% 90% at 50% 42%,#0d141e 0%,#05070b 70%)}
   #loader.gone{opacity:0;pointer-events:none}
-  .bars{display:flex;gap:10px;align-items:flex-end;height:92px}
-  .bars i{display:block;width:18px;background:linear-gradient(#9aa5b1,#252c35);
-    border-radius:1px;animation:rise 1.6s cubic-bezier(.3,0,.2,1) infinite alternate}
-  .bars i:nth-child(2){animation-delay:.24s}
-  @keyframes rise{from{height:26px;opacity:.32}to{height:92px;opacity:1}}
-  #loadtitle{font-size:14px;font-weight:600;letter-spacing:.03em;color:#c6d0da}
-  #loadtitle span{display:block;font-weight:400;font-size:11px;color:var(--faint);
-    margin-top:4px;letter-spacing:.02em}
-  #status{font-size:11px;color:var(--faint);letter-spacing:.05em}
+
+  .bars{display:flex;gap:11px;align-items:flex-end;height:104px;
+    margin-bottom:28px}
+  .bars i{display:block;width:19px;border-radius:1px;
+    background:linear-gradient(#aab4c0,#222932);
+    animation:rise 2.6s cubic-bezier(.33,0,.2,1) infinite alternate}
+  .bars i:nth-child(2){animation-delay:.3s}
+  @keyframes rise{from{height:30px;opacity:.30}to{height:104px;opacity:.95}}
+
+  #memoriam{font-size:20px;font-weight:300;letter-spacing:.42em;
+    text-indent:.42em;color:#dce6f0;
+    animation:fadeUp 1.5s cubic-bezier(.2,.7,.2,1) both}
+  #memoriam::after{content:"";display:block;width:52px;height:1px;margin:16px auto 0;
+    background:linear-gradient(90deg,transparent,rgba(159,196,232,.55),transparent);
+    animation:widen 1.9s cubic-bezier(.2,.7,.2,1) .25s both}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  @keyframes widen{from{width:0;opacity:0}to{width:52px;opacity:1}}
+
+  #loadtitle{margin-top:22px;font-size:13.5px;font-weight:600;letter-spacing:.03em;
+    color:#93a1af;animation:fadeUp 1.4s cubic-bezier(.2,.7,.2,1) .5s both}
+  #loadtitle span{display:block;font-weight:400;font-size:11px;color:#5b6773;
+    margin-top:5px;letter-spacing:.02em;max-width:34ch}
+  #status{margin-top:26px;font-size:10.5px;color:#4e5966;letter-spacing:.08em;
+    animation:fadeUp 1.2s cubic-bezier(.2,.7,.2,1) .8s both}
+
+  @media (max-width:480px){
+    #memoriam{font-size:17px;letter-spacing:.34em;text-indent:.34em}
+    .bars{height:84px;margin-bottom:24px}
+    @keyframes rise{from{height:24px;opacity:.30}to{height:84px;opacity:.95}}
+  }
 
   /* =========== desktop =========== */
   @media (min-width:821px){
@@ -371,6 +393,7 @@
 
 <div id="loader">
   <div class="bars"><i></i><i></i></div>
+  <div id="memoriam">In Memory</div>
   <div id="loadtitle">World Trade Center 2001
     <span>A 3D reconstruction of the World Trade Center and Lower Manhattan</span></div>
   <div id="status">Starting…</div>

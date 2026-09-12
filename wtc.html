@@ -170,18 +170,40 @@
 
   /* ---------- loader ---------- */
   #loader{position:fixed;inset:0;z-index:50;display:grid;place-content:center;
-    justify-items:center;gap:20px;background:#05070b;transition:opacity .8s;
-    padding:24px;text-align:center}
+    justify-items:center;gap:0;transition:opacity .9s ease;
+    padding:24px;text-align:center;
+    background:radial-gradient(120% 90% at 50% 42%,#0d141e 0%,#05070b 70%)}
   #loader.gone{opacity:0;pointer-events:none}
-  .bars{display:flex;gap:10px;align-items:flex-end;height:92px}
-  .bars i{display:block;width:18px;background:linear-gradient(#9aa5b1,#252c35);
-    border-radius:1px;animation:rise 1.6s cubic-bezier(.3,0,.2,1) infinite alternate}
-  .bars i:nth-child(2){animation-delay:.24s}
-  @keyframes rise{from{height:26px;opacity:.32}to{height:92px;opacity:1}}
-  #loadtitle{font-size:14px;font-weight:600;letter-spacing:.03em;color:#c6d0da}
-  #loadtitle span{display:block;font-weight:400;font-size:11px;color:var(--faint);
-    margin-top:4px;letter-spacing:.02em}
-  #status{font-size:11px;color:var(--faint);letter-spacing:.05em}
+
+  .bars{display:flex;gap:11px;align-items:flex-end;height:104px;
+    margin-bottom:28px}
+  .bars i{display:block;width:19px;border-radius:1px;
+    background:linear-gradient(#aab4c0,#222932);
+    animation:rise 2.6s cubic-bezier(.33,0,.2,1) infinite alternate}
+  .bars i:nth-child(2){animation-delay:.3s}
+  @keyframes rise{from{height:30px;opacity:.30}to{height:104px;opacity:.95}}
+
+  #memoriam{font-size:20px;font-weight:300;letter-spacing:.42em;
+    text-indent:.42em;color:#dce6f0;
+    animation:fadeUp 1.5s cubic-bezier(.2,.7,.2,1) both}
+  #memoriam::after{content:"";display:block;width:52px;height:1px;margin:16px auto 0;
+    background:linear-gradient(90deg,transparent,rgba(159,196,232,.55),transparent);
+    animation:widen 1.9s cubic-bezier(.2,.7,.2,1) .25s both}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  @keyframes widen{from{width:0;opacity:0}to{width:52px;opacity:1}}
+
+  #loadtitle{margin-top:22px;font-size:13.5px;font-weight:600;letter-spacing:.03em;
+    color:#93a1af;animation:fadeUp 1.4s cubic-bezier(.2,.7,.2,1) .5s both}
+  #loadtitle span{display:block;font-weight:400;font-size:11px;color:#5b6773;
+    margin-top:5px;letter-spacing:.02em;max-width:34ch}
+  #status{margin-top:26px;font-size:10.5px;color:#4e5966;letter-spacing:.08em;
+    animation:fadeUp 1.2s cubic-bezier(.2,.7,.2,1) .8s both}
+
+  @media (max-width:480px){
+    #memoriam{font-size:17px;letter-spacing:.34em;text-indent:.34em}
+    .bars{height:84px;margin-bottom:24px}
+    @keyframes rise{from{height:24px;opacity:.30}to{height:84px;opacity:.95}}
+  }
 
   /* =========== desktop =========== */
   @media (min-width:821px){
@@ -371,6 +393,7 @@
 
 <div id="loader">
   <div class="bars"><i></i><i></i></div>
+  <div id="memoriam">In Memory</div>
   <div id="loadtitle">World Trade Center 2001
     <span>A 3D reconstruction of the World Trade Center and Lower Manhattan</span></div>
   <div id="status">Starting…</div>
@@ -58086,37 +58109,55 @@ function roadTexture() {
   return finish(c, 1 / 11, 1 / 11, 4);
 }
 
-/** Gentle chop on the rivers, as a normal map. */
-function waterNormal() {
-  const N = 256;
+// ---------------------------------------------------------------------------
+// Noise
+// ---------------------------------------------------------------------------
+
+/** Tileable value noise at a given cell size, as a Float32Array of N*N. */
+function valueNoise(N, cells, seed) {
+  const rand = rng(seed);
+  const g = new Float32Array(cells * cells);
+  for (let i = 0; i < g.length; i++) g[i] = rand();
+  const out = new Float32Array(N * N);
+  const smooth = (t) => t * t * (3 - 2 * t);
+  const step = cells / N;
+  for (let y = 0; y < N; y++) {
+    const fy = y * step, y0 = Math.floor(fy), ty = smooth(fy - y0);
+    for (let x = 0; x < N; x++) {
+      const fx = x * step, x0 = Math.floor(fx), tx = smooth(fx - x0);
+      const x1 = (x0 + 1) % cells, y1 = (y0 + 1) % cells;
+      const a = g[y0 * cells + x0], b = g[y0 * cells + x1];
+      const c2 = g[y1 * cells + x0], d = g[y1 * cells + x1];
+      out[y * N + x] = (a + (b - a) * tx) * (1 - ty) + (c2 + (d - c2) * tx) * ty;
+    }
+  }
+  return out;
+}
+
+/** Sum several octaves of tileable value noise into a 0..1 height field. */
+function fbm(N, octaves, seed) {
+  const h = new Float32Array(N * N);
+  let amp = 1, total = 0, cells = octaves[0];
+  for (let o = 0; o < octaves.length; o++) {
+    cells = octaves[o];
+    const layer = valueNoise(N, cells, seed + o * 131);
+    for (let i = 0; i < h.length; i++) h[i] += layer[i] * amp;
+    total += amp;
+    amp *= 0.5;
+  }
+  for (let i = 0; i < h.length; i++) h[i] /= total;
+  return h;
+}
+
+function normalFromHeight(h, N, strength) {
   const [c, x] = canvas(N, N);
   const img = x.createImageData(N, N);
-  const rand = rng(7717);
-  const h = new Float32Array(N * N);
-  for (let i = 0; i < N * N; i++) h[i] = rand();
-  // A couple of smoothing passes turn white noise into rolling swell.
-  for (let pass = 0; pass < 3; pass++) {
-    const s = new Float32Array(N * N);
-    for (let y = 0; y < N; y++) {
-      for (let x0 = 0; x0 < N; x0++) {
-        let a = 0;
-        for (let dy = -1; dy <= 1; dy++) {
-          for (let dx = -1; dx <= 1; dx++) {
-            a += h[((y + dy + N) % N) * N + ((x0 + dx + N) % N)];
-          }
-        }
-        s[y * N + x0] = a / 9;
-      }
-    }
-    h.set(s);
-  }
-  const S = 2.2;
   for (let y = 0; y < N; y++) {
     for (let x0 = 0; x0 < N; x0++) {
       const i = y * N + x0;
       const dx = h[y * N + ((x0 + 1) % N)] - h[y * N + ((x0 - 1 + N) % N)];
       const dy = h[((y + 1) % N) * N + x0] - h[((y - 1 + N) % N) * N + x0];
-      const nx = -dx * S, ny = -dy * S, nz = 1;
+      const nx = -dx * strength, ny = -dy * strength, nz = 1;
       const l = Math.hypot(nx, ny, nz);
       img.data[i * 4] = ((nx / l) * 0.5 + 0.5) * 255;
       img.data[i * 4 + 1] = ((ny / l) * 0.5 + 0.5) * 255;
@@ -58125,13 +58166,104 @@ function waterNormal() {
     }
   }
   x.putImageData(img, 0, 0);
-  const t = new THREE.CanvasTexture(c);
+  return c;
+}
+
+// ---------------------------------------------------------------------------
+// Water
+// ---------------------------------------------------------------------------
+
+/**
+ * Chop on the rivers. Several octaves, so the surface carries both a long
+ * swell and fine ripple; the viewer scrolls two copies of this at different
+ * scales and headings, which is what stops it reading as one sliding sheet.
+ */
+function waterNormal(seed = 7717) {
+  const N = 256;
+  // Three octaves, not five: the finest octaves read as static rather than
+  // chop once the tile is stretched over 60 m of river.
+  const h = fbm(N, [3, 6, 12], seed);
+  const t = new THREE.CanvasTexture(normalFromHeight(h, N, 1.9));
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(1 / 60, 1 / 60);
+  t.anisotropy = 4;
   return t;
 }
 
-return { facadeMaps, roofTexture, plazaTexture, roadTexture, waterNormal };
+/**
+ * Slick and rough patches. Real water is never uniformly glassy, and varying
+ * roughness is what breaks a reflection into something that reads as water
+ * rather than a mirror.
+ */
+function waterRoughness() {
+  const N = 256;
+  const h = fbm(N, [2, 4, 8], 3391);
+  const [c, x] = canvas(N, N);
+  const img = x.createImageData(N, N);
+  for (let i = 0; i < N * N; i++) {
+    const v = Math.round(50 + h[i] * 150);       // roughness 0.2 .. 0.8
+    img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = v;
+    img.data[i * 4 + 3] = 255;
+  }
+  x.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(1 / 900, 1 / 900);
+  return t;
+}
+
+// ---------------------------------------------------------------------------
+// Distant land
+// ---------------------------------------------------------------------------
+
+/**
+ * New Jersey and Brooklyn, kilometres off and mostly lost in haze. There is
+ * no data behind this, so it stays deliberately generic: low-frequency
+ * mottling in the greens, greys and browns of built-up land, with a faint
+ * block grid. It exists so the horizon is not a dead grey plane.
+ */
+function landTexture() {
+  const N = 512;
+  const base = fbm(N, [3, 6, 12, 24], 881);
+  const urban = fbm(N, [2, 5, 11], 1777);
+  const [c, x] = canvas(N, N);
+  const img = x.createImageData(N, N);
+
+  // Brighter than it looks right: this is multiplied by the material colour
+  // and then dimmed again by low afternoon sun and haze.
+  const GREEN = [96, 110, 82];
+  const GREY = [150, 148, 141];
+  const BROWN = [142, 128, 106];
+
+  for (let i = 0; i < N * N; i++) {
+    const u = Math.min(1, Math.max(0, (urban[i] - 0.35) * 2.2));  // built-up
+    const g = base[i];
+    const warm = Math.min(1, Math.max(0, (g - 0.45) * 2.4));
+    let col = GREEN.map((v, k) => v + (BROWN[k] - v) * warm);
+    col = col.map((v, k) => v + (GREY[k] - v) * u);
+    const shade = 0.82 + g * 0.36;
+    img.data[i * 4] = Math.min(255, col[0] * shade);
+    img.data[i * 4 + 1] = Math.min(255, col[1] * shade);
+    img.data[i * 4 + 2] = Math.min(255, col[2] * shade);
+    img.data[i * 4 + 3] = 255;
+  }
+  x.putImageData(img, 0, 0);
+
+  // A faint street grid, enough to read as built-up at distance.
+  x.globalAlpha = 0.10;
+  x.strokeStyle = '#2e2f2c';
+  x.lineWidth = 1.5;
+  for (let i = 0; i < 16; i++) {
+    const p = (i + 0.5) * (N / 16);
+    x.beginPath(); x.moveTo(p, 0); x.lineTo(p, N); x.stroke();
+    x.beginPath(); x.moveTo(0, p); x.lineTo(N, p); x.stroke();
+  }
+  x.globalAlpha = 1;
+
+  return finish(c, 1 / 1400, 1 / 1400, 4);
+}
+
+return { facadeMaps, roofTexture, plazaTexture, roadTexture, waterNormal, waterRoughness, landTexture };
 });
 __def(["./details.js"], function () {
 /**
@@ -58426,7 +58558,7 @@ __def(["./city.js"], function () {
 const THREE = __req("three");
 const { mergeGeometries } = __req("BufferGeometryUtils");
 const { norm, shapeFrom, flat, bounds } = __req("./geo.js");
-const { facadeMaps, roofTexture, roadTexture, waterNormal } = __req("./textures.js");
+const { facadeMaps, roofTexture, roadTexture, waterNormal, waterRoughness, landTexture } = __req("./textures.js");
 
 const FACADE = facadeMaps();
 
@@ -58440,15 +58572,15 @@ const CITY_MATS = {
 
   roof: new THREE.MeshStandardMaterial({
     map: roofTexture(), roughness: 0.93, metalness: 0.02 }),
-  // Everything that is not Manhattan: New Jersey and Brooklyn, read as a
-  // hazy band rather than a hard dark edge at the horizon.
+  // Everything that is not Manhattan: New Jersey and Brooklyn, kilometres off
+  // and mostly haze. Generic land mottling, not invented buildings.
   //
   // The rivers sit only 150 mm above this plane, which is far below depth
   // precision a couple of kilometres out, so the ground would z-fight the
   // water and win. Polygon offset biases it away from the camera by a few
   // depth units, which scale with the local precision, so water always wins.
   ground: new THREE.MeshStandardMaterial({
-    color: 0x6b6961, roughness: 0.98, metalness: 0.0,
+    map: landTexture(), roughness: 0.98, metalness: 0.0,
     polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 8 }),
   road: new THREE.MeshStandardMaterial({
     map: roadTexture(), color: 0xb9b7af, roughness: 0.9, metalness: 0.0 }),
@@ -58456,11 +58588,71 @@ const CITY_MATS = {
     map: roadTexture(), color: 0xd0ccc1, roughness: 0.92, metalness: 0.0 }),
   park: new THREE.MeshStandardMaterial({
     color: 0x3d5130, roughness: 0.95, metalness: 0.0 }),
-  water: new THREE.MeshStandardMaterial({
-    color: 0x16303f, roughness: 0.07, metalness: 0.72,
-    normalMap: waterNormal(),
-    normalScale: new THREE.Vector2(0.4, 0.4) }),
+  water: makeWater(),
 };
+
+/**
+ * River surface.
+ *
+ * Water is a dielectric, not a metal: nearly all of its reflectivity comes
+ * from Fresnel, so it shows its own dark blue-green looking down and turns
+ * into a sky mirror at grazing angles. Modelling it as a metal (which this
+ * did at first) loses that entirely and reads as a flat sheet of lead.
+ *
+ * Two normal maps scroll across each other at different scales and headings.
+ * One layer alone just slides; two beating against each other read as chop.
+ */
+function makeWater() {
+  const near = waterNormal(7717);
+  const far = waterNormal(2213);
+
+  const m = new THREE.MeshStandardMaterial({
+    color: 0x16303f,
+    metalness: 0.02,
+    roughness: 0.22,
+    roughnessMap: waterRoughness(),
+    normalMap: near,
+    normalScale: new THREE.Vector2(0.55, 0.55),
+    envMapIntensity: 1.15,
+  });
+
+  m.onBeforeCompile = (shader) => {
+    shader.uniforms.normalMap2 = { value: far };
+    // vNormalMapUv is world metres / 60, so this ratio puts the second layer
+    // on a ~150 m swell under the ~60 m chop of the first.
+    shader.uniforms.normalMap2Scale = { value: 60 / 150 };
+    shader.uniforms.normalMap2Offset = { value: new THREE.Vector2() };
+
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <normalmap_pars_fragment>', `
+        #include <normalmap_pars_fragment>
+        uniform sampler2D normalMap2;
+        uniform float normalMap2Scale;
+        uniform vec2 normalMap2Offset;
+      `)
+      .replace('#include <normal_fragment_maps>', `
+        vec3 nA = texture2D( normalMap, vNormalMapUv ).xyz * 2.0 - 1.0;
+        vec3 nB = texture2D( normalMap2,
+                    vNormalMapUv * normalMap2Scale + normalMap2Offset ).xyz * 2.0 - 1.0;
+        // Whiteout blend: add the slopes, multiply the up components.
+        vec3 mapN = normalize( vec3( nA.xy + nB.xy, nA.z * nB.z ) );
+        mapN.xy *= normalScale;
+        normal = normalize( tbn * mapN );
+      `);
+
+    m.userData.shader = shader;
+  };
+
+  return m;
+}
+
+/** Drift the two wave layers. Called once a frame. */
+function animateWater(t) {
+  const m = CITY_MATS.water;
+  m.normalMap.offset.set(t * 0.0021, t * 0.0011);
+  const sh = m.userData.shader;
+  if (sh) sh.uniforms.normalMap2Offset.value.set(-t * 0.0016, t * 0.0027);
+}
 
 // The classes that get a textured facade and lit windows after dark.
 const WALL_CLASSES = Object.keys(FACADE);
@@ -58688,7 +58880,7 @@ function cityLabels(data) {
   return out;
 }
 
-return { CITY_MATS, WALL_CLASSES, buildCity, cityLabels };
+return { CITY_MATS, animateWater, WALL_CLASSES, buildCity, cityLabels };
 });
 __def(["./wtc.js"], function () {
 /**
@@ -59182,7 +59374,7 @@ const { EffectComposer } = __req("EffectComposer");
 const { RenderPass } = __req("RenderPass");
 const { UnrealBloomPass } = __req("UnrealBloomPass");
 const { OutputPass } = __req("OutputPass");
-const { buildCity, cityLabels, CITY_MATS, WALL_CLASSES } = __req("./city.js");
+const { buildCity, cityLabels, animateWater, CITY_MATS, WALL_CLASSES } = __req("./city.js");
 const { buildComplex, MATS: WTC_MATS, PLAZA_TREE_SITES } = __req("./wtc.js");
 const { roofClutter, trees, traffic } = __req("./details.js");
 
@@ -59495,6 +59687,12 @@ function updateLabels() {
 // Boot
 // ---------------------------------------------------------------------------
 
+// The loading screen carries a dedication, so it is held long enough to be
+// read even when the scene is ready sooner.
+const MIN_LOADER_MS = 2600;
+const bootAt = performance.now();
+let loaderHeldMs = 0;
+
 async function init() {
   const status = document.getElementById('status');
   quality = detectQuality();
@@ -59605,13 +59803,20 @@ async function init() {
 
   addEventListener('resize', onResize);
   document.getElementById('quality').textContent = quality;
-  document.getElementById('loader').classList.add('gone');
   renderer.setAnimationLoop(render);
 
-  window.WTC = { scene, camera, controls, renderer, goTo, applyTime, VIEWS, data, quality };
+  status.textContent = 'Ready';
+  const built = performance.now() - bootAt;
+  if (built < MIN_LOADER_MS) await wait(MIN_LOADER_MS - built);
+  document.getElementById('loader').classList.add('gone');
+  loaderHeldMs = Math.round(performance.now() - bootAt);
+
+  window.WTC = { scene, camera, controls, renderer, goTo, applyTime, VIEWS, data,
+                 quality, get loaderHeldMs() { return loaderHeldMs; } };
 }
 
-function tick() { return new Promise((r) => setTimeout(r, 16)); }
+function tick() { return wait(16); }
+function wait(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
 async function loadData() {
   if (window.__CITY__) return window.__CITY__;      // inlined in the standalone build
@@ -59708,9 +59913,7 @@ function render() {
   controls.update();
 
   const t = clock.getElapsedTime();
-  if (CITY_MATS.water.normalMap) {
-    CITY_MATS.water.normalMap.offset.set(t * 0.0016, t * 0.0009);
-  }
+  animateWater(t);
   if (warningLight) {
     const on = (t % 2.0) < 0.55;
     warningLight.material.color.setHex(on ? 0xff2a1a : 0x3a0c06);

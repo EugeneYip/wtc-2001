@@ -15,7 +15,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'BufferGeometryUtils';
 import { norm, shapeFrom, flat, bounds } from './geo.js';
-import { facadeMaps, roofTexture, roadTexture, waterNormal } from './textures.js';
+import { facadeMaps, roofTexture, roadTexture, waterNormal, waterRoughness,
+         landTexture } from './textures.js';
 
 const FACADE = facadeMaps();
 
@@ -29,15 +30,15 @@ export const CITY_MATS = {
 
   roof: new THREE.MeshStandardMaterial({
     map: roofTexture(), roughness: 0.93, metalness: 0.02 }),
-  // Everything that is not Manhattan: New Jersey and Brooklyn, read as a
-  // hazy band rather than a hard dark edge at the horizon.
+  // Everything that is not Manhattan: New Jersey and Brooklyn, kilometres off
+  // and mostly haze. Generic land mottling, not invented buildings.
   //
   // The rivers sit only 150 mm above this plane, which is far below depth
   // precision a couple of kilometres out, so the ground would z-fight the
   // water and win. Polygon offset biases it away from the camera by a few
   // depth units, which scale with the local precision, so water always wins.
   ground: new THREE.MeshStandardMaterial({
-    color: 0x6b6961, roughness: 0.98, metalness: 0.0,
+    map: landTexture(), roughness: 0.98, metalness: 0.0,
     polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 8 }),
   road: new THREE.MeshStandardMaterial({
     map: roadTexture(), color: 0xb9b7af, roughness: 0.9, metalness: 0.0 }),
@@ -45,11 +46,71 @@ export const CITY_MATS = {
     map: roadTexture(), color: 0xd0ccc1, roughness: 0.92, metalness: 0.0 }),
   park: new THREE.MeshStandardMaterial({
     color: 0x3d5130, roughness: 0.95, metalness: 0.0 }),
-  water: new THREE.MeshStandardMaterial({
-    color: 0x16303f, roughness: 0.07, metalness: 0.72,
-    normalMap: waterNormal(),
-    normalScale: new THREE.Vector2(0.4, 0.4) }),
+  water: makeWater(),
 };
+
+/**
+ * River surface.
+ *
+ * Water is a dielectric, not a metal: nearly all of its reflectivity comes
+ * from Fresnel, so it shows its own dark blue-green looking down and turns
+ * into a sky mirror at grazing angles. Modelling it as a metal (which this
+ * did at first) loses that entirely and reads as a flat sheet of lead.
+ *
+ * Two normal maps scroll across each other at different scales and headings.
+ * One layer alone just slides; two beating against each other read as chop.
+ */
+function makeWater() {
+  const near = waterNormal(7717);
+  const far = waterNormal(2213);
+
+  const m = new THREE.MeshStandardMaterial({
+    color: 0x16303f,
+    metalness: 0.02,
+    roughness: 0.22,
+    roughnessMap: waterRoughness(),
+    normalMap: near,
+    normalScale: new THREE.Vector2(0.55, 0.55),
+    envMapIntensity: 1.15,
+  });
+
+  m.onBeforeCompile = (shader) => {
+    shader.uniforms.normalMap2 = { value: far };
+    // vNormalMapUv is world metres / 60, so this ratio puts the second layer
+    // on a ~150 m swell under the ~60 m chop of the first.
+    shader.uniforms.normalMap2Scale = { value: 60 / 150 };
+    shader.uniforms.normalMap2Offset = { value: new THREE.Vector2() };
+
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <normalmap_pars_fragment>', `
+        #include <normalmap_pars_fragment>
+        uniform sampler2D normalMap2;
+        uniform float normalMap2Scale;
+        uniform vec2 normalMap2Offset;
+      `)
+      .replace('#include <normal_fragment_maps>', `
+        vec3 nA = texture2D( normalMap, vNormalMapUv ).xyz * 2.0 - 1.0;
+        vec3 nB = texture2D( normalMap2,
+                    vNormalMapUv * normalMap2Scale + normalMap2Offset ).xyz * 2.0 - 1.0;
+        // Whiteout blend: add the slopes, multiply the up components.
+        vec3 mapN = normalize( vec3( nA.xy + nB.xy, nA.z * nB.z ) );
+        mapN.xy *= normalScale;
+        normal = normalize( tbn * mapN );
+      `);
+
+    m.userData.shader = shader;
+  };
+
+  return m;
+}
+
+/** Drift the two wave layers. Called once a frame. */
+export function animateWater(t) {
+  const m = CITY_MATS.water;
+  m.normalMap.offset.set(t * 0.0021, t * 0.0011);
+  const sh = m.userData.shader;
+  if (sh) sh.uniforms.normalMap2Offset.value.set(-t * 0.0016, t * 0.0027);
+}
 
 // The classes that get a textured facade and lit windows after dark.
 export const WALL_CLASSES = Object.keys(FACADE);
