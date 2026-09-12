@@ -33,6 +33,8 @@ dimensions and historic site plans, and any error in them is mine:
 - The Deutsche Bank Building at 130 Liberty Street, demolished 2007–2011
 - Height and massing corrections for the World Financial Center, the
   Woolworth Building and the Barclay-Vesey Building
+- Cladding corrections for the Woolworth and American Surety buildings, which
+  are pale terracotta rather than the brownstone their class would give them
 
 Roof clutter, street trees, street lamps, traffic and the harbour vessels are
 procedurally placed for plausibility and are not survey data. The night sky

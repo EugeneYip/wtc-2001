@@ -27,13 +27,34 @@ function rng(seed) {
   return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
 }
 
-function finish(c, repeatU, repeatV, aniso = 8) {
+function finish(c, repeatU, repeatV, aniso = 16) {
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.colorSpace = THREE.SRGBColorSpace;
   t.repeat.set(repeatU, repeatV);
   t.anisotropy = aniso;
   return t;
+}
+
+/** The same, for a texture holding numbers rather than colour. */
+function finishData(c, repeatU, repeatV, aniso = 16) {
+  const t = finish(c, repeatU, repeatV, aniso);
+  t.colorSpace = THREE.NoColorSpace;
+  return t;
+}
+
+const clamp255 = (v) => Math.max(0, Math.min(255, Math.round(v)));
+
+/** Scale a hex colour, optionally mixing it towards another. */
+function shade(hex, k, towards = null, t = 0) {
+  const n = parseInt(hex.slice(1), 16);
+  let c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => v * k);
+  if (towards) {
+    const m = parseInt(towards.slice(1), 16);
+    const o = [(m >> 16) & 255, (m >> 8) & 255, m & 255];
+    c = c.map((v, i) => v + (o[i] - v) * t);
+  }
+  return `rgb(${c.map(clamp255).join(',')})`;
 }
 
 /**
@@ -44,20 +65,40 @@ function finish(c, repeatU, repeatV, aniso = 8) {
  *   glass        window colour
  *   winW/winH    window size as a fraction of the bay and floor
  *   ribbon       true for curtain wall: windows run together horizontally
+ *
+ * Returns the colour map and a second, matching map holding roughness in its
+ * green channel and metalness in its blue — the layout has to be drawn once
+ * and written to both, or the two drift apart.
+ *
+ * The surface map is what stops every window in the city reading as a hole
+ * punched in the wall. Masonry and glass were sharing one roughness, so a
+ * window returned no more of the sky than the stone around it did, and the
+ * whole facade came out matte. Glass is smooth here, so it picks up the
+ * reflection probe: dark head-on, where a dielectric returns four per cent,
+ * and bright at a glancing angle. That is the behaviour, not a trick.
  */
 export function facade(opts) {
   const {
     seed, bayW, floorH, wall, trim, glass, winW, winH, ribbon = false,
     grain = 0.03, sill = null,
+    wallRough = 0.90, glassRough = 0.10,
+    wallMetal = 0.03, glassMetal = 0.05,
   } = opts;
 
   const PX = 48;                                   // pixels per bay
   const W = BAYS * PX, H = FLOORS * PX;
   const [c, x] = canvas(W, H);
+  const [sc, sx] = canvas(W, H);                   // G = roughness, B = metalness
   const rand = rng(seed);
+
+  const surf = (r, m) => `rgb(0,${clamp255(r * 255)},${clamp255(m * 255)})`;
+  const WALL_SURF = surf(wallRough, wallMetal);
+  const GLASS_SURF = surf(glassRough, glassMetal);
 
   x.fillStyle = wall;
   x.fillRect(0, 0, W, H);
+  sx.fillStyle = WALL_SURF;
+  sx.fillRect(0, 0, W, H);
 
   // Masonry grain, so flat walls are not dead flat.
   for (let i = 0; i < W * H * grain; i++) {
@@ -65,6 +106,32 @@ export function facade(opts) {
     x.fillStyle = `rgba(0,0,0,${0.03 + rand() * 0.05})`;
     x.fillRect(gx, gy, 1 + rand() * 2, 1);
   }
+
+  /**
+   * What is behind one window. Offices are not uniform: blinds are half down
+   * in one, a net curtain hangs in the next, the one after is an empty room.
+   * Filled with a single colour the whole city gets the same window, and a
+   * facade reads as a punched card.
+   */
+  const pane = (px, py, pw, ph) => {
+    const r = rand();
+    if (r < 0.20) {
+      // Blinds, part way down.
+      x.fillStyle = shade(glass, 1.0);
+      x.fillRect(px, py, pw, ph);
+      x.fillStyle = shade(glass, 1.6, '#b3ab9c', 0.45);
+      x.fillRect(px, py, pw, ph * (0.30 + rand() * 0.35));
+    } else if (r < 0.34) {
+      x.fillStyle = shade(glass, 1.45, '#aeb5bd', 0.30);   // curtain or blind
+      x.fillRect(px, py, pw, ph);
+    } else if (r < 0.46) {
+      x.fillStyle = shade(glass, 0.62);                     // deep, empty room
+      x.fillRect(px, py, pw, ph);
+    } else {
+      x.fillStyle = shade(glass, 0.88 + rand() * 0.30);
+      x.fillRect(px, py, pw, ph);
+    }
+  };
 
   const bw = PX * winW, bh = PX * winH;
   for (let f = 0; f < FLOORS; f++) {
@@ -74,26 +141,36 @@ export function facade(opts) {
       // Continuous glazing band with slim mullions.
       x.fillStyle = glass;
       x.fillRect(PX * 0.18, y0, W - PX * 0.36, bh);
+      sx.fillStyle = GLASS_SURF;
+      sx.fillRect(PX * 0.18, y0, W - PX * 0.36, bh);
+      for (let b = 0; b < BAYS; b++) {
+        pane(b * PX + PX * 0.2, y0, PX * 0.6, bh);
+      }
       x.fillStyle = trim;
+      sx.fillStyle = WALL_SURF;
       for (let b = 0; b <= BAYS; b++) {
         x.fillRect(b * PX - 1.5, y0, 3, bh);
+        sx.fillRect(b * PX - 1.5, y0, 3, bh);
       }
     } else {
       for (let b = 0; b < BAYS; b++) {
         const x0 = b * PX + (PX - bw) / 2;
-        // Slight per-window variation: blinds, reflections, dirt.
-        const v = 0.82 + rand() * 0.36;
-        x.fillStyle = glass;
-        x.globalAlpha = Math.min(1, v);
-        x.fillRect(x0, y0, bw, bh);
-        x.globalAlpha = 1;
-        // Reveal shadow on the left and head of each opening.
+        pane(x0, y0, bw, bh);
+        sx.fillStyle = GLASS_SURF;
+        sx.fillRect(x0, y0, bw, bh);
+        // Reveal shadow on the left and head of each opening. The reveal is
+        // masonry, so it goes back to the wall surface as well as the colour.
         x.fillStyle = 'rgba(0,0,0,0.30)';
         x.fillRect(x0, y0, 2, bh);
         x.fillRect(x0, y0, bw, 2);
+        sx.fillStyle = WALL_SURF;
+        sx.fillRect(x0, y0, 2, bh);
+        sx.fillRect(x0, y0, bw, 2);
         if (sill) {                                 // stone sill under the opening
           x.fillStyle = sill;
           x.fillRect(x0 - 2, y0 + bh, bw + 4, 2.5);
+          sx.fillStyle = WALL_SURF;
+          sx.fillRect(x0 - 2, y0 + bh, bw + 4, 2.5);
         }
       }
     }
@@ -103,9 +180,14 @@ export function facade(opts) {
     x.globalAlpha = ribbon ? 1 : 0.5;
     x.fillRect(0, f * PX, W, ribbon ? PX * 0.12 : 2);
     x.globalAlpha = 1;
+    if (ribbon) {
+      sx.fillStyle = WALL_SURF;
+      sx.fillRect(0, f * PX, W, PX * 0.12);
+    }
   }
 
-  return finish(c, 1 / (BAYS * bayW), 1 / (FLOORS * floorH));
+  const ru = 1 / (BAYS * bayW), rv = 1 / (FLOORS * floorH);
+  return { map: finish(c, ru, rv), surface: finishData(sc, ru, rv) };
 }
 
 /** Lit windows for the same tile grid, so night lights land on real windows. */
@@ -155,27 +237,47 @@ export function facadeLights(opts) {
 }
 
 // Facade families, matched to the classes build_scene.py assigns.
+//
+// wallRough/glassRough and their metal counterparts drive the surface map, so
+// the roughness is a property of what the pixel is rather than of the whole
+// building. Stone is matte; glass is not.
 const SPECS = {
   masonry_old:  { seed: 11, bayW: 2.9, floorH: 4.1, wall: '#8a7360', trim: '#6d5a4a',
-                  glass: '#1f242b', winW: 0.44, winH: 0.62, sill: '#9d8b78' },
+                  glass: '#1f242b', winW: 0.44, winH: 0.62, sill: '#9d8b78',
+                  wallRough: 0.94, glassRough: 0.11 },
   masonry_deco: { seed: 23, bayW: 3.1, floorH: 3.9, wall: '#9d8d79', trim: '#7d6f5e',
-                  glass: '#222933', winW: 0.48, winH: 0.60, sill: '#ad9f8c' },
+                  glass: '#222933', winW: 0.48, winH: 0.60, sill: '#ad9f8c',
+                  wallRough: 0.92, glassRough: 0.10 },
   midrise:      { seed: 37, bayW: 3.2, floorH: 3.8, wall: '#8b877f', trim: '#6f6c66',
-                  glass: '#232a33', winW: 0.54, winH: 0.58 },
+                  glass: '#232a33', winW: 0.54, winH: 0.58,
+                  wallRough: 0.86, glassRough: 0.09 },
+  // Pale glazed terracotta over a steel frame, in narrow Gothic bays. Only a
+  // couple of buildings here wore it, but they are the ones everyone knows,
+  // and a tint cannot get there from brown: multiplying a colour lightens it
+  // without ever desaturating it.
+  terracotta:   { seed: 97, bayW: 2.6, floorH: 4.0, wall: '#cdc4b0', trim: '#ab9f88',
+                  glass: '#242a31', winW: 0.40, winH: 0.66, sill: '#ded5c2',
+                  wallRough: 0.90, glassRough: 0.11 },
   lowrise:      { seed: 53, bayW: 2.8, floorH: 3.9, wall: '#7e766c', trim: '#645d55',
-                  glass: '#20262d', winW: 0.42, winH: 0.60, sill: '#8d857a' },
+                  glass: '#20262d', winW: 0.42, winH: 0.60, sill: '#8d857a',
+                  wallRough: 0.93, glassRough: 0.11 },
   tower_modern: { seed: 71, bayW: 1.6, floorH: 3.7, wall: '#7b8288', trim: '#5d666e',
-                  glass: '#2f3c49', winW: 0.78, winH: 0.68, ribbon: true },
+                  glass: '#2f3c49', winW: 0.78, winH: 0.68, ribbon: true,
+                  wallRough: 0.52, wallMetal: 0.45, glassRough: 0.07,
+                  glassMetal: 0.08 },
   // Bronze-tinted curtain wall. Dark, but not a void: the real thing still
   // picked up plenty of sky.
   dark:         { seed: 89, bayW: 1.6, floorH: 3.7, wall: '#6b6455', trim: '#4e4840',
-                  glass: '#443c31', winW: 0.80, winH: 0.70, ribbon: true },
+                  glass: '#443c31', winW: 0.80, winH: 0.70, ribbon: true,
+                  wallRough: 0.48, wallMetal: 0.40, glassRough: 0.08,
+                  glassMetal: 0.10 },
 };
 
 export function facadeMaps() {
   const out = {};
   for (const [k, spec] of Object.entries(SPECS)) {
-    out[k] = { map: facade(spec), lights: facadeLights(spec) };
+    const f = facade(spec);
+    out[k] = { map: f.map, surface: f.surface, lights: facadeLights(spec) };
   }
   return out;
 }

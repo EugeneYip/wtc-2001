@@ -58054,13 +58054,34 @@ function rng(seed) {
   return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
 }
 
-function finish(c, repeatU, repeatV, aniso = 8) {
+function finish(c, repeatU, repeatV, aniso = 16) {
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.colorSpace = THREE.SRGBColorSpace;
   t.repeat.set(repeatU, repeatV);
   t.anisotropy = aniso;
   return t;
+}
+
+/** The same, for a texture holding numbers rather than colour. */
+function finishData(c, repeatU, repeatV, aniso = 16) {
+  const t = finish(c, repeatU, repeatV, aniso);
+  t.colorSpace = THREE.NoColorSpace;
+  return t;
+}
+
+const clamp255 = (v) => Math.max(0, Math.min(255, Math.round(v)));
+
+/** Scale a hex colour, optionally mixing it towards another. */
+function shade(hex, k, towards = null, t = 0) {
+  const n = parseInt(hex.slice(1), 16);
+  let c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => v * k);
+  if (towards) {
+    const m = parseInt(towards.slice(1), 16);
+    const o = [(m >> 16) & 255, (m >> 8) & 255, m & 255];
+    c = c.map((v, i) => v + (o[i] - v) * t);
+  }
+  return `rgb(${c.map(clamp255).join(',')})`;
 }
 
 /**
@@ -58071,20 +58092,40 @@ function finish(c, repeatU, repeatV, aniso = 8) {
  *   glass        window colour
  *   winW/winH    window size as a fraction of the bay and floor
  *   ribbon       true for curtain wall: windows run together horizontally
+ *
+ * Returns the colour map and a second, matching map holding roughness in its
+ * green channel and metalness in its blue — the layout has to be drawn once
+ * and written to both, or the two drift apart.
+ *
+ * The surface map is what stops every window in the city reading as a hole
+ * punched in the wall. Masonry and glass were sharing one roughness, so a
+ * window returned no more of the sky than the stone around it did, and the
+ * whole facade came out matte. Glass is smooth here, so it picks up the
+ * reflection probe: dark head-on, where a dielectric returns four per cent,
+ * and bright at a glancing angle. That is the behaviour, not a trick.
  */
 function facade(opts) {
   const {
     seed, bayW, floorH, wall, trim, glass, winW, winH, ribbon = false,
     grain = 0.03, sill = null,
+    wallRough = 0.90, glassRough = 0.10,
+    wallMetal = 0.03, glassMetal = 0.05,
   } = opts;
 
   const PX = 48;                                   // pixels per bay
   const W = BAYS * PX, H = FLOORS * PX;
   const [c, x] = canvas(W, H);
+  const [sc, sx] = canvas(W, H);                   // G = roughness, B = metalness
   const rand = rng(seed);
+
+  const surf = (r, m) => `rgb(0,${clamp255(r * 255)},${clamp255(m * 255)})`;
+  const WALL_SURF = surf(wallRough, wallMetal);
+  const GLASS_SURF = surf(glassRough, glassMetal);
 
   x.fillStyle = wall;
   x.fillRect(0, 0, W, H);
+  sx.fillStyle = WALL_SURF;
+  sx.fillRect(0, 0, W, H);
 
   // Masonry grain, so flat walls are not dead flat.
   for (let i = 0; i < W * H * grain; i++) {
@@ -58092,6 +58133,32 @@ function facade(opts) {
     x.fillStyle = `rgba(0,0,0,${0.03 + rand() * 0.05})`;
     x.fillRect(gx, gy, 1 + rand() * 2, 1);
   }
+
+  /**
+   * What is behind one window. Offices are not uniform: blinds are half down
+   * in one, a net curtain hangs in the next, the one after is an empty room.
+   * Filled with a single colour the whole city gets the same window, and a
+   * facade reads as a punched card.
+   */
+  const pane = (px, py, pw, ph) => {
+    const r = rand();
+    if (r < 0.20) {
+      // Blinds, part way down.
+      x.fillStyle = shade(glass, 1.0);
+      x.fillRect(px, py, pw, ph);
+      x.fillStyle = shade(glass, 1.6, '#b3ab9c', 0.45);
+      x.fillRect(px, py, pw, ph * (0.30 + rand() * 0.35));
+    } else if (r < 0.34) {
+      x.fillStyle = shade(glass, 1.45, '#aeb5bd', 0.30);   // curtain or blind
+      x.fillRect(px, py, pw, ph);
+    } else if (r < 0.46) {
+      x.fillStyle = shade(glass, 0.62);                     // deep, empty room
+      x.fillRect(px, py, pw, ph);
+    } else {
+      x.fillStyle = shade(glass, 0.88 + rand() * 0.30);
+      x.fillRect(px, py, pw, ph);
+    }
+  };
 
   const bw = PX * winW, bh = PX * winH;
   for (let f = 0; f < FLOORS; f++) {
@@ -58101,26 +58168,36 @@ function facade(opts) {
       // Continuous glazing band with slim mullions.
       x.fillStyle = glass;
       x.fillRect(PX * 0.18, y0, W - PX * 0.36, bh);
+      sx.fillStyle = GLASS_SURF;
+      sx.fillRect(PX * 0.18, y0, W - PX * 0.36, bh);
+      for (let b = 0; b < BAYS; b++) {
+        pane(b * PX + PX * 0.2, y0, PX * 0.6, bh);
+      }
       x.fillStyle = trim;
+      sx.fillStyle = WALL_SURF;
       for (let b = 0; b <= BAYS; b++) {
         x.fillRect(b * PX - 1.5, y0, 3, bh);
+        sx.fillRect(b * PX - 1.5, y0, 3, bh);
       }
     } else {
       for (let b = 0; b < BAYS; b++) {
         const x0 = b * PX + (PX - bw) / 2;
-        // Slight per-window variation: blinds, reflections, dirt.
-        const v = 0.82 + rand() * 0.36;
-        x.fillStyle = glass;
-        x.globalAlpha = Math.min(1, v);
-        x.fillRect(x0, y0, bw, bh);
-        x.globalAlpha = 1;
-        // Reveal shadow on the left and head of each opening.
+        pane(x0, y0, bw, bh);
+        sx.fillStyle = GLASS_SURF;
+        sx.fillRect(x0, y0, bw, bh);
+        // Reveal shadow on the left and head of each opening. The reveal is
+        // masonry, so it goes back to the wall surface as well as the colour.
         x.fillStyle = 'rgba(0,0,0,0.30)';
         x.fillRect(x0, y0, 2, bh);
         x.fillRect(x0, y0, bw, 2);
+        sx.fillStyle = WALL_SURF;
+        sx.fillRect(x0, y0, 2, bh);
+        sx.fillRect(x0, y0, bw, 2);
         if (sill) {                                 // stone sill under the opening
           x.fillStyle = sill;
           x.fillRect(x0 - 2, y0 + bh, bw + 4, 2.5);
+          sx.fillStyle = WALL_SURF;
+          sx.fillRect(x0 - 2, y0 + bh, bw + 4, 2.5);
         }
       }
     }
@@ -58130,9 +58207,14 @@ function facade(opts) {
     x.globalAlpha = ribbon ? 1 : 0.5;
     x.fillRect(0, f * PX, W, ribbon ? PX * 0.12 : 2);
     x.globalAlpha = 1;
+    if (ribbon) {
+      sx.fillStyle = WALL_SURF;
+      sx.fillRect(0, f * PX, W, PX * 0.12);
+    }
   }
 
-  return finish(c, 1 / (BAYS * bayW), 1 / (FLOORS * floorH));
+  const ru = 1 / (BAYS * bayW), rv = 1 / (FLOORS * floorH);
+  return { map: finish(c, ru, rv), surface: finishData(sc, ru, rv) };
 }
 
 /** Lit windows for the same tile grid, so night lights land on real windows. */
@@ -58182,27 +58264,47 @@ function facadeLights(opts) {
 }
 
 // Facade families, matched to the classes build_scene.py assigns.
+//
+// wallRough/glassRough and their metal counterparts drive the surface map, so
+// the roughness is a property of what the pixel is rather than of the whole
+// building. Stone is matte; glass is not.
 const SPECS = {
   masonry_old:  { seed: 11, bayW: 2.9, floorH: 4.1, wall: '#8a7360', trim: '#6d5a4a',
-                  glass: '#1f242b', winW: 0.44, winH: 0.62, sill: '#9d8b78' },
+                  glass: '#1f242b', winW: 0.44, winH: 0.62, sill: '#9d8b78',
+                  wallRough: 0.94, glassRough: 0.11 },
   masonry_deco: { seed: 23, bayW: 3.1, floorH: 3.9, wall: '#9d8d79', trim: '#7d6f5e',
-                  glass: '#222933', winW: 0.48, winH: 0.60, sill: '#ad9f8c' },
+                  glass: '#222933', winW: 0.48, winH: 0.60, sill: '#ad9f8c',
+                  wallRough: 0.92, glassRough: 0.10 },
   midrise:      { seed: 37, bayW: 3.2, floorH: 3.8, wall: '#8b877f', trim: '#6f6c66',
-                  glass: '#232a33', winW: 0.54, winH: 0.58 },
+                  glass: '#232a33', winW: 0.54, winH: 0.58,
+                  wallRough: 0.86, glassRough: 0.09 },
+  // Pale glazed terracotta over a steel frame, in narrow Gothic bays. Only a
+  // couple of buildings here wore it, but they are the ones everyone knows,
+  // and a tint cannot get there from brown: multiplying a colour lightens it
+  // without ever desaturating it.
+  terracotta:   { seed: 97, bayW: 2.6, floorH: 4.0, wall: '#cdc4b0', trim: '#ab9f88',
+                  glass: '#242a31', winW: 0.40, winH: 0.66, sill: '#ded5c2',
+                  wallRough: 0.90, glassRough: 0.11 },
   lowrise:      { seed: 53, bayW: 2.8, floorH: 3.9, wall: '#7e766c', trim: '#645d55',
-                  glass: '#20262d', winW: 0.42, winH: 0.60, sill: '#8d857a' },
+                  glass: '#20262d', winW: 0.42, winH: 0.60, sill: '#8d857a',
+                  wallRough: 0.93, glassRough: 0.11 },
   tower_modern: { seed: 71, bayW: 1.6, floorH: 3.7, wall: '#7b8288', trim: '#5d666e',
-                  glass: '#2f3c49', winW: 0.78, winH: 0.68, ribbon: true },
+                  glass: '#2f3c49', winW: 0.78, winH: 0.68, ribbon: true,
+                  wallRough: 0.52, wallMetal: 0.45, glassRough: 0.07,
+                  glassMetal: 0.08 },
   // Bronze-tinted curtain wall. Dark, but not a void: the real thing still
   // picked up plenty of sky.
   dark:         { seed: 89, bayW: 1.6, floorH: 3.7, wall: '#6b6455', trim: '#4e4840',
-                  glass: '#443c31', winW: 0.80, winH: 0.70, ribbon: true },
+                  glass: '#443c31', winW: 0.80, winH: 0.70, ribbon: true,
+                  wallRough: 0.48, wallMetal: 0.40, glassRough: 0.08,
+                  glassMetal: 0.10 },
 };
 
 function facadeMaps() {
   const out = {};
   for (const [k, spec] of Object.entries(SPECS)) {
-    out[k] = { map: facade(spec), lights: facadeLights(spec) };
+    const f = facade(spec);
+    out[k] = { map: f.map, surface: f.surface, lights: facadeLights(spec) };
   }
   return out;
 }
@@ -58640,12 +58742,30 @@ function roofClutter(buildings) {
 
     const y = top - 0.8;                            // roof deck sits below the parapet
     const n = Math.min(4, 1 + Math.floor(area / 1400));
+    // Nothing may be wider than the roof it stands on. Without this a stair
+    // overrun eight metres across lands on a four-metre-wide building and
+    // hangs over every edge, which from the street reads as a box floating in
+    // mid-air beside the roofline.
+    const room = Math.min(bb.w, bb.d) * 0.5;
+    if (room < 1.2) continue;
+    const fits = (x, z, w, d) => {
+      const hw = w / 2, hd = d / 2;
+      return inside(x - hw, z - hd, poly) && inside(x + hw, z - hd, poly) &&
+             inside(x + hw, z + hd, poly) && inside(x - hw, z + hd, poly);
+    };
 
-    for (const [x, z] of scatter(poly, n, rand)) {
+    // More candidate points than items. A point that cannot take the item
+    // chosen for it is abandoned and the next one tried, rather than the item
+    // being dropped — otherwise the fit test thins the roofs out badly and the
+    // narrow buildings end up bare.
+    let placed = 0;
+    for (const [x, z] of scatter(poly, n * 5, rand)) {
+      if (placed >= n) break;
       const kind = rand();
       if (kind < 0.20 && top > 18 && top < 75) {
         // Water tank: staved timber drum with a conical cap, on short legs.
-        const r = 1.5 + rand() * 0.9;
+        const r = Math.min(1.5 + rand() * 0.9, room * 0.8);
+        if (r < 0.9 || !fits(x, z, r * 2.4, r * 2.4)) continue;
         const hh = 3.0 + rand() * 1.6;
         const legs = 2.0 + rand() * 2.0;
         const drum = new THREE.CylinderGeometry(r, r, hh, 10);
@@ -58661,19 +58781,29 @@ function roofClutter(buildings) {
                         z + Math.sin(a) * r * 0.7);
           tanks.push(norm(leg));
         }
+        placed++;
       } else if (kind < 0.55) {
         // Stair or lift overrun.
-        const w = 3.5 + rand() * 5, d = 3 + rand() * 4.5, hh = 2.6 + rand() * 2.2;
+        const turn = rand() < 0.5;
+        let w = Math.min(3.5 + rand() * 5, room * 1.5);
+        let d = Math.min(3 + rand() * 4.5, room * 1.5);
+        if (turn) { const t = w; w = d; d = t; }
+        const hh = 2.6 + rand() * 2.2;
+        if (w < 2 || d < 2 || !fits(x, z, w, d)) continue;
         const g = new THREE.BoxGeometry(w, hh, d);
-        g.rotateY(rand() < 0.5 ? 0 : Math.PI / 2);
         g.translate(x, y + hh / 2, z);
         plant.push(norm(g));
+        placed++;
       } else {
         // Low mechanical unit.
-        const w = 1.8 + rand() * 3, d = 1.4 + rand() * 2.4, hh = 0.9 + rand() * 1.3;
+        const w = Math.min(1.8 + rand() * 3, room * 1.4);
+        const d = Math.min(1.4 + rand() * 2.4, room * 1.4);
+        const hh = 0.9 + rand() * 1.3;
+        if (w < 1 || d < 1 || !fits(x, z, w, d)) continue;
         const g = new THREE.BoxGeometry(w, hh, d);
         g.translate(x, y + hh / 2, z);
         plant.push(norm(g));
+        placed++;
       }
     }
   }
@@ -59174,7 +59304,13 @@ const CITY_MATS = {
   dark:         new THREE.MeshStandardMaterial({ roughness: 0.34, metalness: 0.34 }),
 
   roof: new THREE.MeshStandardMaterial({
-    map: roofTexture(), roughness: 0.93, metalness: 0.02 }),
+    map: roofTexture(), roughness: 0.93, metalness: 0.02, vertexColors: true }),
+  // Roof crowns that are not storeys: the World Financial Center domes, and
+  // the copper pyramid on the Woolworth.
+  crownMetal: new THREE.MeshStandardMaterial({
+    color: 0x9fa8ae, roughness: 0.28, metalness: 0.70 }),
+  crownCopper: new THREE.MeshStandardMaterial({
+    color: 0x5d8071, roughness: 0.52, metalness: 0.35 }),
   // Land: Manhattan itself and everything across the rivers. Generic mottling
   // beyond the mapped blocks, not invented buildings.
   ground: new THREE.MeshStandardMaterial({
@@ -59436,10 +59572,19 @@ function animateWater(t) {
 const WALL_CLASSES = Object.keys(FACADE);
 
 for (const k of WALL_CLASSES) {
-  CITY_MATS[k].map = FACADE[k].map;
-  CITY_MATS[k].emissiveMap = FACADE[k].lights;
-  CITY_MATS[k].emissive = new THREE.Color(0xffd6a4);
-  CITY_MATS[k].emissiveIntensity = 0;
+  // A class may exist only as a facade family — `terracotta` is applied by
+  // name rather than assigned by the build — so give it a material here.
+  const m = (CITY_MATS[k] = CITY_MATS[k] || new THREE.MeshStandardMaterial());
+  m.map = FACADE[k].map;
+  // Roughness and metalness now vary within the facade, so the material's own
+  // values become plain multipliers and the map carries the real numbers.
+  m.roughnessMap = m.metalnessMap = FACADE[k].surface;
+  m.roughness = 1;
+  m.metalness = 1;
+  m.emissiveMap = FACADE[k].lights;
+  m.emissive = new THREE.Color(0xffd6a4);
+  m.emissiveIntensity = 0;
+  m.vertexColors = true;
 }
 
 // Street lighting, as a property of the ground rather than of lamps: sodium on
@@ -59553,6 +59698,67 @@ function shoreGlow(landPolys, buildings) {
 }
 
 // ---------------------------------------------------------------------------
+// Per-building tint
+// ---------------------------------------------------------------------------
+
+/**
+ * Six facade textures cover 814 buildings, so without this every building of a
+ * class is the same colour down to the pixel, and a block of them reads as one
+ * extruded mass. A small deterministic tint per building breaks that up: no two
+ * neighbours are quite the same stone, which is the actual condition of Lower
+ * Manhattan, where buildings went up a few at a time over a century.
+ *
+ * Kept narrow on purpose. Wide enough to read as different buildings, not wide
+ * enough to invent colours the class does not have.
+ */
+const TINTS = {
+  // A handful are too well known to leave generic.
+  'Barclay-Vesey Building': [1.10, 1.00, 0.90],      // warm brick
+  'Park Row Building': [1.14, 1.06, 0.98],
+  '90 West Street': [1.14, 1.10, 1.02],
+  'Woolworth Building': [1.03, 1.02, 1.00],
+  'American Surety Building': [1.02, 1.02, 1.02],
+};
+
+/**
+ * Buildings whose facade is not the one their class would give them.
+ * The class comes from height and footprint, which cannot know that these two
+ * are clad in pale terracotta rather than the brownstone around them.
+ */
+const FACADE_OVERRIDE = {
+  'Woolworth Building': 'terracotta',
+  'American Surety Building': 'terracotta',
+};
+
+function buildingTint(b) {
+  const fixed = TINTS[b.n];
+  if (fixed) return fixed;
+  // Seeded from the footprint, so the same building always gets the same tint.
+  const [x0, z0] = b.p[0];
+  let h = Math.imul(Math.round(x0 * 16) ^ 0x9e3779b9, 0x85ebca6b);
+  h = Math.imul(h ^ Math.round(z0 * 16), 0xc2b2ae35);
+  h ^= h >>> 15;
+  const u = ((h >>> 0) % 1024) / 1024;
+  const v = ((h >>> 10) % 1024) / 1024;
+  // Lightness first, then a little warm-to-cool drift across it.
+  const l = 0.86 + u * 0.30;
+  const warm = (v - 0.5) * 0.14;
+  return [l * (1 + warm), l, l * (1 - warm * 0.8)];
+}
+
+/** Give a geometry a flat vertex colour so it can be merged with the rest. */
+function tint(geo, rgb) {
+  if (!geo) return geo;
+  const n = geo.getAttribute('position').count;
+  const a = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    a[i * 3] = rgb[0]; a[i * 3 + 1] = rgb[1]; a[i * 3 + 2] = rgb[2];
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(a, 3));
+  return geo;
+}
+
+// ---------------------------------------------------------------------------
 // Geometry
 // ---------------------------------------------------------------------------
 
@@ -59657,7 +59863,15 @@ function shaftRect(cx, cz, w, d, y0, y1) {
  * the building below.
  */
 function crown(style, poly, y0, hh) {
-  const parts = [];
+  // Setbacks are storeys, so they keep the building's own facade. A dome or a
+  // spire is a roof, and must not: both are single pieces of revolved geometry
+  // whose UVs run nought to one, so with a facade map repeating every dozen
+  // metres the whole dome samples one sliver of the tile. Two of the World
+  // Financial Center crowns were coming out as black mirrors for exactly that
+  // reason — the sliver they happened to land on was the glass.
+  const walls = [];
+  const metal = [];
+  const copper = [];
   const [cx, cz] = centroid(poly);
   const b = bounds(poly);
   const span = Math.min(b.w, b.d);
@@ -59665,7 +59879,7 @@ function crown(style, poly, y0, hh) {
   const slab = (k, ht, y) => {
     const g = extrude(scalePoly(poly, k, cx, cz), ht);
     g.translate(0, y, 0);
-    parts.push(g);
+    walls.push(g);
   };
 
   if (style === 'dome') {
@@ -59675,7 +59889,7 @@ function crown(style, poly, y0, hh) {
     const dome = new THREE.SphereGeometry(r, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2);
     dome.scale(1, (hh * 0.45) / r, 1);
     dome.translate(cx, y0 + hh * 0.55, cz);
-    parts.push(norm(dome));
+    metal.push(norm(dome));
   } else if (style === 'steppyr') {
     const steps = 7, sh = hh / steps;
     for (let i = 0; i < steps; i++) slab(0.96 - (i / steps) * 0.80, sh, y0 + i * sh);
@@ -59687,9 +59901,9 @@ function crown(style, poly, y0, hh) {
     for (let i = 0; i < steps; i++) slab(0.94 - (i / steps) * 0.64, sh, y0 + i * sh);
     const pin = new THREE.ConeGeometry(span * 0.16, hh * 0.38, 8);
     pin.translate(cx, y0 + hh * 0.62 + hh * 0.19, cz);
-    parts.push(norm(pin));
+    copper.push(norm(pin));
   }
-  return parts;
+  return { walls, metal, copper };
 }
 
 // ---------------------------------------------------------------------------
@@ -59822,13 +60036,18 @@ function buildCity(data) {
   // Buildings: walls batched by facade family, roofs and crowns pooled.
   const walls = {};
   const roofs = [];
+  const caps = { metal: [], copper: [] };
   for (const b of data.buildings) {
-    const cls = WALL_CLASSES.includes(b.c) ? b.c : 'lowrise';
+    const cls = FACADE_OVERRIDE[b.n] ||
+                (WALL_CLASSES.includes(b.c) ? b.c : 'lowrise');
     const into = (walls[cls] = walls[cls] || []);
+    const rgb = buildingTint(b);
+    // Roofs weather more than walls and vary more, but in the same direction.
+    const roofRgb = rgb.map((v) => 0.72 + (v - 1) * 0.5);
 
     const base = shell(b.p, b.h);
-    if (base.wall) into.push(base.wall);
-    if (base.roof) roofs.push(base.roof);
+    if (base.wall) into.push(tint(base.wall, rgb));
+    if (base.roof) roofs.push(tint(base.roof, roofRgb));
 
     // A crown sits on whatever is directly under it: the tower box where
     // there is one, otherwise the building's own footprint.
@@ -59836,14 +60055,27 @@ function buildCity(data) {
     let top = b.h;
     if (b.t) {
       const shaft = shaftRect(b.t.cx, b.t.cz, b.t.w, b.t.d, b.h, b.t.h);
-      if (shaft.wall) into.push(shaft.wall);
-      if (shaft.roof) roofs.push(shaft.roof);
+      if (shaft.wall) into.push(tint(shaft.wall, rgb));
+      if (shaft.roof) roofs.push(tint(shaft.roof, roofRgb));
       const hw = b.t.w / 2, hd = b.t.d / 2;
       capPoly = [[b.t.cx - hw, b.t.cz - hd], [b.t.cx + hw, b.t.cz - hd],
                  [b.t.cx + hw, b.t.cz + hd], [b.t.cx - hw, b.t.cz + hd]];
       top = b.t.h;
     }
-    if (b.r && b.r !== 'flat') into.push(...crown(b.r, capPoly, top, b.rh || 16));
+    if (b.r && b.r !== 'flat') {
+      const cw = crown(b.r, capPoly, top, b.rh || 16);
+      for (const gm of cw.walls) into.push(tint(gm, rgb));
+      caps.metal.push(...cw.metal);
+      caps.copper.push(...cw.copper);
+    }
+  }
+
+  for (const [kind, geos] of Object.entries(caps)) {
+    if (!geos.length) continue;
+    const m = new THREE.Mesh(mergeGeometries(geos), CITY_MATS[kind === 'metal' ? 'crownMetal' : 'crownCopper']);
+    m.castShadow = m.receiveShadow = true;
+    m.name = 'crowns-' + kind;
+    g.add(m);
   }
 
   for (const [cls, geos] of Object.entries(walls)) {
@@ -60010,11 +60242,15 @@ function towerLights() {
 const LOW_SPEC = {
   seed: 311, bayW: 1.75, floorH: 3.8, wall: '#a4aab0', trim: '#7c848c',
   glass: '#2c3540', winW: 0.78, winH: 0.60, ribbon: true,
+  wallRough: 0.40, wallMetal: 0.55, glassRough: 0.08, glassMetal: 0.08,
 };
 const WTC7_SPEC = {
   seed: 707, bayW: 1.70, floorH: 3.9, wall: '#8a5b45', trim: '#66412f',
   glass: '#2e2822', winW: 0.80, winH: 0.62, ribbon: true,
+  wallRough: 0.66, wallMetal: 0.18, glassRough: 0.09, glassMetal: 0.08,
 };
+const LOW_FACE = facade(LOW_SPEC);
+const WTC7_FACE = facade(WTC7_SPEC);
 
 const PLAZA_MAP = plazaTexture();
 
@@ -60061,15 +60297,17 @@ const MATS = {
   // 4, 5 and 6 WTC were clad in the same aluminium as the towers, in
   // horizontal bands rather than the towers' vertical column grid.
   lowrise: new THREE.MeshStandardMaterial({
-    map: facade(LOW_SPEC), emissiveMap: facadeLights(LOW_SPEC),
+    map: LOW_FACE.map, emissiveMap: facadeLights(LOW_SPEC),
+    roughnessMap: LOW_FACE.surface, metalnessMap: LOW_FACE.surface,
     emissive: new THREE.Color(0xffd6a4), emissiveIntensity: 0,
-    metalness: 0.40, roughness: 0.46,
+    metalness: 1, roughness: 1,
   }),
   // The original 7 WTC was faced in dark red granite with ribbon glazing.
   wtc7: new THREE.MeshStandardMaterial({
-    map: facade(WTC7_SPEC), emissiveMap: facadeLights(WTC7_SPEC),
+    map: WTC7_FACE.map, emissiveMap: facadeLights(WTC7_SPEC),
+    roughnessMap: WTC7_FACE.surface, metalnessMap: WTC7_FACE.surface,
     emissive: new THREE.Color(0xffd6a4), emissiveIntensity: 0,
-    metalness: 0.22, roughness: 0.62,
+    metalness: 1, roughness: 1,
   }),
   roofPlant: new THREE.MeshStandardMaterial({
     color: 0x6e7276, metalness: 0.45, roughness: 0.6,
@@ -60695,7 +60933,11 @@ const FILL_DAY = new THREE.Color(0xc8d8ff);
 const SUN_HIGH = new THREE.Color(0xfff2df);
 const SUN_LOW = new THREE.Color(0xff8c3c);
 const WHITE = new THREE.Color(0xffffff);
-const GROUND_DAY = new THREE.Color(0x3a332a);
+// The hemisphere light's ground colour is the warm bounce off pavement and
+// off the building opposite. At 0x3a332a there was almost none, and every
+// shadowed facade in the city came out the same cold blue as the sky — which
+// is what a wall would look like on a planet with no ground.
+const GROUND_DAY = new THREE.Color(0x6a5c48);
 const GROUND_NIGHT = new THREE.Color(0x46310f);
 const FOG_NIGHT = new THREE.Color(0x171b2c);
 const WATER_DAY = new THREE.Color(0x16303f);

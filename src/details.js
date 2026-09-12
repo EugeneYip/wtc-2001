@@ -145,12 +145,30 @@ export function roofClutter(buildings) {
 
     const y = top - 0.8;                            // roof deck sits below the parapet
     const n = Math.min(4, 1 + Math.floor(area / 1400));
+    // Nothing may be wider than the roof it stands on. Without this a stair
+    // overrun eight metres across lands on a four-metre-wide building and
+    // hangs over every edge, which from the street reads as a box floating in
+    // mid-air beside the roofline.
+    const room = Math.min(bb.w, bb.d) * 0.5;
+    if (room < 1.2) continue;
+    const fits = (x, z, w, d) => {
+      const hw = w / 2, hd = d / 2;
+      return inside(x - hw, z - hd, poly) && inside(x + hw, z - hd, poly) &&
+             inside(x + hw, z + hd, poly) && inside(x - hw, z + hd, poly);
+    };
 
-    for (const [x, z] of scatter(poly, n, rand)) {
+    // More candidate points than items. A point that cannot take the item
+    // chosen for it is abandoned and the next one tried, rather than the item
+    // being dropped — otherwise the fit test thins the roofs out badly and the
+    // narrow buildings end up bare.
+    let placed = 0;
+    for (const [x, z] of scatter(poly, n * 5, rand)) {
+      if (placed >= n) break;
       const kind = rand();
       if (kind < 0.20 && top > 18 && top < 75) {
         // Water tank: staved timber drum with a conical cap, on short legs.
-        const r = 1.5 + rand() * 0.9;
+        const r = Math.min(1.5 + rand() * 0.9, room * 0.8);
+        if (r < 0.9 || !fits(x, z, r * 2.4, r * 2.4)) continue;
         const hh = 3.0 + rand() * 1.6;
         const legs = 2.0 + rand() * 2.0;
         const drum = new THREE.CylinderGeometry(r, r, hh, 10);
@@ -166,19 +184,29 @@ export function roofClutter(buildings) {
                         z + Math.sin(a) * r * 0.7);
           tanks.push(norm(leg));
         }
+        placed++;
       } else if (kind < 0.55) {
         // Stair or lift overrun.
-        const w = 3.5 + rand() * 5, d = 3 + rand() * 4.5, hh = 2.6 + rand() * 2.2;
+        const turn = rand() < 0.5;
+        let w = Math.min(3.5 + rand() * 5, room * 1.5);
+        let d = Math.min(3 + rand() * 4.5, room * 1.5);
+        if (turn) { const t = w; w = d; d = t; }
+        const hh = 2.6 + rand() * 2.2;
+        if (w < 2 || d < 2 || !fits(x, z, w, d)) continue;
         const g = new THREE.BoxGeometry(w, hh, d);
-        g.rotateY(rand() < 0.5 ? 0 : Math.PI / 2);
         g.translate(x, y + hh / 2, z);
         plant.push(norm(g));
+        placed++;
       } else {
         // Low mechanical unit.
-        const w = 1.8 + rand() * 3, d = 1.4 + rand() * 2.4, hh = 0.9 + rand() * 1.3;
+        const w = Math.min(1.8 + rand() * 3, room * 1.4);
+        const d = Math.min(1.4 + rand() * 2.4, room * 1.4);
+        const hh = 0.9 + rand() * 1.3;
+        if (w < 1 || d < 1 || !fits(x, z, w, d)) continue;
         const g = new THREE.BoxGeometry(w, hh, d);
         g.translate(x, y + hh / 2, z);
         plant.push(norm(g));
+        placed++;
       }
     }
   }

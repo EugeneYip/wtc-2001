@@ -29,7 +29,13 @@ export const CITY_MATS = {
   dark:         new THREE.MeshStandardMaterial({ roughness: 0.34, metalness: 0.34 }),
 
   roof: new THREE.MeshStandardMaterial({
-    map: roofTexture(), roughness: 0.93, metalness: 0.02 }),
+    map: roofTexture(), roughness: 0.93, metalness: 0.02, vertexColors: true }),
+  // Roof crowns that are not storeys: the World Financial Center domes, and
+  // the copper pyramid on the Woolworth.
+  crownMetal: new THREE.MeshStandardMaterial({
+    color: 0x9fa8ae, roughness: 0.28, metalness: 0.70 }),
+  crownCopper: new THREE.MeshStandardMaterial({
+    color: 0x5d8071, roughness: 0.52, metalness: 0.35 }),
   // Land: Manhattan itself and everything across the rivers. Generic mottling
   // beyond the mapped blocks, not invented buildings.
   ground: new THREE.MeshStandardMaterial({
@@ -291,10 +297,19 @@ export function animateWater(t) {
 export const WALL_CLASSES = Object.keys(FACADE);
 
 for (const k of WALL_CLASSES) {
-  CITY_MATS[k].map = FACADE[k].map;
-  CITY_MATS[k].emissiveMap = FACADE[k].lights;
-  CITY_MATS[k].emissive = new THREE.Color(0xffd6a4);
-  CITY_MATS[k].emissiveIntensity = 0;
+  // A class may exist only as a facade family — `terracotta` is applied by
+  // name rather than assigned by the build — so give it a material here.
+  const m = (CITY_MATS[k] = CITY_MATS[k] || new THREE.MeshStandardMaterial());
+  m.map = FACADE[k].map;
+  // Roughness and metalness now vary within the facade, so the material's own
+  // values become plain multipliers and the map carries the real numbers.
+  m.roughnessMap = m.metalnessMap = FACADE[k].surface;
+  m.roughness = 1;
+  m.metalness = 1;
+  m.emissiveMap = FACADE[k].lights;
+  m.emissive = new THREE.Color(0xffd6a4);
+  m.emissiveIntensity = 0;
+  m.vertexColors = true;
 }
 
 // Street lighting, as a property of the ground rather than of lamps: sodium on
@@ -408,6 +423,67 @@ function shoreGlow(landPolys, buildings) {
 }
 
 // ---------------------------------------------------------------------------
+// Per-building tint
+// ---------------------------------------------------------------------------
+
+/**
+ * Six facade textures cover 814 buildings, so without this every building of a
+ * class is the same colour down to the pixel, and a block of them reads as one
+ * extruded mass. A small deterministic tint per building breaks that up: no two
+ * neighbours are quite the same stone, which is the actual condition of Lower
+ * Manhattan, where buildings went up a few at a time over a century.
+ *
+ * Kept narrow on purpose. Wide enough to read as different buildings, not wide
+ * enough to invent colours the class does not have.
+ */
+const TINTS = {
+  // A handful are too well known to leave generic.
+  'Barclay-Vesey Building': [1.10, 1.00, 0.90],      // warm brick
+  'Park Row Building': [1.14, 1.06, 0.98],
+  '90 West Street': [1.14, 1.10, 1.02],
+  'Woolworth Building': [1.03, 1.02, 1.00],
+  'American Surety Building': [1.02, 1.02, 1.02],
+};
+
+/**
+ * Buildings whose facade is not the one their class would give them.
+ * The class comes from height and footprint, which cannot know that these two
+ * are clad in pale terracotta rather than the brownstone around them.
+ */
+const FACADE_OVERRIDE = {
+  'Woolworth Building': 'terracotta',
+  'American Surety Building': 'terracotta',
+};
+
+function buildingTint(b) {
+  const fixed = TINTS[b.n];
+  if (fixed) return fixed;
+  // Seeded from the footprint, so the same building always gets the same tint.
+  const [x0, z0] = b.p[0];
+  let h = Math.imul(Math.round(x0 * 16) ^ 0x9e3779b9, 0x85ebca6b);
+  h = Math.imul(h ^ Math.round(z0 * 16), 0xc2b2ae35);
+  h ^= h >>> 15;
+  const u = ((h >>> 0) % 1024) / 1024;
+  const v = ((h >>> 10) % 1024) / 1024;
+  // Lightness first, then a little warm-to-cool drift across it.
+  const l = 0.86 + u * 0.30;
+  const warm = (v - 0.5) * 0.14;
+  return [l * (1 + warm), l, l * (1 - warm * 0.8)];
+}
+
+/** Give a geometry a flat vertex colour so it can be merged with the rest. */
+function tint(geo, rgb) {
+  if (!geo) return geo;
+  const n = geo.getAttribute('position').count;
+  const a = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    a[i * 3] = rgb[0]; a[i * 3 + 1] = rgb[1]; a[i * 3 + 2] = rgb[2];
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(a, 3));
+  return geo;
+}
+
+// ---------------------------------------------------------------------------
 // Geometry
 // ---------------------------------------------------------------------------
 
@@ -512,7 +588,15 @@ function shaftRect(cx, cz, w, d, y0, y1) {
  * the building below.
  */
 function crown(style, poly, y0, hh) {
-  const parts = [];
+  // Setbacks are storeys, so they keep the building's own facade. A dome or a
+  // spire is a roof, and must not: both are single pieces of revolved geometry
+  // whose UVs run nought to one, so with a facade map repeating every dozen
+  // metres the whole dome samples one sliver of the tile. Two of the World
+  // Financial Center crowns were coming out as black mirrors for exactly that
+  // reason — the sliver they happened to land on was the glass.
+  const walls = [];
+  const metal = [];
+  const copper = [];
   const [cx, cz] = centroid(poly);
   const b = bounds(poly);
   const span = Math.min(b.w, b.d);
@@ -520,7 +604,7 @@ function crown(style, poly, y0, hh) {
   const slab = (k, ht, y) => {
     const g = extrude(scalePoly(poly, k, cx, cz), ht);
     g.translate(0, y, 0);
-    parts.push(g);
+    walls.push(g);
   };
 
   if (style === 'dome') {
@@ -530,7 +614,7 @@ function crown(style, poly, y0, hh) {
     const dome = new THREE.SphereGeometry(r, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2);
     dome.scale(1, (hh * 0.45) / r, 1);
     dome.translate(cx, y0 + hh * 0.55, cz);
-    parts.push(norm(dome));
+    metal.push(norm(dome));
   } else if (style === 'steppyr') {
     const steps = 7, sh = hh / steps;
     for (let i = 0; i < steps; i++) slab(0.96 - (i / steps) * 0.80, sh, y0 + i * sh);
@@ -542,9 +626,9 @@ function crown(style, poly, y0, hh) {
     for (let i = 0; i < steps; i++) slab(0.94 - (i / steps) * 0.64, sh, y0 + i * sh);
     const pin = new THREE.ConeGeometry(span * 0.16, hh * 0.38, 8);
     pin.translate(cx, y0 + hh * 0.62 + hh * 0.19, cz);
-    parts.push(norm(pin));
+    copper.push(norm(pin));
   }
-  return parts;
+  return { walls, metal, copper };
 }
 
 // ---------------------------------------------------------------------------
@@ -677,13 +761,18 @@ export function buildCity(data) {
   // Buildings: walls batched by facade family, roofs and crowns pooled.
   const walls = {};
   const roofs = [];
+  const caps = { metal: [], copper: [] };
   for (const b of data.buildings) {
-    const cls = WALL_CLASSES.includes(b.c) ? b.c : 'lowrise';
+    const cls = FACADE_OVERRIDE[b.n] ||
+                (WALL_CLASSES.includes(b.c) ? b.c : 'lowrise');
     const into = (walls[cls] = walls[cls] || []);
+    const rgb = buildingTint(b);
+    // Roofs weather more than walls and vary more, but in the same direction.
+    const roofRgb = rgb.map((v) => 0.72 + (v - 1) * 0.5);
 
     const base = shell(b.p, b.h);
-    if (base.wall) into.push(base.wall);
-    if (base.roof) roofs.push(base.roof);
+    if (base.wall) into.push(tint(base.wall, rgb));
+    if (base.roof) roofs.push(tint(base.roof, roofRgb));
 
     // A crown sits on whatever is directly under it: the tower box where
     // there is one, otherwise the building's own footprint.
@@ -691,14 +780,27 @@ export function buildCity(data) {
     let top = b.h;
     if (b.t) {
       const shaft = shaftRect(b.t.cx, b.t.cz, b.t.w, b.t.d, b.h, b.t.h);
-      if (shaft.wall) into.push(shaft.wall);
-      if (shaft.roof) roofs.push(shaft.roof);
+      if (shaft.wall) into.push(tint(shaft.wall, rgb));
+      if (shaft.roof) roofs.push(tint(shaft.roof, roofRgb));
       const hw = b.t.w / 2, hd = b.t.d / 2;
       capPoly = [[b.t.cx - hw, b.t.cz - hd], [b.t.cx + hw, b.t.cz - hd],
                  [b.t.cx + hw, b.t.cz + hd], [b.t.cx - hw, b.t.cz + hd]];
       top = b.t.h;
     }
-    if (b.r && b.r !== 'flat') into.push(...crown(b.r, capPoly, top, b.rh || 16));
+    if (b.r && b.r !== 'flat') {
+      const cw = crown(b.r, capPoly, top, b.rh || 16);
+      for (const gm of cw.walls) into.push(tint(gm, rgb));
+      caps.metal.push(...cw.metal);
+      caps.copper.push(...cw.copper);
+    }
+  }
+
+  for (const [kind, geos] of Object.entries(caps)) {
+    if (!geos.length) continue;
+    const m = new THREE.Mesh(mergeGeometries(geos), CITY_MATS[kind === 'metal' ? 'crownMetal' : 'crownCopper']);
+    m.castShadow = m.receiveShadow = true;
+    m.name = 'crowns-' + kind;
+    g.add(m);
   }
 
   for (const [cls, geos] of Object.entries(walls)) {

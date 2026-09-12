@@ -89,7 +89,11 @@ const FILL_DAY = new THREE.Color(0xc8d8ff);
 const SUN_HIGH = new THREE.Color(0xfff2df);
 const SUN_LOW = new THREE.Color(0xff8c3c);
 const WHITE = new THREE.Color(0xffffff);
-const GROUND_DAY = new THREE.Color(0x3a332a);
+// The hemisphere light's ground colour is the warm bounce off pavement and
+// off the building opposite. At 0x3a332a there was almost none, and every
+// shadowed facade in the city came out the same cold blue as the sky — which
+// is what a wall would look like on a planet with no ground.
+const GROUND_DAY = new THREE.Color(0x6a5c48);
 const GROUND_NIGHT = new THREE.Color(0x46310f);
 const FOG_NIGHT = new THREE.Color(0x171b2c);
 const WATER_DAY = new THREE.Color(0x16303f);

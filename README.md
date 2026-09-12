@@ -86,6 +86,25 @@ One Liberty Plaza, the Barclay-Vesey Building, and the Deutsche Bank Building
 at 130 Liberty Street — damaged on 9/11 and since demolished, so re-added by
 hand.
 
+**Facades.** Roughness and metalness vary *within* a facade, not just between
+buildings, so glass behaves like glass: dark head-on, where a dielectric
+returns four per cent of what falls on it, and bright at a glancing angle
+where it returns nearly all of it. Sharing one roughness between stone and
+window meant every window in the city was a hole punched in a wall. Behind the
+glass the rooms differ — blinds half down in one, a net curtain in the next,
+an empty office after that — because a bay filled with a single colour reads
+from the pavement as a luminous sticker.
+
+Seven facade families cover 814 buildings, so each building also carries a
+small tint of its own, seeded from its footprint. Without it a block of the
+same class is one extruded mass in one colour; with it no two neighbours are
+quite the same stone, which is the actual condition of a district built a few
+buildings at a time over a century. Two buildings are too well known to leave
+to that — the Woolworth and the American Surety, both clad in pale terracotta
+rather than the brownstone around them — so they are given a facade family
+instead of a tint, because multiplying a colour lightens it without ever
+desaturating it.
+
 **The shoreline.** OpenStreetMap maps tidal water as `natural=coastline`, not
 as water polygons, so the model is built the way the data is: the world is
 sea, and land is drawn on top of it, assembled from the coastline itself.
@@ -143,7 +162,7 @@ out offset diagonally by 67.0 m east and 103.8 m south, which leaves the
 documented ~130 ft gap between their facing walls as an independent check
 that was never fed into the calculation.
 
-Five things are deliberately not raw OpenStreetMap:
+Six things are deliberately not raw OpenStreetMap:
 
 1. **Post-2001 buildings are removed** — the modern WTC site, and the towers
    that filled in the Financial District and Battery Park City between 2002
@@ -167,7 +186,11 @@ Five things are deliberately not raw OpenStreetMap:
    The land across the rivers is generic mottling for the same reason — there
    is no data behind it, so it stays deliberately vague rather than inventing
    a Jersey City skyline.
-5. **The city's light on the water is painted, not reflected.** None of it
+5. **A few buildings are recoloured by name.** The facade family a building
+   gets is chosen from its height and footprint, which cannot know what it is
+   clad in. Four are corrected by hand, and the Woolworth's copper pyramid is
+   given copper. Everything else takes what its class gives it.
+6. **The city's light on the water is painted, not reflected.** None of it
    survives the reflection probe: a skyline of lit windows averages away to
    nothing in a 256 px cube run through a blur. So building footprints and
    land are rasterised into a small world-space mask, blurred, and read by the
@@ -182,7 +205,7 @@ uniform slab. Those are massing, not survey.
 
 ## Performance
 
-About 144 draw calls and 557k triangles in daylight, rendering in well under a
+About 150 draw calls and 554k triangles in daylight, rendering in well under a
 millisecond a frame on an M2 at 2800 × 1800 once shaders are warm — measured
 with a GPU sync, since a browser will otherwise report its own compositor.
 Night is cheaper in draw calls than day: with the sun below the horizon there
