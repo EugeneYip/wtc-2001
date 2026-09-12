@@ -79,6 +79,22 @@ parallel ways in the data, so asphalt is laid over pavement rather than beside
 it — otherwise each way's pavement buries its neighbour's roadway. Lamp
 standards line both sides, alternating, with a few more around the plaza deck.
 
+**Traffic.** Which side of the centreline a vehicle sits on and which way it
+faces are one decision, not two. They used to be taken separately — the side at
+random, the heading always along the way — so half the cars in the city were in
+the oncoming lane. Keeping right settles both.
+
+The kerb lane is a continuous rank of parked cars, which is what a street down
+here looks like and what the roadway was missing; without it the asphalt read
+as an apron. Most of this grid is a nine or eleven metre right of way, which
+after its pavements leaves five or six metres: one parking lane and one travel
+lane, so those streets are parked one side only. The rank is dense inside a
+radius and simply absent outside it, because a rank is only worth having if it
+is continuous. Nothing parked is a cab. Among the moving traffic there are step
+vans and buses as well as cars, and a slot may carry a second vehicle close
+behind the first, because traffic bunches at the lights rather than spacing
+itself evenly.
+
 Junctions come free: OpenStreetMap splits ways where they meet, so the ends of
 the ways *are* the junctions and no intersection test is needed. Every crossing
 of two real streets gets painted crosswalks and a stop bar on each approach —
@@ -252,13 +268,23 @@ uniform slab. Those are massing, not survey.
 
 ## Performance
 
-About 167 draw calls and 731k triangles in daylight, rendering in well under a
-millisecond a frame on an M2 at 2800 × 1800 once shaders are warm — measured
-with a GPU sync, since a browser will otherwise report its own compositor.
+About 174 draw calls and 983k triangles in daylight, and roughly 2 to 3 ms a
+frame on an M2 at 2800 × 1800 once shaders are warm, with the post-processing
+running at full resolution and 4x multisampling.
+
+Earlier versions of this file claimed well under a millisecond at that size.
+That was wrong, and worth saying plainly: those numbers were taken on a machine
+reporting a device pixel ratio of 1, so the effect composer had built its
+target at 1400 x 900 and the scene was never rendering at the resolution the
+figure quoted. Timing here is measured with a GPU sync — a browser will
+otherwise report its own compositor rather than the frame — and even then the
+spread between runs is wide enough that these are round numbers, not precise
+ones.
+
 Night is cheaper in draw calls than day: with the sun below the horizon there
 is no shadow pass. Detail scales automatically: phones get a smaller shadow
-map, no bloom, fewer cars and fewer lamps; desktops get the full set. The
-preset in use is shown in the panel.
+map, no bloom, fewer cars, fewer lamps and a tighter radius of parked ones;
+desktops get the full set. The preset in use is shown in the panel.
 
 ## Layout
 

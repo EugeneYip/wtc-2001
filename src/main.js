@@ -21,8 +21,9 @@ import { buildCity, cityLabels, animateWater, setShoreGlow, lampPoolShading,
          junctions, CITY_MATS, WALL_CLASSES } from './city.js';
 import { buildComplex, MATS as WTC_MATS, PLAZA_TREE_SITES,
          PLAZA_LAMP_SITES } from './wtc.js';
-import { roofClutter, trees, traffic, vessels, streetLamps, lampPoolTexture,
-         trafficSignals, kerbFurniture, obstacleIndex, DETAIL_MATS } from './details.js';
+import { roofClutter, trees, traffic, parkedCars, manholes, vessels, streetLamps,
+         lampPoolTexture, trafficSignals, kerbFurniture, obstacleIndex,
+         DETAIL_MATS } from './details.js';
 import { makeNightSky } from './nightsky.js';
 import { buildBridge, BRIDGE_MATS } from './bridge.js';
 
@@ -47,9 +48,9 @@ const clock = new THREE.Clock();
 // ---------------------------------------------------------------------------
 
 const TIERS = {
-  low:    { dpr: 1.5,  shadow: 1024, bloom: false, probe: 128, cars: 140, boats: 8,  lamps: 260, props: 110, pool: 512,  shadowSpan: 800 },
-  medium: { dpr: 1.75, shadow: 2048, bloom: true,  probe: 192, cars: 300, boats: 14, lamps: 480, props: 200, pool: 1024, shadowSpan: 950 },
-  high:   { dpr: 2.0,  shadow: 4096, bloom: true,  probe: 256, cars: 460, boats: 18, lamps: 700, props: 300, pool: 1024, shadowSpan: 1050 },
+  low:    { dpr: 1.5,  shadow: 1024, bloom: false, probe: 128, cars: 190, parked: 900,  parkReach: 450, boats: 8,  lamps: 260, props: 110, pool: 512,  shadowSpan: 800 },
+  medium: { dpr: 1.75, shadow: 2048, bloom: true,  probe: 192, cars: 420, parked: 2100, parkReach: 650, boats: 14, lamps: 480, props: 200, pool: 1024, shadowSpan: 950 },
+  high:   { dpr: 2.0,  shadow: 4096, bloom: true,  probe: 256, cars: 620, parked: 4100, parkReach: 900, boats: 18, lamps: 700, props: 300, pool: 1024, shadowSpan: 1050 },
 };
 
 function detectQuality() {
@@ -548,6 +549,12 @@ async function init() {
   }
   // Sit them on the carriageway, not on the pavement level.
   for (const m of traffic(data.roads, tier.cars, footprints, -0.20)) detail.add(m);
+  // The rank is only worth having if it is continuous, so it is dense inside a
+  // radius and simply absent outside it rather than thin everywhere.
+  for (const m of parkedCars(data.roads, tier.parked, footprints, -0.20,
+                             tier.parkReach)) detail.add(m);
+  const lids = manholes(data.roads, tier.props, footprints, -0.20);
+  if (lids) detail.add(lids);
   const lamps = streetLamps(data.roads, tier.lamps, footprints,
                             PLAZA_LAMP_SITES(data));
   for (const m of lamps) detail.add(m);

@@ -133,6 +133,9 @@ export const DETAIL_MATS = {
   bin: new THREE.MeshStandardMaterial({
     color: 0x2f4338, roughness: 0.72, metalness: 0.25,
   }),
+  manhole: new THREE.MeshStandardMaterial({
+    color: 0x3b3a37, roughness: 0.66, metalness: 0.45,
+  }),
 };
 
 // ---------------------------------------------------------------------------
@@ -331,6 +334,12 @@ const CAR_COLORS = [
   0xf2c230, 0xf2c230, 0xf2c230,       // yellow cabs, over-represented on purpose
   0xd8d8d8, 0xb4b7ba, 0x2e3236, 0x8e1b1b, 0x1d3f6e, 0x36503a,
 ];
+// Nothing parked is a cab: they are the one thing on the street that never is.
+const PARKED_COLORS = [
+  0xd8d8d8, 0xc6c8c9, 0xb4b7ba, 0x8d9095, 0x2e3236, 0x3c4045,
+  0x8e1b1b, 0x1d3f6e, 0x36503a, 0x6b5a48,
+];
+const VAN_COLORS = [0xe6e6e2, 0xe6e6e2, 0xd6d2c6, 0x9aa2a8, 0x7c4a36, 0x2f4a6b];
 
 /**
  * Cars and cabs along the street centrelines, for scale and a little life.
@@ -339,13 +348,64 @@ const CAR_COLORS = [
  * per-instance colour applies to a whole mesh, so a single box would make the
  * glass the same colour as the paint and every car read as a solid block.
  */
+/**
+ * The carriageway width a street actually has, matching what city.js paves.
+ * Cars have to sit between the kerbs, not on the whole right of way.
+ */
+function carriageway(w) {
+  const walk = Math.min(4.0, Math.max(2.0, w * 0.22));
+  return Math.max(4.0, w - 2 * walk);
+}
+
+/**
+ * Body shells. Each is one merged geometry so a vehicle costs a single
+ * instance: the glass is a vertex colour rather than a second mesh.
+ */
+function shells() {
+  const box = (w, h, d, x, y, c) => {
+    const g = norm(new THREE.BoxGeometry(w, h, d));
+    g.translate(x, y, 0);
+    const n = g.getAttribute('position').count;
+    const col = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { col[i * 3] = c[0]; col[i * 3 + 1] = c[1]; col[i * 3 + 2] = c[2]; }
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    return g;
+  };
+  const BODY = [1, 1, 1];                    // takes the instance colour
+  const GLASS = [0.13, 0.15, 0.18];
+  const DARK = [0.28, 0.28, 0.29];
+  return {
+    // A saloon: bonnet, cabin, boot.
+    car: mergeGeometries([
+      box(4.4, 1.05, 1.85, 0, 0.52, BODY),
+      box(2.3, 0.85, 1.62, -0.25, 1.42, GLASS),
+    ]),
+    // A step van, the workhorse of every delivery street down here.
+    van: mergeGeometries([
+      box(6.6, 2.45, 2.35, 0.3, 1.45, BODY),
+      box(1.9, 1.05, 2.20, -2.6, 1.75, GLASS),
+      box(7.2, 0.35, 2.10, 0.1, 0.35, DARK),
+    ]),
+    bus: mergeGeometries([
+      box(11.6, 2.35, 2.55, 0, 1.65, BODY),
+      box(11.0, 0.85, 2.45, 0.1, 2.35, GLASS),
+      box(11.8, 0.40, 2.30, 0, 0.42, DARK),
+    ]),
+  };
+}
+
+/**
+ * Moving traffic.
+ *
+ * Which side of the centreline a vehicle sits on used to be picked at random
+ * while its heading always followed the segment, so half the cars in the city
+ * were driving into the oncoming lane. Side and heading are one decision:
+ * going one way puts you on one side of the line, going the other puts you on
+ * the other, and in New York that means keeping right.
+ */
 export function traffic(roads, limit = 420, avoid, deck = 0) {
   const rand = rng(1313);
-  const geo = new THREE.BoxGeometry(4.4, 1.05, 1.85);
-  geo.translate(0, 0.52, 0);
-  const cabGeo = new THREE.BoxGeometry(2.3, 0.85, 1.62);
-  cabGeo.translate(-0.25, 1.42, 0);
-  // Lamps as a pair each, merged so they cost one instanced mesh per colour.
+  const G = shells();
   const lampPair = (x, w, h, y) => mergeGeometries([-1, 1].map((s) => {
     const g = new THREE.BoxGeometry(w, h, 0.42);
     g.translate(x, y, s * 0.62);
@@ -354,67 +414,241 @@ export function traffic(roads, limit = 420, avoid, deck = 0) {
   const headGeo = lampPair(2.22, 0.16, 0.34, 0.62);
   const tailGeo = lampPair(-2.22, 0.14, 0.26, 0.66);
 
+  // Candidate slots. Traffic bunches at the lights rather than spacing itself
+  // evenly, so a slot may carry a second vehicle close behind the first.
   const picks = [];
   for (const r of roads) {
     for (let i = 0; i < r.p.length - 1 && picks.length < limit * 3; i++) {
       const [x0, z0] = r.p[i], [x1, z1] = r.p[i + 1];
       const len = Math.hypot(x1 - x0, z1 - z0);
       if (len < 14) continue;
-      const n = Math.max(1, Math.floor(len / 38));
-      for (let k = 0; k < n; k++) picks.push([x0, z0, x1, z1, r.w]);
+      const n = Math.max(1, Math.floor(len / 26));
+      for (let k = 0; k < n; k++) picks.push([x0, z0, x1, z1, r.w, len]);
     }
   }
   if (!picks.length) return [];
-
-  // Thin down to the budget, evenly across the whole street network.
   const step = Math.max(1, picks.length / limit);
   const chosen = [];
   for (let i = 0; i < picks.length && chosen.length < limit; i += step) {
     chosen.push(picks[Math.floor(i)]);
   }
 
-  const mesh = new THREE.InstancedMesh(geo, DETAIL_MATS.car, chosen.length);
-  const cabs = new THREE.InstancedMesh(cabGeo, DETAIL_MATS.cabin, chosen.length);
-  const heads = new THREE.InstancedMesh(headGeo, DETAIL_MATS.headlight, chosen.length);
-  const tails = new THREE.InstancedMesh(tailGeo, DETAIL_MATS.tail, chosen.length);
-  mesh.castShadow = true;
-  cabs.castShadow = true;
+  const cap = chosen.length;
+  const cars = new THREE.InstancedMesh(G.car, DETAIL_MATS.car, cap);
+  const vans = new THREE.InstancedMesh(G.van, DETAIL_MATS.car, Math.ceil(cap * 0.3));
+  const buses = new THREE.InstancedMesh(G.bus, DETAIL_MATS.car, Math.ceil(cap * 0.09));
+  const heads = new THREE.InstancedMesh(headGeo, DETAIL_MATS.headlight, cap);
+  const tails = new THREE.InstancedMesh(tailGeo, DETAIL_MATS.tail, cap);
+  for (const im of [cars, vans, buses]) im.castShadow = true;
+
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   const pos = new THREE.Vector3();
   const scl = new THREE.Vector3(1, 1, 1);
   const col = new THREE.Color();
   const up = new THREE.Vector3(0, 1, 0);
+  let nCar = 0, nVan = 0, nBus = 0;
 
-  let placed = 0;
-  chosen.forEach(([x0, z0, x1, z1, w]) => {
-    const t = 0.15 + rand() * 0.7;
-    const ang = Math.atan2(z1 - z0, x1 - x0);
-    const lane = (rand() < 0.5 ? -1 : 1) * w * (0.12 + rand() * 0.18);
-    const x = x0 + (x1 - x0) * t - Math.sin(ang) * lane;
-    const z = z0 + (z1 - z0) * t + Math.cos(ang) * lane;
-    // Some streets pass under buildings; a car parked inside one reads badly.
+  const place = (x, z, ang, kind) => {
     if (avoid && avoid.blocked(x, z)) return;
     q.setFromAxisAngle(up, -ang);
     pos.set(x, deck, z);
     m.compose(pos, q, scl);
-    mesh.setMatrixAt(placed, m);
-    cabs.setMatrixAt(placed, m);
-    heads.setMatrixAt(placed, m);
-    tails.setMatrixAt(placed, m);
-    col.setHex(CAR_COLORS[Math.floor(rand() * CAR_COLORS.length)]);
-    mesh.setColorAt(placed, col);
-    placed++;
-  });
-  mesh.count = cabs.count = heads.count = tails.count = placed;
+    if (kind === 'bus') {
+      if (nBus >= buses.count) return;
+      buses.setMatrixAt(nBus, m);
+      buses.setColorAt(nBus, col.setHex(0xdfe3e6));
+      nBus++;
+      return;
+    }
+    if (kind === 'van') {
+      if (nVan >= vans.count) return;
+      vans.setMatrixAt(nVan, m);
+      vans.setColorAt(nVan, col.setHex(VAN_COLORS[Math.floor(rand() * VAN_COLORS.length)]));
+      nVan++;
+      return;
+    }
+    if (nCar >= cars.count) return;
+    cars.setMatrixAt(nCar, m);
+    heads.setMatrixAt(nCar, m);
+    tails.setMatrixAt(nCar, m);
+    cars.setColorAt(nCar, col.setHex(CAR_COLORS[Math.floor(rand() * CAR_COLORS.length)]));
+    nCar++;
+  };
 
-  for (const im of [mesh, cabs, heads, tails]) im.instanceMatrix.needsUpdate = true;
-  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-  mesh.name = 'traffic';
-  cabs.name = 'traffic-cabins';
+  chosen.forEach(([x0, z0, x1, z1, w, len]) => {
+    const ang = Math.atan2(z1 - z0, x1 - x0);
+    const ux = Math.cos(ang), uz = Math.sin(ang);
+    // Rotating a vehicle by -ang sends its nose along u and its own right
+    // hand towards (-uz, ux). Keeping right means sitting on that side.
+    const rx = -uz, rz = ux;
+    const half = carriageway(w) / 2;
+    const back = rand() < 0.5 ? -1 : 1;            // which way this one drives
+    const off = (half - 1.9) * (0.28 + rand() * 0.42) * back;
+    const t = 0.12 + rand() * 0.74;
+    const cx = x0 + (x1 - x0) * t + rx * off;
+    const cz = z0 + (z1 - z0) * t + rz * off;
+    const heading = back > 0 ? ang : ang + Math.PI;
+    const roll = rand();
+    place(cx, cz, heading, roll < 0.08 ? 'bus' : roll < 0.30 ? 'van' : 'car');
+    // A second vehicle close behind, so the street is not evenly spaced dots.
+    if (rand() < 0.45 && len > 40) {
+      const gap = (9 + rand() * 9) * (back > 0 ? -1 : 1);
+      place(cx + ux * gap, cz + uz * gap, heading, rand() < 0.2 ? 'van' : 'car');
+    }
+  });
+
+  cars.count = heads.count = tails.count = nCar;
+  vans.count = nVan;
+  buses.count = nBus;
+  for (const im of [cars, vans, buses, heads, tails]) {
+    im.instanceMatrix.needsUpdate = true;
+    if (im.instanceColor) im.instanceColor.needsUpdate = true;
+  }
+  cars.name = 'traffic';
+  vans.name = 'traffic-vans';
+  buses.name = 'traffic-buses';
   heads.name = 'traffic-headlights';
   tails.name = 'traffic-tails';
-  return [mesh, cabs, heads, tails];
+  return [cars, vans, buses, heads, tails];
+}
+
+/**
+ * Parked cars.
+ *
+ * The kerb lane of a New York street is a solid line of parked vehicles, and
+ * with it empty the roadway read as an airfield apron with a few cars on it.
+ * They get no lamps: nothing about a parked car should light up at night.
+ */
+export function parkedCars(roads, limit = 900, avoid, deck = 0, reach = 1100) {
+  const rand = rng(4242);
+  const G = shells();
+  const spots = [];
+  for (const r of roads) {
+    if (r.w < 9) continue;
+    const half = carriageway(r.w) / 2;
+    // Most of this grid is a nine or eleven metre right of way, which after
+    // its pavements leaves five or six metres of carriageway: one parking
+    // lane and one travel lane, and no room for a second rank. That is how the
+    // side streets down here work. Asking for room on both sides skipped
+    // seventy per cent of the network and left it bare.
+    if (half < 2.4) continue;
+    const sides = half >= 4.2 ? [1, -1] : [r.w > 10 ? 1 : -1];
+    for (let i = 0; i < r.p.length - 1; i++) {
+      const [x0, z0] = r.p[i], [x1, z1] = r.p[i + 1];
+      const dx = x1 - x0, dz = z1 - z0;
+      const len = Math.hypot(dx, dz);
+      if (len < 16) continue;
+      const ang = Math.atan2(dz, dx);
+      const rx = -Math.sin(ang), rz = Math.cos(ang);
+      for (const back of sides) {
+        const off = (half - 1.35) * back;
+        // Bays of three or four with a break for a hydrant or a crossing.
+        let d = 6 + rand() * 8;
+        while (d < len - 8) {
+          const t = d / len;
+          const x = x0 + dx * t + rx * off;
+          const z = z0 + dz * t + rz * off;
+          if (Math.hypot(x, z) <= reach && !(avoid && avoid.blocked(x, z))) {
+            spots.push([x, z, back > 0 ? ang : ang + Math.PI, rand()]);
+          }
+          d += 6.4 + rand() * 1.4;
+          if (rand() < 0.16) d += 9 + rand() * 12;   // a gap in the rank
+        }
+      }
+    }
+  }
+  if (!spots.length) return [];
+  const step = Math.max(1, spots.length / limit);
+  const chosen = [];
+  for (let i = 0; i < spots.length && chosen.length < limit; i += step) {
+    chosen.push(spots[Math.floor(i)]);
+  }
+
+  const nVan = chosen.filter((c) => c[3] < 0.16).length;
+  const cars = new THREE.InstancedMesh(G.car, DETAIL_MATS.car, chosen.length - nVan);
+  const vans = new THREE.InstancedMesh(G.van, DETAIL_MATS.car, Math.max(1, nVan));
+  cars.castShadow = vans.castShadow = true;
+  const m = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const pos = new THREE.Vector3();
+  const scl = new THREE.Vector3(1, 1, 1);
+  const col = new THREE.Color();
+  const up = new THREE.Vector3(0, 1, 0);
+  let a = 0, b = 0;
+  for (const [x, z, ang, roll] of chosen) {
+    // Nobody parks perfectly straight.
+    q.setFromAxisAngle(up, -ang + (rand() - 0.5) * 0.05);
+    pos.set(x, deck, z);
+    m.compose(pos, q, scl);
+    if (roll < 0.16 && b < vans.count) {
+      vans.setMatrixAt(b, m);
+      vans.setColorAt(b, col.setHex(VAN_COLORS[Math.floor(rand() * VAN_COLORS.length)]));
+      b++;
+    } else if (a < cars.count) {
+      cars.setMatrixAt(a, m);
+      cars.setColorAt(a, col.setHex(PARKED_COLORS[Math.floor(rand() * PARKED_COLORS.length)]));
+      a++;
+    }
+  }
+  cars.count = a; vans.count = b;
+  for (const im of [cars, vans]) {
+    im.instanceMatrix.needsUpdate = true;
+    if (im.instanceColor) im.instanceColor.needsUpdate = true;
+  }
+  cars.name = 'parked-cars';
+  vans.name = 'parked-vans';
+  return [cars, vans].filter((im) => im.count > 0);
+}
+
+/** Manhole covers, scattered on the carriageway rather than tiled into it. */
+export function manholes(roads, limit = 220, avoid, deck = 0, reach = 900) {
+  const rand = rng(9091);
+  const g = norm(new THREE.CylinderGeometry(0.38, 0.38, 0.06, 12));
+  g.translate(0, 0.03, 0);
+  const spots = [];
+  for (const r of roads) {
+    if (r.w < 9) continue;
+    const half = carriageway(r.w) / 2;
+    for (let i = 0; i < r.p.length - 1; i++) {
+      const [x0, z0] = r.p[i], [x1, z1] = r.p[i + 1];
+      const dx = x1 - x0, dz = z1 - z0;
+      const len = Math.hypot(dx, dz);
+      if (len < 20) continue;
+      const ang = Math.atan2(dz, dx);
+      const rx = -Math.sin(ang), rz = Math.cos(ang);
+      for (let d = 14; d < len; d += 34 + rand() * 26) {
+        const t = d / len;
+        const off = (rand() - 0.5) * 2 * (half - 1.2);
+        const x = x0 + dx * t + rx * off;
+        const z = z0 + dz * t + rz * off;
+        if (Math.hypot(x, z) > reach) continue;
+        if (avoid && avoid.blocked(x, z)) continue;
+        spots.push([x, z]);
+      }
+    }
+  }
+  if (!spots.length) return null;
+  const step = Math.max(1, spots.length / limit);
+  const chosen = [];
+  for (let i = 0; i < spots.length && chosen.length < limit; i += step) {
+    chosen.push(spots[Math.floor(i)]);
+  }
+  const im = new THREE.InstancedMesh(g, DETAIL_MATS.manhole, chosen.length);
+  const m = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const pos = new THREE.Vector3();
+  const scl = new THREE.Vector3(1, 1, 1);
+  const up = new THREE.Vector3(0, 1, 0);
+  chosen.forEach(([x, z], i) => {
+    q.setFromAxisAngle(up, rand() * Math.PI);
+    pos.set(x, deck, z);
+    m.compose(pos, q, scl);
+    im.setMatrixAt(i, m);
+  });
+  im.instanceMatrix.needsUpdate = true;
+  im.name = 'manholes';
+  return im;
 }
 
 // ---------------------------------------------------------------------------

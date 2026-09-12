@@ -470,9 +470,11 @@ export function roadTexture(marked) {
   if (marked) {
     // Dashed white lane lines. Most of this grid ran one way, so white
     // dashes are the typical marking here rather than a double yellow.
-    // The tile is 12 m along, so one dash and one gap per tile.
+    // The tile is 12 m along and US lane dashes are ten feet of line to thirty
+    // of gap, which is one dash per tile a quarter of its length — not the
+    // 55 per cent this had, which read as a near-continuous line.
     x.fillStyle = 'rgba(214,214,206,0.80)';
-    for (const u of [0.34, 0.66]) x.fillRect(u * W - 1.2, 0, 2.4, H * 0.55);
+    for (const u of [0.34, 0.66]) x.fillRect(u * W - 1.2, 0, 2.4, H * 0.25);
     // Solid edge lines, kept inboard of the gutter.
     x.fillStyle = 'rgba(206,206,198,0.45)';
     x.fillRect(W * 0.075, 0, 2, H);
