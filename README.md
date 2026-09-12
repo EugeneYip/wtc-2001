@@ -134,6 +134,27 @@ That is what gives Manhattan its real outline — the taper to the Battery, the
 pier fingers, the bulkhead lines — along with Governors Island, Liberty
 Island, and the Jersey and Brooklyn waterfronts with their slips.
 
+A shelf of paler water runs off every shore, fading out across its width. It
+used to be a band of constant colour, which meant it had an outer edge as hard
+as its inner one: from the air that second edge drew a bright turquoise line
+round every coast, pier and island, and the harbour read as a map with its
+borders highlighted. The land beyond the mapped blocks carries a street grain,
+masked by the same noise that decides what is built up. Without it, soft
+mottling on a flat plane read from a distance as a bank of low cloud rather
+than as Jersey City — but it is a grain and not a plan, and no buildings are
+invented on it.
+
+**The Brooklyn Bridge.** Its Manhattan end is a kilometre east of the site and
+it closes every view up the East River; without it that side of the model
+stopped at a bare bulkhead. The plan is from OpenStreetMap — the carriageway
+ways give the axis, and the coastline gives the two banks the axis crosses —
+and the section is from published figures for Roebling's bridge, the same way
+the towers are done. The towers are placed by putting the documented 1,595 ft
+6 in main span symmetrically about the middle of the channel, which lands each
+one about forty metres off its own bank, where they stand. The two Gothic
+openings in each tower are pierced geometry, as the arcade at the foot of the
+Twin Towers is.
+
 **Light and water.** The sun is placed from real solar geometry for 40.71° N
 on 11 September, so shadow directions through the day are the ones the site
 actually had. Reflections come from a cube probe rendered over the site, so
@@ -231,7 +252,7 @@ uniform slab. Those are massing, not survey.
 
 ## Performance
 
-About 161 draw calls and 636k triangles in daylight, rendering in well under a
+About 167 draw calls and 731k triangles in daylight, rendering in well under a
 millisecond a frame on an M2 at 2800 × 1800 once shaders are warm — measured
 with a GPU sync, since a browser will otherwise report its own compositor.
 Night is cheaper in draw calls than day: with the sun below the horizon there
@@ -246,6 +267,7 @@ index.html            the site
 wtc.html              the same thing inlined into one file
 src/
   main.js             renderer, sun, camera rig, UI
+  bridge.js           the Brooklyn Bridge
   wtc.js              the towers, the complex, the plaza
   city.js             footprint extrusion, crowns, streets, water
   nightsky.js         the twilight and night dome
@@ -259,6 +281,8 @@ build/
 raw/                  cached Overpass responses
   buildings/roads/      the extracts the build actually reads
   water/green.json
+  bridge.json           the Brooklyn Bridge carriageway, outside the
+                        building box but inside the view
   coast.json            the coastline, which defines where land is
   pools_geom.json       memorial pool corners — the source of the
                         tower positions and the grid rotation

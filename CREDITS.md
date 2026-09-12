@@ -31,6 +31,8 @@ dimensions and historic site plans, and any error in them is mine:
   Street and Vesey Street flights up to the deck
 - 7 World Trade Center as built in 1987
 - The Deutsche Bank Building at 130 Liberty Street, demolished 2007–2011
+- The Brooklyn Bridge: plan from OpenStreetMap, section from published figures
+  for the 1883 structure — 1,595 ft 6 in main span, 276 ft 6 in towers
 - Height and massing corrections for the World Financial Center, the
   Woolworth Building and the Barclay-Vesey Building
 - Cladding corrections for the Woolworth and American Surety buildings, which

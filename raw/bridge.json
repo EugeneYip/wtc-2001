@@ -1,0 +1,1355 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-09-12T13:23:06Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "way",
+  "id": 46116280,
+  "bounds": {
+    "minlat": 40.7004806,
+    "minlon": -73.9901327,
+    "maxlat": 40.7006709,
+    "maxlon": -73.9898606
+  },
+  "nodes": [
+    7561173754,
+    10001058408,
+    10001058407,
+    588717513
+  ],
+  "geometry": [
+    { "lat": 40.7006709, "lon": -73.9901327 },
+    { "lat": 40.7005985, "lon": -73.9900363 },
+    { "lat": 40.7005359, "lon": -73.9899447 },
+    { "lat": 40.7004806, "lon": -73.9898606 }
+  ],
+  "tags": {
+    "bicycle": "use_sidepath",
+    "bridge": "yes",
+    "bus": "no",
+    "destination": "Adams Street / Brooklyn Bridge Boulevard",
+    "embankment": "yes",
+    "expressway": "yes",
+    "foot": "no",
+    "hgv": "no",
+    "highway": "trunk",
+    "lanes": "1",
+    "maxspeed": "30 mph",
+    "name": "Brooklyn Bridge",
+    "name:etymology:wikidata": "Q18419",
+    "name:ko": "브루클린 브리지",
+    "noref": "yes",
+    "oneway": "yes",
+    "surface": "asphalt",
+    "tiger:cfcc": "A41:A49:A63",
+    "tiger:county": "Kings, NY;New York, NY",
+    "tiger:name_base": "Brooklyn",
+    "tiger:name_type": "Brg"
+  }
+},
+{
+  "type": "way",
+  "id": 46116316,
+  "bounds": {
+    "minlat": 40.7111862,
+    "minlon": -74.0035824,
+    "maxlat": 40.7115573,
+    "maxlon": -74.0031140
+  },
+  "nodes": [
+    4158753824,
+    12304459478
+  ],
+  "geometry": [
+    { "lat": 40.7111862, "lon": -74.0031140 },
+    { "lat": 40.7115573, "lon": -74.0035824 }
+  ],
+  "tags": {
+    "bicycle": "use_sidepath",
+    "bridge": "yes",
+    "bus": "no",
+    "destination": "Park Row South;Chambers Street;Centre Street",
+    "expressway": "yes",
+    "foot": "use_sidepath",
+    "hgv": "no",
+    "highway": "secondary",
+    "lanes": "1",
+    "layer": "3",
+    "lit": "yes",
+    "maxspeed": "30 mph",
+    "name": "Brooklyn Bridge",
+    "name:etymology:wikidata": "Q18419",
+    "name:ko": "브루클린 브리지",
+    "oneway": "yes",
+    "parking:both:restriction": "no_stopping",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no",
+    "surface": "asphalt",
+    "toll": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 46177116,
+  "bounds": {
+    "minlat": 40.7003348,
+    "minlon": -73.9898606,
+    "maxlat": 40.7004806,
+    "maxlon": -73.9896431
+  },
+  "nodes": [
+    588717513,
+    7561173760
+  ],
+  "geometry": [
+    { "lat": 40.7004806, "lon": -73.9898606 },
+    { "lat": 40.7003348, "lon": -73.9896431 }
+  ],
+  "tags": {
+    "bicycle": "use_sidepath",
+    "bridge": "yes",
+    "bus": "no",
+    "expressway": "yes",
+    "foot": "no",
+    "hgv": "no",
+    "highway": "trunk",
+    "lanes": "1",
+    "layer": "1",
+    "maxspeed": "30 mph",
+    "name": "Brooklyn Bridge",
+    "name:etymology:wikidata": "Q18419",
+    "name:ko": "브루클린 브리지",
+    "noref": "yes",
+    "oneway": "yes",
+    "surface": "asphalt",
+    "tiger:cfcc": "A41:A49:A63",
+    "tiger:county": "Kings, NY;New York, NY",
+    "tiger:name_base": "Brooklyn",
+    "tiger:name_type": "Brg"
+  }
+},
+{
+  "type": "way",
+  "id": 46177152,
+  "bounds": {
+    "minlat": 40.7022184,
+    "minlon": -74.0007289,
+    "maxlat": 40.7090747,
+    "maxlon": -73.9921091
+  },
+  "nodes": [
+    4158752889,
+    4158751333
+  ],
+  "geometry": [
+    { "lat": 40.7090747, "lon": -74.0007289 },
+    { "lat": 40.7022184, "lon": -73.9921091 }
+  ],
+  "tags": {
+    "bicycle": "no",
+    "bridge": "yes",
+    "bus": "no",
+    "expressway": "yes",
+    "foot": "no",
+    "hgv": "no",
+    "highway": "trunk",
+    "lanes": "3",
+    "layer": "3",
+    "lit": "yes",
+    "maxspeed": "30 mph",
+    "maxweight": "3 st",
+    "name": "Brooklyn Bridge",
+    "name:etymology:wikidata": "Q18419",
+    "name:ko": "브루클린 브리지",
+    "noref": "yes",
+    "oneway": "yes",
+    "parking:both:restriction": "no_stopping",
+    "sidewalk:both": "no",
+    "surface": "asphalt",
+    "wikidata": "Q125006",
+    "wikipedia": "en:Brooklyn Bridge"
+  }
+},
+{
+  "type": "way",
+  "id": 122660450,
+  "bounds": {
+    "minlat": 40.7008726,
+    "minlon": -73.9906344,
+    "maxlat": 40.7012877,
+    "maxlon": -73.9901171
+  },
+  "nodes": [
+    486819533,
+    1258875449,
+    7561173767
+  ],
+  "geometry": [
+    { "lat": 40.7008726, "lon": -73.9901171 },
+    { "lat": 40.7010568, "lon": -73.9903522 },
+    { "lat": 40.7012877, "lon": -73.9906344 }
+  ],
+  "tags": {
+    "bicycle": "use_sidepath",
+    "bridge": "yes",
+    "bus": "no",
+    "embankment": "yes",
+    "expressway": "yes",
+    "foot": "no",
+    "goods": "no",
+    "hgv": "no",
+    "highway": "trunk",
+    "lanes": "2",
+    "maxheight": "11'0\"",
+    "maxspeed": "30 mph",
+    "maxweight": "3 st",
+    "name": "Brooklyn Bridge",
+    "name:etymology:wikidata": "Q18419",
+    "name:ko": "브루클린 브리지",
+    "noref": "yes",
+    "oneway": "yes",
+    "surface": "asphalt",
+    "tiger:cfcc": "A41:A49:A63",
+    "tiger:county": "Kings, NY;New York, NY",
+    "tiger:name_base": "Brooklyn",
+    "tiger:name_type": "Brg"
+  }
+},
+{
+  "type": "way",
+  "id": 122660460,
+  "bounds": {
+    "minlat": 40.7115118,
+    "minlon": -74.0042694,
+    "maxlat": 40.7119069,
+    "maxlon": -74.0037906
+  },
+  "nodes": [
+    486819529,
+    4158740807
+  ],
+  "geometry": [
+    { "lat": 40.7119069, "lon": -74.0042694 },
+    { "lat": 40.7115118, "lon": -74.0037906 }
+  ],
+  "tags": {
+    "bicycle": "no",
+    "bridge": "yes",
+    "bus": "no",
+    "expressway": "yes",
+    "foot": "no",
+    "hgv": "no",
+    "highway": "secondary",
+    "lanes": "1",
+    "layer": "3",
+    "lit": "yes",
+    "maxheight": "11'0\"",
+    "maxspeed": "30 mph",
+    "maxweight": "3 st",
+    "name": "Brooklyn Bridge",
+    "name:etymology:wikidata": "Q18419",
+    "name:ko": "브루클린 브리지",
+    "oneway": "yes",
+    "parking:both:restriction": "no_stopping",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 298734351,
+  "bounds": {
+    "minlat": 40.7010207,
+    "minlon": -73.9908509,
+    "maxlat": 40.7011883,
+    "maxlon": -73.9906417
+  },
+  "nodes": [
+    7561173769,
+    7561173766
+  ],
+  "geometry": [
+    { "lat": 40.7011883, "lon": -73.9908509 },
+    { "lat": 40.7010207, "lon": -73.9906417 }
+  ],
+  "tags": {
+    "bicycle": "use_sidepath",
+    "bridge": "yes",
+    "bus": "no",
+    "expressway": "yes",
+    "foot": "no",
+    "hgv": "no",
+    "highway": "trunk",
+    "lanes": "3",
+    "layer": "1",
+    "maxweight": "3 st",
+    "name": "Brooklyn Bridge",
+    "name:etymology:wikidata": "Q18419",
+    "name:ko": "브루클린 브리지",
+    "noref": "yes",
+    "oneway": "yes",
+    "surface": "asphalt",
+    "turn:lanes": "through|right|right"
+  }
+},
+{
+  "type": "way",
+  "id": 298734352,
+  "bounds": {
+    "minlat": 40.7016011,
+    "minlon": -73.9912304,
+    "maxlat": 40.7017539,
+    "maxlon": -73.9910385
+  },
+  "nodes": [
+    3026465866,
+    7561173773
+  ],
+  "geometry": [
+    { "lat": 40.7016011, "lon": -73.9910385 },
+    { "lat": 40.7017539, "lon": -73.9912304 }
+  ],
+  "tags": {
+    "bicycle": "use_sidepath",
+    "bridge": "yes",
+    "bus": "no",
+    "expressway": "yes",
+    "foot": "no",
+    "goods": "no",
+    "hgv": "no",
+    "highway": "trunk",
+    "lanes": "2",
+    "layer": "3",
+    "maxheight": "11'0\"",
+    "maxspeed": "30 mph",
+    "maxweight": "3 st",
+    "name": "Brooklyn Bridge",
+    "name:etymology:wikidata": "Q18419",
+    "name:ko": "브루클린 브리지",
+    "noref": "yes",
+    "oneway": "yes",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 375157262,
+  "bounds": {
+    "minlat": 40.7021781,
+    "minlon": -74.0007914,
+    "maxlat": 40.7092045,
+    "maxlon": -73.9919219
+  },
+  "nodes": [
+    7561173775,
+    588036456,
+    11673031525,
+    11673036908,
+    11673036911,
+    11678027534,
+    11678027504,
+    11678027505,
+    11678027513,
+    11678027510,
+    11678027567,
+    11678027570,
+    11686818502,
+    11678027571,
+    11686818217,
+    11686818180,
+    11110496002,
+    11686818177,
+    11686818173,
+    11686772629,
+    11686772664,
+    11686772663,
+    11686772628,
+    11686772627,
+    11119101204,
+    11686818220,
+    11032985365,
+    11032985376,
+    8262309566,
+    8262309525,
+    7561173751,
+    4158752891,
+    5282235164,
+    4158752889,
+    7561173750,
+    8262309429,
+    8262309428,
+    8262309565,
+    8262309535,
+    11686772633,
+    11686772656,
+    11686772660,
+    11686772661,
+    11686772662,
+    11686772659,
+    11119101201,
+    11686772658,
+    11686818283,
+    11686818171,
+    11686818172,
+    11159274003,
+    11686818273,
+    11687172899,
+    11678027572,
+    11687172907,
+    11678027569,
+    11678027583,
+    11678027568,
+    11678027453,
+    11678027578,
+    11678027535,
+    598054727,
+    12867102450,
+    11674209408,
+    11674209393,
+    11674209392,
+    11674209383,
+    11674209411,
+    11674209283,
+    588036458,
+    11674185861,
+    11674209358,
+    7561173776,
+    4158751333,
+    1754510914,
+    8866504917,
+    4158751332,
+    7561173775
+  ],
+  "geometry": [
+    { "lat": 40.7023535, "lon": -73.9919219 },
+    { "lat": 40.7024236, "lon": -73.9920101 },
+    { "lat": 40.7024645, "lon": -73.9920617 },
+    { "lat": 40.7024892, "lon": -73.9920924 },
+    { "lat": 40.7025111, "lon": -73.9921204 },
+    { "lat": 40.7025979, "lon": -73.9922298 },
+    { "lat": 40.7026819, "lon": -73.9923356 },
+    { "lat": 40.7028149, "lon": -73.9925031 },
+    { "lat": 40.7028725, "lon": -73.9925739 },
+    { "lat": 40.7029210, "lon": -73.9926366 },
+    { "lat": 40.7032819, "lon": -73.9930912 },
+    { "lat": 40.7033378, "lon": -73.9931616 },
+    { "lat": 40.7033746, "lon": -73.9932088 },
+    { "lat": 40.7033917, "lon": -73.9932307 },
+    { "lat": 40.7034025, "lon": -73.9932431 },
+    { "lat": 40.7035970, "lon": -73.9934864 },
+    { "lat": 40.7037692, "lon": -73.9937017 },
+    { "lat": 40.7038494, "lon": -73.9938035 },
+    { "lat": 40.7039659, "lon": -73.9939513 },
+    { "lat": 40.7041197, "lon": -73.9941464 },
+    { "lat": 40.7041358, "lon": -73.9941667 },
+    { "lat": 40.7042436, "lon": -73.9943025 },
+    { "lat": 40.7042678, "lon": -73.9943331 },
+    { "lat": 40.7042922, "lon": -73.9943637 },
+    { "lat": 40.7043252, "lon": -73.9944054 },
+    { "lat": 40.7043578, "lon": -73.9944462 },
+    { "lat": 40.7087932, "lon": -74.0000329 },
+    { "lat": 40.7088642, "lon": -74.0001222 },
+    { "lat": 40.7088906, "lon": -74.0001555 },
+    { "lat": 40.7090472, "lon": -74.0003527 },
+    { "lat": 40.7092045, "lon": -74.0005509 },
+    { "lat": 40.7091794, "lon": -74.0005853 },
+    { "lat": 40.7091249, "lon": -74.0006600 },
+    { "lat": 40.7090747, "lon": -74.0007289 },
+    { "lat": 40.7090291, "lon": -74.0007914 },
+    { "lat": 40.7089589, "lon": -74.0007056 },
+    { "lat": 40.7086670, "lon": -74.0003379 },
+    { "lat": 40.7084319, "lon": -74.0000418 },
+    { "lat": 40.7080772, "lon": -73.9995950 },
+    { "lat": 40.7041453, "lon": -73.9946433 },
+    { "lat": 40.7041160, "lon": -73.9946064 },
+    { "lat": 40.7040930, "lon": -73.9945774 },
+    { "lat": 40.7040684, "lon": -73.9945464 },
+    { "lat": 40.7039598, "lon": -73.9944097 },
+    { "lat": 40.7039449, "lon": -73.9943909 },
+    { "lat": 40.7039221, "lon": -73.9943622 },
+    { "lat": 40.7038993, "lon": -73.9943335 },
+    { "lat": 40.7036460, "lon": -73.9940145 },
+    { "lat": 40.7036221, "lon": -73.9939844 },
+    { "lat": 40.7035901, "lon": -73.9939441 },
+    { "lat": 40.7035535, "lon": -73.9938981 },
+    { "lat": 40.7034466, "lon": -73.9937634 },
+    { "lat": 40.7034206, "lon": -73.9937306 },
+    { "lat": 40.7034103, "lon": -73.9937177 },
+    { "lat": 40.7033891, "lon": -73.9936909 },
+    { "lat": 40.7033532, "lon": -73.9936457 },
+    { "lat": 40.7033208, "lon": -73.9936050 },
+    { "lat": 40.7032983, "lon": -73.9935765 },
+    { "lat": 40.7026629, "lon": -73.9927764 },
+    { "lat": 40.7026437, "lon": -73.9927521 },
+    { "lat": 40.7026013, "lon": -73.9926985 },
+    { "lat": 40.7025616, "lon": -73.9926483 },
+    { "lat": 40.7025113, "lon": -73.9925846 },
+    { "lat": 40.7025023, "lon": -73.9925732 },
+    { "lat": 40.7024930, "lon": -73.9925616 },
+    { "lat": 40.7024559, "lon": -73.9925148 },
+    { "lat": 40.7024512, "lon": -73.9925089 },
+    { "lat": 40.7024447, "lon": -73.9925008 },
+    { "lat": 40.7023977, "lon": -73.9924416 },
+    { "lat": 40.7023682, "lon": -73.9924044 },
+    { "lat": 40.7023361, "lon": -73.9923640 },
+    { "lat": 40.7022060, "lon": -73.9922001 },
+    { "lat": 40.7021781, "lon": -73.9921650 },
+    { "lat": 40.7022184, "lon": -73.9921091 },
+    { "lat": 40.7022622, "lon": -73.9920484 },
+    { "lat": 40.7022875, "lon": -73.9920134 },
+    { "lat": 40.7023210, "lon": -73.9919670 },
+    { "lat": 40.7023535, "lon": -73.9919219 }
+  ],
+  "tags": {
+    "architect": "John Augustus Roebling",
+    "bridge": "suspension",
+    "check_date": "2024-02-27",
+    "description": "The Brooklyn Bridge is a hybrid cable-stayed/suspension bridge in New York City, spanning the East River between the boroughs of Manhattan and Brooklyn. Opened on May 24, 1883, the Brooklyn Bridge was the first fixed crossing of the East River.",
+    "height": "41",
+    "layer": "3",
+    "man_made": "bridge",
+    "manufacturer": "New York Bridge Company",
+    "material": "steel",
+    "maxweight": "2.72",
+    "name": "Brooklyn Bridge",
+    "name:be": "Бруклінскі мост",
+    "name:ko": "브루클린 교",
+    "name:ru": "Бруклинский мост",
+    "start_date": "1883-05-24",
+    "tourism": "attraction",
+    "website": "https://www.nyc.gov/html/dot/html/infrastructure/brooklyn-bridge.shtml",
+    "wikidata": "Q125006",
+    "wikipedia": "en:Brooklyn Bridge"
+  }
+},
+{
+  "type": "way",
+  "id": 432550255,
+  "bounds": {
+    "minlat": 40.7023210,
+    "minlon": -74.0005853,
+    "maxlat": 40.7091794,
+    "maxlon": -73.9919670
+  },
+  "nodes": [
+    4158751332,
+    8866501400,
+    4158752891
+  ],
+  "geometry": [
+    { "lat": 40.7023210, "lon": -73.9919670 },
+    { "lat": 40.7030828, "lon": -73.9929257 },
+    { "lat": 40.7091794, "lon": -74.0005853 }
+  ],
+  "tags": {
+    "bicycle": "no",
+    "bridge": "yes",
+    "bus": "no",
+    "expressway": "yes",
+    "foot": "no",
+    "goods": "no",
+    "hgv": "no",
+    "highway": "trunk",
+    "lanes": "2",
+    "layer": "3",
+    "lit": "yes",
+    "maxheight": "11'0\"",
+    "maxspeed": "30 mph",
+    "maxweight": "3 st",
+    "name": "Brooklyn Bridge",
+    "name:etymology:wikidata": "Q18419",
+    "name:ko": "브루클린 브리지",
+    "noref": "yes",
+    "oneway": "yes",
+    "parking:both:restriction": "no_stopping",
+    "sidewalk:both": "no",
+    "surface": "asphalt",
+    "wikidata": "Q125006",
+    "wikipedia": "en:Brooklyn Bridge"
+  }
+},
+{
+  "type": "way",
+  "id": 432550256,
+  "bounds": {
+    "minlat": 40.7017684,
+    "minlon": -73.9921091,
+    "maxlat": 40.7022184,
+    "maxlon": -73.9915600
+  },
+  "nodes": [
+    4158751333,
+    7561173774
+  ],
+  "geometry": [
+    { "lat": 40.7022184, "lon": -73.9921091 },
+    { "lat": 40.7017684, "lon": -73.9915600 }
+  ],
+  "tags": {
+    "bicycle": "use_sidepath",
+    "bridge": "yes",
+    "bus": "no",
+    "embankment": "yes",
+    "expressway": "yes",
+    "foot": "no",
+    "hgv": "no",
+    "highway": "trunk",
+    "lanes": "3",
+    "maxspeed": "25 mph",
+    "maxweight": "3 st",
+    "name": "Brooklyn Bridge",
+    "name:etymology:wikidata": "Q18419",
+    "name:ko": "브루클린 브리지",
+    "noref": "yes",
+    "oneway": "yes",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 432550257,
+  "bounds": {
+    "minlat": 40.7093054,
+    "minlon": -74.0037138,
+    "maxlat": 40.7114480,
+    "maxlon": -74.0010181
+  },
+  "nodes": [
+    486819531,
+    7561173749
+  ],
+  "geometry": [
+    { "lat": 40.7114480, "lon": -74.0037138 },
+    { "lat": 40.7093054, "lon": -74.0010181 }
+  ],
+  "tags": {
+    "bicycle": "no",
+    "bridge": "yes",
+    "bus": "no",
+    "expressway": "yes",
+    "foot": "no",
+    "hgv": "no",
+    "highway": "trunk",
+    "lanes": "3",
+    "layer": "3",
+    "lit": "yes",
+    "maxspeed": "30 mph",
+    "maxweight": "3 st",
+    "name": "Brooklyn Bridge",
+    "name:etymology:wikidata": "Q18419",
+    "name:ko": "브루클린 브리지",
+    "noref": "yes",
+    "oneway": "yes",
+    "parking:both:restriction": "no_stopping",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 432550259,
+  "bounds": {
+    "minlat": 40.7094096,
+    "minlon": -74.0017161,
+    "maxlat": 40.7100781,
+    "maxlon": -74.0008738
+  },
+  "nodes": [
+    7561173748,
+    588719108
+  ],
+  "geometry": [
+    { "lat": 40.7094096, "lon": -74.0008738 },
+    { "lat": 40.7100781, "lon": -74.0017161 }
+  ],
+  "tags": {
+    "bicycle": "no",
+    "bridge": "yes",
+    "bus": "no",
+    "expressway": "yes",
+    "foot": "no",
+    "goods": "no",
+    "hgv": "no",
+    "highway": "trunk",
+    "lanes": "2",
+    "layer": "3",
+    "lit": "yes",
+    "maxheight": "11'0\"",
+    "maxspeed": "30 mph",
+    "maxweight": "3 st",
+    "name": "Brooklyn Bridge",
+    "name:etymology:wikidata": "Q18419",
+    "name:ko": "브루클린 브리지",
+    "noref": "yes",
+    "oneway": "yes",
+    "parking:both:restriction": "no_stopping",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 808611020,
+  "bounds": {
+    "minlat": 40.7090747,
+    "minlon": -74.0010181,
+    "maxlat": 40.7093054,
+    "maxlon": -74.0007289
+  },
+  "nodes": [
+    7561173749,
+    4158752889
+  ],
+  "geometry": [
+    { "lat": 40.7093054, "lon": -74.0010181 },
+    { "lat": 40.7090747, "lon": -74.0007289 }
+  ],
+  "tags": {
+    "bicycle": "no",
+    "bridge": "yes",
+    "bus": "no",
+    "embankment": "yes",
+    "expressway": "yes",
+    "foot": "no",
+    "hgv": "no",
+    "highway": "trunk",
+    "lanes": "3",
+    "maxspeed": "30 mph",
+    "maxweight": "3 st",
+    "name": "Brooklyn Bridge",
+    "name:etymology:wikidata": "Q18419",
+    "name:ko": "브루클린 브리지",
+    "noref": "yes",
+    "oneway": "yes",
+    "parking:both:restriction": "no_stopping",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 808611021,
+  "bounds": {
+    "minlat": 40.7091794,
+    "minlon": -74.0008738,
+    "maxlat": 40.7094096,
+    "maxlon": -74.0005853
+  },
+  "nodes": [
+    4158752891,
+    7561173748
+  ],
+  "geometry": [
+    { "lat": 40.7091794, "lon": -74.0005853 },
+    { "lat": 40.7094096, "lon": -74.0008738 }
+  ],
+  "tags": {
+    "bicycle": "no",
+    "bridge": "yes",
+    "bus": "no",
+    "embankment": "yes",
+    "expressway": "yes",
+    "foot": "no",
+    "goods": "no",
+    "hgv": "no",
+    "highway": "trunk",
+    "lanes": "2",
+    "maxheight": "11'0\"",
+    "maxspeed": "30 mph",
+    "maxweight": "3 st",
+    "name": "Brooklyn Bridge",
+    "name:etymology:wikidata": "Q18419",
+    "name:ko": "브루클린 브리지",
+    "noref": "yes",
+    "oneway": "yes",
+    "parking:both:restriction": "no_stopping",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 808611027,
+  "bounds": {
+    "minlat": 40.7006709,
+    "minlon": -73.9904111,
+    "maxlat": 40.7008451,
+    "maxlon": -73.9901327
+  },
+  "nodes": [
+    42461379,
+    12030168880,
+    7561173754
+  ],
+  "geometry": [
+    { "lat": 40.7008451, "lon": -73.9904111 },
+    { "lat": 40.7007136, "lon": -73.9902009 },
+    { "lat": 40.7006709, "lon": -73.9901327 }
+  ],
+  "tags": {
+    "bicycle": "use_sidepath",
+    "bridge": "yes",
+    "bus": "no",
+    "destination": "Adams Street",
+    "expressway": "yes",
+    "foot": "no",
+    "hgv": "no",
+    "highway": "trunk",
+    "lanes": "1",
+    "layer": "1",
+    "name": "Brooklyn Bridge",
+    "name:etymology:wikidata": "Q18419",
+    "name:ko": "브루클린 브리지",
+    "noref": "yes",
+    "oneway": "yes",
+    "surface": "asphalt",
+    "tiger:cfcc": "A41:A49:A63",
+    "tiger:county": "Kings, NY;New York, NY",
+    "tiger:name_base": "Brooklyn",
+    "tiger:name_type": "Brg",
+    "turn:lanes": "through"
+  }
+},
+{
+  "type": "way",
+  "id": 808611034,
+  "bounds": {
+    "minlat": 40.7004983,
+    "minlon": -73.9901171,
+    "maxlat": 40.7008726,
+    "maxlon": -73.9896319
+  },
+  "nodes": [
+    7561173758,
+    10001058381,
+    10001058379,
+    10001058380,
+    10001058378,
+    12017409712,
+    486819533
+  ],
+  "geometry": [
+    { "lat": 40.7004983, "lon": -73.9896319 },
+    { "lat": 40.7005909, "lon": -73.9897713 },
+    { "lat": 40.7006457, "lon": -73.9898491 },
+    { "lat": 40.7007192, "lon": -73.9899491 },
+    { "lat": 40.7007925, "lon": -73.9900445 },
+    { "lat": 40.7008376, "lon": -73.9900889 },
+    { "lat": 40.7008726, "lon": -73.9901171 }
+  ],
+  "tags": {
+    "bicycle": "use_sidepath",
+    "bridge": "yes",
+    "bus": "no",
+    "expressway": "yes",
+    "foot": "no",
+    "goods": "no",
+    "hgv": "no",
+    "highway": "trunk",
+    "lanes": "1",
+    "layer": "1",
+    "maxspeed": "30 mph",
+    "name": "Brooklyn Bridge",
+    "name:etymology:wikidata": "Q18419",
+    "name:ko": "브루클린 브리지",
+    "noref": "yes",
+    "oneway": "yes",
+    "surface": "asphalt",
+    "tiger:cfcc": "A41:A49:A63",
+    "tiger:county": "Kings, NY;New York, NY",
+    "tiger:name_base": "Brooklyn",
+    "tiger:name_type": "Brg"
+  }
+},
+{
+  "type": "way",
+  "id": 808611037,
+  "bounds": {
+    "minlat": 40.7008451,
+    "minlon": -73.9906417,
+    "maxlat": 40.7010207,
+    "maxlon": -73.9904111
+  },
+  "nodes": [
+    7561173766,
+    42461379
+  ],
+  "geometry": [
+    { "lat": 40.7010207, "lon": -73.9906417 },
+    { "lat": 40.7008451, "lon": -73.9904111 }
+  ],
+  "tags": {
+    "bicycle": "use_sidepath",
+    "bridge": "yes",
+    "bus": "no",
+    "embankment": "yes",
+    "expressway": "yes",
+    "foot": "no",
+    "hgv": "no",
+    "highway": "trunk",
+    "lanes": "3",
+    "maxweight": "3 st",
+    "name": "Brooklyn Bridge",
+    "name:etymology:wikidata": "Q18419",
+    "name:ko": "브루클린 브리지",
+    "noref": "yes",
+    "oneway": "yes",
+    "surface": "asphalt",
+    "turn:lanes": "through|right|right"
+  }
+},
+{
+  "type": "way",
+  "id": 808611038,
+  "bounds": {
+    "minlat": 40.7011883,
+    "minlon": -73.9913686,
+    "maxlat": 40.7016143,
+    "maxlon": -73.9908509
+  },
+  "nodes": [
+    3026465865,
+    7561173769
+  ],
+  "geometry": [
+    { "lat": 40.7016143, "lon": -73.9913686 },
+    { "lat": 40.7011883, "lon": -73.9908509 }
+  ],
+  "tags": {
+    "bicycle": "use_sidepath",
+    "bridge": "yes",
+    "bus": "no",
+    "embankment": "yes",
+    "expressway": "yes",
+    "foot": "no",
+    "hgv": "no",
+    "highway": "trunk",
+    "lanes": "3",
+    "maxweight": "3 st",
+    "name": "Brooklyn Bridge",
+    "name:etymology:wikidata": "Q18419",
+    "name:ko": "브루클린 브리지",
+    "noref": "yes",
+    "oneway": "yes",
+    "surface": "asphalt",
+    "turn:lanes": "through|right|right"
+  }
+},
+{
+  "type": "way",
+  "id": 808611041,
+  "bounds": {
+    "minlat": 40.7014484,
+    "minlon": -73.9910385,
+    "maxlat": 40.7016011,
+    "maxlon": -73.9908426
+  },
+  "nodes": [
+    7561173770,
+    3026465866
+  ],
+  "geometry": [
+    { "lat": 40.7014484, "lon": -73.9908426 },
+    { "lat": 40.7016011, "lon": -73.9910385 }
+  ],
+  "tags": {
+    "bicycle": "use_sidepath",
+    "bridge": "yes",
+    "bus": "no",
+    "embankment": "yes",
+    "expressway": "yes",
+    "foot": "no",
+    "goods": "no",
+    "hgv": "no",
+    "highway": "trunk",
+    "lanes": "2",
+    "maxheight": "11'0\"",
+    "maxspeed": "30 mph",
+    "maxweight": "3 st",
+    "name": "Brooklyn Bridge",
+    "name:etymology:wikidata": "Q18419",
+    "name:ko": "브루클린 브리지",
+    "noref": "yes",
+    "oneway": "yes",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 808611042,
+  "bounds": {
+    "minlat": 40.7012877,
+    "minlon": -73.9908426,
+    "maxlat": 40.7014484,
+    "maxlon": -73.9906344
+  },
+  "nodes": [
+    7561173767,
+    7561173770
+  ],
+  "geometry": [
+    { "lat": 40.7012877, "lon": -73.9906344 },
+    { "lat": 40.7014484, "lon": -73.9908426 }
+  ],
+  "tags": {
+    "bicycle": "use_sidepath",
+    "bridge": "yes",
+    "bus": "no",
+    "expressway": "yes",
+    "foot": "no",
+    "goods": "no",
+    "hgv": "no",
+    "highway": "trunk",
+    "lanes": "2",
+    "layer": "1",
+    "maxheight": "11'0\"",
+    "maxspeed": "30 mph",
+    "maxweight": "3 st",
+    "name": "Brooklyn Bridge",
+    "name:etymology:wikidata": "Q18419",
+    "name:ko": "브루클린 브리지",
+    "noref": "yes",
+    "oneway": "yes",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 808611043,
+  "bounds": {
+    "minlat": 40.7016143,
+    "minlon": -73.9915600,
+    "maxlat": 40.7017684,
+    "maxlon": -73.9913686
+  },
+  "nodes": [
+    7561173774,
+    3026465865
+  ],
+  "geometry": [
+    { "lat": 40.7017684, "lon": -73.9915600 },
+    { "lat": 40.7016143, "lon": -73.9913686 }
+  ],
+  "tags": {
+    "bicycle": "use_sidepath",
+    "bridge": "yes",
+    "bus": "no",
+    "expressway": "yes",
+    "foot": "no",
+    "hgv": "no",
+    "highway": "trunk",
+    "lanes": "3",
+    "layer": "3",
+    "maxspeed": "25 mph",
+    "maxweight": "3 st",
+    "name": "Brooklyn Bridge",
+    "name:etymology:wikidata": "Q18419",
+    "name:ko": "브루클린 브리지",
+    "noref": "yes",
+    "oneway": "yes",
+    "surface": "asphalt",
+    "turn:lanes": "through|right|right"
+  }
+},
+{
+  "type": "way",
+  "id": 808611046,
+  "bounds": {
+    "minlat": 40.7017539,
+    "minlon": -73.9919670,
+    "maxlat": 40.7023210,
+    "maxlon": -73.9912304
+  },
+  "nodes": [
+    7561173773,
+    4158751332
+  ],
+  "geometry": [
+    { "lat": 40.7017539, "lon": -73.9912304 },
+    { "lat": 40.7023210, "lon": -73.9919670 }
+  ],
+  "tags": {
+    "bicycle": "use_sidepath",
+    "bridge": "yes",
+    "bus": "no",
+    "embankment": "yes",
+    "expressway": "yes",
+    "foot": "no",
+    "goods": "no",
+    "hgv": "no",
+    "highway": "trunk",
+    "lanes": "2",
+    "maxheight": "11'0\"",
+    "maxspeed": "30 mph",
+    "maxweight": "3 st",
+    "name": "Brooklyn Bridge",
+    "name:etymology:wikidata": "Q18419",
+    "name:ko": "브루클린 브리지",
+    "noref": "yes",
+    "oneway": "yes",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 1329897839,
+  "bounds": {
+    "minlat": 40.7115573,
+    "minlon": -74.0038627,
+    "maxlat": 40.7117892,
+    "maxlon": -74.0035824
+  },
+  "nodes": [
+    12304459478,
+    12924890405
+  ],
+  "geometry": [
+    { "lat": 40.7115573, "lon": -74.0035824 },
+    { "lat": 40.7117892, "lon": -74.0038627 }
+  ],
+  "tags": {
+    "bicycle": "use_sidepath",
+    "bridge": "yes",
+    "bus": "no",
+    "destination:lanes": "Centre Street;Chambers Street|Park Row South",
+    "expressway": "yes",
+    "foot": "no",
+    "hgv": "no",
+    "highway": "secondary",
+    "lanes": "2",
+    "layer": "3",
+    "lit": "yes",
+    "maxspeed": "30 mph",
+    "name": "Brooklyn Bridge",
+    "name:etymology:wikidata": "Q18419",
+    "name:ko": "브루클린 브리지",
+    "oneway": "yes",
+    "parking:both:restriction": "no_stopping",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no",
+    "surface": "asphalt",
+    "toll": "yes",
+    "turn:lanes": "through|slight_right"
+  }
+},
+{
+  "type": "way",
+  "id": 1396464325,
+  "bounds": {
+    "minlat": 40.7117892,
+    "minlon": -74.0040307,
+    "maxlat": 40.7119279,
+    "maxlon": -74.0038627
+  },
+  "nodes": [
+    12924890405,
+    12924890411
+  ],
+  "geometry": [
+    { "lat": 40.7117892, "lon": -74.0038627 },
+    { "lat": 40.7119279, "lon": -74.0040307 }
+  ],
+  "tags": {
+    "bicycle": "use_sidepath",
+    "bridge": "yes",
+    "bus": "no",
+    "change": "no",
+    "destination:lanes": "Centre Street;Chambers Street|Park Row South",
+    "expressway": "yes",
+    "foot": "no",
+    "hgv": "no",
+    "highway": "secondary",
+    "lanes": "2",
+    "layer": "3",
+    "lit": "yes",
+    "maxspeed": "30 mph",
+    "name": "Brooklyn Bridge",
+    "name:etymology:wikidata": "Q18419",
+    "name:ko": "브루클린 브리지",
+    "oneway": "yes",
+    "parking:both:restriction": "no_stopping",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no",
+    "surface": "asphalt",
+    "toll": "yes",
+    "turn:lanes": "through|slight_right"
+  }
+},
+{
+  "type": "way",
+  "id": 1396464327,
+  "bounds": {
+    "minlat": 40.7103823,
+    "minlon": -74.0026237,
+    "maxlat": 40.7107999,
+    "maxlon": -74.0021033
+  },
+  "nodes": [
+    12924890406,
+    12924890408
+  ],
+  "geometry": [
+    { "lat": 40.7103823, "lon": -74.0021033 },
+    { "lat": 40.7107999, "lon": -74.0026237 }
+  ],
+  "tags": {
+    "bicycle": "no",
+    "bridge": "yes",
+    "bus": "no",
+    "expressway": "yes",
+    "foot": "no",
+    "goods": "no",
+    "hgv": "no",
+    "highway": "trunk",
+    "lanes": "2",
+    "layer": "3",
+    "lit": "yes",
+    "maxheight": "11'0\"",
+    "maxspeed": "30 mph",
+    "maxweight": "3 st",
+    "name": "Brooklyn Bridge",
+    "name:etymology:wikidata": "Q18419",
+    "name:ko": "브루클린 브리지",
+    "noref": "yes",
+    "oneway": "yes",
+    "parking:both:restriction": "no_stopping",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no",
+    "surface": "asphalt",
+    "turn:lanes": "|right"
+  }
+},
+{
+  "type": "way",
+  "id": 1396464328,
+  "bounds": {
+    "minlat": 40.7107999,
+    "minlon": -74.0031140,
+    "maxlat": 40.7111862,
+    "maxlon": -74.0026237
+  },
+  "nodes": [
+    12924890408,
+    4158753824
+  ],
+  "geometry": [
+    { "lat": 40.7107999, "lon": -74.0026237 },
+    { "lat": 40.7111862, "lon": -74.0031140 }
+  ],
+  "tags": {
+    "bicycle": "no",
+    "bridge": "yes",
+    "bus": "no",
+    "destination:lanes": "Park Row South;Chambers Street;Centre Street|Pearl Street;FDR Drive|FDR Drive North",
+    "expressway": "yes",
+    "foot": "no",
+    "goods": "no",
+    "hgv": "no",
+    "highway": "trunk",
+    "lanes": "2",
+    "layer": "3",
+    "lit": "yes",
+    "maxheight": "11'0\"",
+    "maxspeed": "30 mph",
+    "maxweight": "3 st",
+    "name": "Brooklyn Bridge",
+    "name:etymology:wikidata": "Q18419",
+    "name:ko": "브루클린 브리지",
+    "noref": "yes",
+    "oneway": "yes",
+    "parking:both:restriction": "no_stopping",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no",
+    "surface": "asphalt",
+    "turn:lanes": "|right|right"
+  }
+},
+{
+  "type": "way",
+  "id": 1497424184,
+  "bounds": {
+    "minlat": 40.7100781,
+    "minlon": -74.0021033,
+    "maxlat": 40.7103823,
+    "maxlon": -74.0017161
+  },
+  "nodes": [
+    588719108,
+    12924890406
+  ],
+  "geometry": [
+    { "lat": 40.7100781, "lon": -74.0017161 },
+    { "lat": 40.7103823, "lon": -74.0021033 }
+  ],
+  "tags": {
+    "bicycle": "no",
+    "bridge": "yes",
+    "bus": "no",
+    "expressway": "yes",
+    "foot": "no",
+    "goods": "no",
+    "hgv": "no",
+    "highway": "trunk",
+    "lanes": "2",
+    "layer": "3",
+    "lit": "yes",
+    "maxheight": "11'0\"",
+    "maxspeed": "30 mph",
+    "maxweight": "3 st",
+    "name": "Brooklyn Bridge",
+    "name:etymology:wikidata": "Q18419",
+    "name:ko": "브루클린 브리지",
+    "noref": "yes",
+    "oneway": "yes",
+    "parking:both:restriction": "no_stopping",
+    "sidewalk:left": "separate",
+    "sidewalk:right": "no",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 1539100762,
+  "bounds": {
+    "minlat": 40.7114480,
+    "minlon": -74.0037906,
+    "maxlat": 40.7115118,
+    "maxlon": -74.0037138
+  },
+  "nodes": [
+    4158740807,
+    486819531
+  ],
+  "geometry": [
+    { "lat": 40.7115118, "lon": -74.0037906 },
+    { "lat": 40.7114480, "lon": -74.0037138 }
+  ],
+  "tags": {
+    "bicycle": "no",
+    "bridge": "yes",
+    "bus": "no",
+    "expressway": "yes",
+    "foot": "no",
+    "hgv": "no",
+    "highway": "secondary",
+    "lanes": "1",
+    "layer": "3",
+    "lit": "yes",
+    "maxheight": "11'0\"",
+    "maxspeed": "30 mph",
+    "maxweight": "3 st",
+    "name": "Brooklyn Bridge",
+    "name:etymology:wikidata": "Q18419",
+    "name:ko": "브루클린 브리지",
+    "oneway": "yes",
+    "parking:both:restriction": "no_stopping",
+    "surface": "asphalt"
+  }
+}
+
+  ]
+}

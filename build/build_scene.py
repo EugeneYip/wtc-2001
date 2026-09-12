@@ -1230,6 +1230,85 @@ def build_areas():
 
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Brooklyn Bridge
+# ---------------------------------------------------------------------------
+#
+# Its Manhattan end sits a kilometre east of the site and it closes every view
+# up the East River, so leaving it out left the far bank of the river looking
+# like an unfinished edge of the model rather than a shore.
+#
+# The plan comes from OpenStreetMap: the carriageway ways give the axis, and
+# the land polygons give the two bulkhead lines the axis crosses. Only one
+# published figure is added — the 1,595 ft 6 in between tower centres — and it
+# is used to place the towers symmetrically about the middle of the channel,
+# which puts each one just off its own bank, where they stand.
+
+MAIN_SPAN = 486.3          # ft 1595.5, tower centre to tower centre
+
+def _bridge_axis(ways):
+    """Longest carriageway way, as a point and a unit direction."""
+    best, best_len = None, 0.0
+    for w in ways:
+        g = [project(p["lat"], p["lon"]) for p in w.get("geometry", [])]
+        if len(g) < 2:
+            continue
+        L = sum(math.dist(g[i], g[i + 1]) for i in range(len(g) - 1))
+        if L > best_len:
+            best, best_len = g, L
+    if not best:
+        return None
+    a, b = best[0], best[-1]
+    dx, dz = b[0] - a[0], b[1] - a[1]
+    L = math.hypot(dx, dz)
+    return a, (dx / L, dz / L)
+
+
+def build_bridge(land):
+    path = os.path.join(RAW, "bridge.json")
+    if not os.path.exists(path):
+        print("  brooklyn bridge       : no extract, skipped")
+        return None
+    els = json.load(open(path))["elements"]
+    ways = [e for e in els if e.get("tags", {}).get("highway")]
+    axis = _bridge_axis(ways)
+    if not axis:
+        return None
+    (ax, az), (ux, uz) = axis
+
+    def at(s):
+        return (ax + ux * s, az + uz * s)
+
+    # Where the axis leaves one shore and meets the other.
+    rings = [l["p"] for l in land]
+    wet = []
+    for i in range(-600, 1400):
+        x, z = at(i)
+        wet.append(not any(_point_in((x, z), r) for r in rings))
+    edges = [i - 600 for i in range(1, len(wet)) if wet[i] != wet[i - 1]]
+    if len(edges) < 2:
+        print("  brooklyn bridge       : axis does not cross water, skipped")
+        return None
+    mid = (edges[0] + edges[-1]) / 2.0
+
+    # The deck runs the whole length of what the extract covers.
+    ends = []
+    for w in ways:
+        for p in (w["geometry"][0], w["geometry"][-1]):
+            x, z = project(p["lat"], p["lon"])
+            ends.append((x - ax) * ux + (z - az) * uz)
+    s0, s1 = min(ends), max(ends)
+
+    return {
+        "a": [round(ax, 2), round(az, 2)],
+        "u": [round(ux, 5), round(uz, 5)],
+        "s0": round(s0, 1),
+        "s1": round(s1, 1),
+        "towers": [round(mid - MAIN_SPAN / 2, 1), round(mid + MAIN_SPAN / 2, 1)],
+        "shore": [edges[0], edges[-1]],
+    }
+
+
 def main():
     print("Building WTC scene (Lower Manhattan, September 2001)")
     buildings = build_buildings()
@@ -1244,6 +1323,10 @@ def main():
     roads = build_roads()
     water, parks = build_areas()
     land = build_land()
+    bridge = build_bridge(land)
+    if bridge:
+        print("  brooklyn bridge       : span %.0f m, towers at %s"
+              % (bridge["s1"] - bridge["s0"], bridge["towers"]))
 
     scene = {
         "meta": {
@@ -1269,6 +1352,7 @@ def main():
         "plaza": {"p": [[x, z] for x, z in ccw(PLAZA_POLY)], "y": PLAZA_LEVEL,
                   "stairs": PLAZA_STAIRS},
         "land": land,
+        "bridge": bridge,
         "buildings": buildings,
         "roads": roads,
         "water": water,

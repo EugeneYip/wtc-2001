@@ -62,6 +62,14 @@ QUERIES = {
         (way["leisure"="park"](%s);
          way["landuse"~"grass|forest"](%s););
         out geom;""" % (BBOX, BBOX),
+
+    # The Brooklyn Bridge, which falls outside the building box but closes
+    # every view up the East River. The carriageway ways give the axis; the
+    # section comes from published figures, not from this.
+    "bridge": """[out:json][timeout:60];
+        (way["man_made"="bridge"]["name"="Brooklyn Bridge"](40.69,-74.02,40.72,-73.96);
+         way["highway"]["name"="Brooklyn Bridge"](40.69,-74.02,40.72,-73.96););
+        out geom;""",
 }
 
 

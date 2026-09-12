@@ -38,6 +38,7 @@ MODULES = [
     ("vendor/OutputPass.js",               ["OutputPass"]),
     ("src/geo.js",                         ["./geo.js"]),
     ("src/nightsky.js",                    ["./nightsky.js"]),
+    ("src/bridge.js",                      ["./bridge.js"]),
     ("src/textures.js",                    ["./textures.js"]),
     ("src/details.js",                     ["./details.js"]),
     ("src/city.js",                        ["./city.js"]),

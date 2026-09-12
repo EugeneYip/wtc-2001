@@ -645,7 +645,24 @@ export function landTexture() {
     const warm = Math.min(1, Math.max(0, (g - 0.45) * 2.4));
     let col = GREEN.map((v, k) => v + (BROWN[k] - v) * warm);
     col = col.map((v, k) => v + (GREY[k] - v) * u);
-    const shade = 0.76 + g * 0.50;
+    // More contrast than the first pass had. Flat land under flat light with a
+    // narrow range is exactly what a cloud layer looks like.
+    let shade = 0.62 + g * 0.82;
+    // Street grain, and only where the land is built up. Drawn as lines over
+    // the whole tile it ran dead straight from one tile into the next and the
+    // far shore came out as graph paper; masked by the same noise that decides
+    // what is built, it breaks the way a real grid breaks.
+    const gx = i % N, gy = (i / N) | 0;
+    // Wobbled by the same noise, so the lines are not dead straight and do not
+    // run unbroken from one tile into the next.
+    const near = (v, pitch, jitter) => {
+      const m = (v + jitter) % pitch;
+      return Math.max(0, 1 - Math.min(m, pitch - m) / 1.6);
+    };
+    const wob = (g - 0.5) * 7;
+    // Kept to a grain. At a third it read as graph paper laid over the shore,
+    // which is worse than the cloud it replaced.
+    shade *= 1 - Math.max(near(gx, N / 12, wob), near(gy, N / 5, -wob)) * 0.17 * u;
     img.data[i * 4] = Math.min(255, col[0] * shade);
     img.data[i * 4 + 1] = Math.min(255, col[1] * shade);
     img.data[i * 4 + 2] = Math.min(255, col[2] * shade);
@@ -653,16 +670,7 @@ export function landTexture() {
   }
   x.putImageData(img, 0, 0);
 
-  // A faint street grid, enough to read as built-up at distance.
-  x.globalAlpha = 0.05;
-  x.strokeStyle = '#2e2f2c';
-  x.lineWidth = 1.5;
-  for (let i = 0; i < 16; i++) {
-    const p = (i + 0.5) * (N / 16);
-    x.beginPath(); x.moveTo(p, 0); x.lineTo(p, N); x.stroke();
-    x.beginPath(); x.moveTo(0, p); x.lineTo(N, p); x.stroke();
-  }
-  x.globalAlpha = 1;
+
 
   // No repeat set here: the ground is a single plane whose UVs run 0..1 over
   // its whole width, so the caller has to scale by the plane size. Treating
@@ -675,4 +683,6 @@ export function landTexture() {
 }
 
 /** Metres of ground covered by one tile of landTexture(). */
-export const LAND_TILE_M = 620;
+// Bigger than it was. At 620 m the tile repeated ten times across a wide shot
+// and the fbm read as one cloud pattern tiled.
+export const LAND_TILE_M = 860;

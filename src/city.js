@@ -61,14 +61,18 @@ export const CITY_MATS = {
   park: new THREE.MeshStandardMaterial({
     color: 0x3d5130, roughness: 0.95, metalness: 0.0 }),
   water: makeWater(),
-  // The shelf off every shoreline: same water, lighter and choppier. It also
-  // sits exactly where the shore reflection is strongest, so it carries a
-  // little of it after dark.
+  // The shelf off every shoreline. Barely lighter than the open water and
+  // rougher, because at 0x2c4d58 and roughness 0.42 it was a sky mirror: from
+  // the air it drew a bright turquoise line round every coast, every pier and
+  // every island in the harbour, and the whole thing read as a map with its
+  // borders highlighted rather than as water. It also sits exactly where the
+  // shore reflection is strongest, so it carries a little of it after dark.
   shallows: new THREE.MeshStandardMaterial({
-    color: 0x2c4d58, metalness: 0.02, roughness: 0.42,
+    color: 0x21414f, metalness: 0.02, roughness: 0.58,
     normalMap: waterNormal(4451),
     normalScale: new THREE.Vector2(0.9, 0.9),
-    envMapIntensity: 1.0,
+    envMapIntensity: 0.75,
+    vertexColors: true,
     emissive: new THREE.Color(0xff9e4c), emissiveIntensity: 0,
   }),
 };
@@ -207,7 +211,7 @@ function makeWater() {
  * each land edge rather than by offsetting the polygon, which for a shape
  * like Manhattan would be a great deal of work for the same result.
  */
-function shallows(landPolys, width = 26) {
+function shallows(landPolys, width = 17) {
   const geos = [];
   for (const { p } of landPolys) {
     // Signed area fixes which side of an edge faces the water.
@@ -220,6 +224,11 @@ function shallows(landPolys, width = 26) {
     const out = a > 0 ? 1 : -1;
 
     const pos = [];
+    const shade = [];
+    // Bright at the shore, fading to the open-water tone at the outer edge.
+    // A band of constant colour has an outer edge as hard as its inner one,
+    // and that second edge is what reads as a painted stripe.
+    const IN = 1.0, OUT = 0.55;
     for (let i = 0; i < p.length; i++) {
       const [x0, z0] = p[i];
       const [x1, z1] = p[(i + 1) % p.length];
@@ -233,6 +242,7 @@ function shallows(landPolys, width = 26) {
       // Two triangles, wound so they face up.
       pos.push(x0, 0, z0, bx, 0, bz, x1, 0, z1);
       pos.push(x0, 0, z0, ax, 0, az, bx, 0, bz);
+      for (const v of [IN, OUT, IN, IN, OUT, OUT]) shade.push(v, v, v);
     }
     if (!pos.length) continue;
     const g = new THREE.BufferGeometry();
@@ -243,6 +253,7 @@ function shallows(landPolys, width = 26) {
     const uv = [];
     for (let i = 0; i < n; i++) uv.push(pos[i * 3], pos[i * 3 + 2]);
     g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(shade, 3));
     geos.push(g);
   }
   return geos.length ? mergeGeometries(geos) : null;

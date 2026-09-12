@@ -24,6 +24,7 @@ import { buildComplex, MATS as WTC_MATS, PLAZA_TREE_SITES,
 import { roofClutter, trees, traffic, vessels, streetLamps, lampPoolTexture,
          trafficSignals, kerbFurniture, obstacleIndex, DETAIL_MATS } from './details.js';
 import { makeNightSky } from './nightsky.js';
+import { buildBridge, BRIDGE_MATS } from './bridge.js';
 
 const DEG = Math.PI / 180;
 const LAMP_SPAN = 2600;   // world metres covered by the lamp-pool mask
@@ -98,6 +99,8 @@ const GROUND_NIGHT = new THREE.Color(0x46310f);
 const FOG_NIGHT = new THREE.Color(0x171b2c);
 const WATER_DAY = new THREE.Color(0x16303f);
 const WATER_NIGHT = new THREE.Color(0x090f1a);
+const SHELF_DAY = new THREE.Color(0x21414f);
+const SHELF_NIGHT = new THREE.Color(0x0d1725);
 const _c = new THREE.Color();
 const _fog = new THREE.Color();
 
@@ -214,6 +217,9 @@ function applyTime(hour) {
   DETAIL_MATS.signalLens.emissiveIntensity = 0.9 + lit * 1.9;
 
   CITY_MATS.water.color.copy(WATER_DAY).lerp(WATER_NIGHT, dusk);
+  // The shelf has to follow the water it is part of, or it stays a daytime
+  // blue-green rimming a night-time river.
+  CITY_MATS.shallows.color.copy(SHELF_DAY).lerp(SHELF_NIGHT, dusk);
   // Distant water holds a mirror after dark instead of the wide, hazy lobe
   // daylight wants: at night the only thing to reflect is the shoreline, and
   // roughening it away leaves the river a void.
@@ -520,6 +526,9 @@ async function init() {
   const city = buildCity(data);
   scene.add(city.group);
   waterMesh = city.water;
+
+  const bridge = buildBridge(data.bridge);
+  if (bridge) scene.add(bridge);
 
   status.textContent = 'Raising the towers…';
   await tick();
