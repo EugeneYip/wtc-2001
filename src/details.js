@@ -91,11 +91,17 @@ export const DETAIL_MATS = {
   trunk: new THREE.MeshStandardMaterial({
     color: 0x4a3a2c, roughness: 0.95, metalness: 0.0,
   }),
+  // White, because every crown carries its own instance colour and the two
+  // multiply: against 0x445c32 the foliage came out at about a twentieth of
+  // the light it should have, which is why the parks were full of black blobs.
   leaf: new THREE.MeshStandardMaterial({
-    color: 0x445c32, roughness: 0.92, metalness: 0.0,
+    color: 0xffffff, roughness: 0.92, metalness: 0.0,
   }),
+  // vertexColors carries the glazing and the chassis band baked into each
+  // shell; instanceColor carries the paint. Without the flag the geometry's
+  // colour attribute is simply ignored and every vehicle is one flat colour.
   car: new THREE.MeshStandardMaterial({
-    color: 0xffffff, roughness: 0.42, metalness: 0.35,
+    color: 0xffffff, vertexColors: true, roughness: 0.42, metalness: 0.35,
   }),
   // This was missing, so 400-odd car cabins fell back to three's default
   // unlit white material: flat white blocks that ignored the sun in daylight
@@ -314,7 +320,11 @@ export function trees(parks, extraSites, avoid) {
     crowns.setMatrixAt(i, m);
 
     // Early-September foliage: mostly deep green, a few already turning.
-    col.setHSL(0.23 + rand() * 0.07, 0.30 + rand() * 0.18, 0.19 + rand() * 0.10);
+    // Given in sRGB on purpose. setHSL defaults to the linear working space,
+    // where a lightness of 0.3 is a pale mint rather than a leaf, and the
+    // canopy came out brighter than the grass under it.
+    col.setHSL(0.21 + rand() * 0.08, 0.32 + rand() * 0.20,
+               0.19 + rand() * 0.10, THREE.SRGBColorSpace);
     crowns.setColorAt(i, col);
   });
 

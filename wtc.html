@@ -58714,6 +58714,48 @@ function facadeMaps() {
   return out;
 }
 
+/**
+ * Grass.
+ *
+ * The parks were a single flat colour, which from the air made them read as
+ * billiard cloth cut to shape rather than as ground — and it was the most
+ * saturated green in the frame, so the eye went to them before the city. This
+ * is mown grass under London planes: worn where the paths and the benches are,
+ * darker under the canopy, never one colour anywhere.
+ */
+const GRASS_TILE_M = 34;
+
+function grassTexture() {
+  const N = 256;
+  const [c, x] = canvas(N, N);
+  const rand = rng(6143);
+  const base = fbm(N, [2, 5, 11, 23], 3301);
+  const wear = fbm(N, [2, 4], 777);
+  const img = x.createImageData(N, N);
+  const GREEN = [58, 78, 46];
+  const DRY = [88, 88, 66];                     // worn ground and bare earth
+  const DEEP = [38, 54, 34];                    // under the canopy
+  for (let i = 0; i < N * N; i++) {
+    const g = base[i];
+    const w = Math.min(1, Math.max(0, (wear[i] - 0.63) * 2.2));
+    let col = DEEP.map((v, k) => v + (GREEN[k] - v) * Math.min(1, g * 1.5));
+    col = col.map((v, k) => v + (DRY[k] - v) * w);
+    const sh = 0.82 + g * 0.40;
+    img.data[i * 4] = Math.min(255, col[0] * sh);
+    img.data[i * 4 + 1] = Math.min(255, col[1] * sh);
+    img.data[i * 4 + 2] = Math.min(255, col[2] * sh);
+    img.data[i * 4 + 3] = 255;
+  }
+  x.putImageData(img, 0, 0);
+  // Blade speckle, so it does not go to mush at close range.
+  for (let i = 0; i < 14000; i++) {
+    const v = 30 + Math.floor(rand() * 70);
+    x.fillStyle = `rgba(${v},${v + 22},${v - 6},${0.10 + rand() * 0.22})`;
+    x.fillRect(rand() * N, rand() * N, 1, 1 + rand() * 2);
+  }
+  return finish(c, 1 / GRASS_TILE_M, 1 / GRASS_TILE_M);
+}
+
 /** Tar-and-gravel roof, the top surface of nearly every building down there. */
 function roofTexture() {
   const [c, x] = canvas(128, 128);
@@ -59009,7 +59051,7 @@ function landTexture() {
 // and the fbm read as one cloud pattern tiled.
 const LAND_TILE_M = 860;
 
-return { facade, STOREFRONT_H, storefront, facadeLights, facadeMaps, roofTexture, plazaTexture, roadTexture, sidewalkTexture, waterNormal, waterRoughness, landTexture, LAND_TILE_M };
+return { facade, STOREFRONT_H, storefront, facadeLights, facadeMaps, GRASS_TILE_M, grassTexture, roofTexture, plazaTexture, roadTexture, sidewalkTexture, waterNormal, waterRoughness, landTexture, LAND_TILE_M };
 });
 __def(["./details.js"], function () {
 /**
@@ -59105,11 +59147,17 @@ const DETAIL_MATS = {
   trunk: new THREE.MeshStandardMaterial({
     color: 0x4a3a2c, roughness: 0.95, metalness: 0.0,
   }),
+  // White, because every crown carries its own instance colour and the two
+  // multiply: against 0x445c32 the foliage came out at about a twentieth of
+  // the light it should have, which is why the parks were full of black blobs.
   leaf: new THREE.MeshStandardMaterial({
-    color: 0x445c32, roughness: 0.92, metalness: 0.0,
+    color: 0xffffff, roughness: 0.92, metalness: 0.0,
   }),
+  // vertexColors carries the glazing and the chassis band baked into each
+  // shell; instanceColor carries the paint. Without the flag the geometry's
+  // colour attribute is simply ignored and every vehicle is one flat colour.
   car: new THREE.MeshStandardMaterial({
-    color: 0xffffff, roughness: 0.42, metalness: 0.35,
+    color: 0xffffff, vertexColors: true, roughness: 0.42, metalness: 0.35,
   }),
   // This was missing, so 400-odd car cabins fell back to three's default
   // unlit white material: flat white blocks that ignored the sun in daylight
@@ -59328,7 +59376,11 @@ function trees(parks, extraSites, avoid) {
     crowns.setMatrixAt(i, m);
 
     // Early-September foliage: mostly deep green, a few already turning.
-    col.setHSL(0.23 + rand() * 0.07, 0.30 + rand() * 0.18, 0.19 + rand() * 0.10);
+    // Given in sRGB on purpose. setHSL defaults to the linear working space,
+    // where a lightness of 0.3 is a pale mint rather than a leaf, and the
+    // canopy came out brighter than the grass under it.
+    col.setHSL(0.21 + rand() * 0.08, 0.32 + rand() * 0.20,
+               0.19 + rand() * 0.10, THREE.SRGBColorSpace);
     crowns.setColorAt(i, col);
   });
 
@@ -60132,7 +60184,7 @@ __def(["./city.js"], function () {
 const THREE = __req("three");
 const { mergeGeometries } = __req("BufferGeometryUtils");
 const { norm, shapeFrom, flat, extrude, bounds } = __req("./geo.js");
-const { facadeMaps, roofTexture, roadTexture, sidewalkTexture, waterNormal, waterRoughness, landTexture, LAND_TILE_M, storefront, STOREFRONT_H } = __req("./textures.js");
+const { facadeMaps, roofTexture, roadTexture, sidewalkTexture, waterNormal, waterRoughness, landTexture, LAND_TILE_M, storefront, STOREFRONT_H, grassTexture } = __req("./textures.js");
 
 const FACADE = facadeMaps();
 
@@ -60174,7 +60226,14 @@ const CITY_MATS = {
   sidewalk: new THREE.MeshStandardMaterial({
     map: sidewalkTexture(), roughness: 0.94, metalness: 0.0 }),
   park: new THREE.MeshStandardMaterial({
-    color: 0x3d5130, roughness: 0.95, metalness: 0.0 }),
+    map: grassTexture(), roughness: 0.95, metalness: 0.0 }),
+  // The path network inside a park: rolled stone dust, a shade off the
+  // pavement and a good deal warmer than the grass.
+  // Coplanar with the grass a centimetre below it, so it needs the offset:
+  // looking straight down the slope term is nil and the units do the work.
+  parkPath: new THREE.MeshStandardMaterial({
+    color: 0x9c907c, roughness: 0.95, metalness: 0.0,
+    polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -24 }),
   water: makeWater(),
   // The shelf off every shoreline. Barely lighter than the open water and
   // rougher, because at 0x2c4d58 and roughness 0.42 it was a sky mirror: from
@@ -60461,6 +60520,65 @@ for (const [k, hex] of [['road', 0xffb45c], ['roadMinor', 0xffab4e],
   CITY_MATS[k].emissiveIntensity = 0;
 }
 
+
+/**
+ * A path round the inside of a park.
+ *
+ * Every park here was an unbroken field of green, which is not what any of
+ * them look like: Battery Park and City Hall Park are more path than lawn.
+ * Rather than route anything, this lays a walk a few metres inside the
+ * boundary and follows it round — which is what the main walk in a small city
+ * park does anyway, and it needs no more than the polygon already in the data.
+ *
+ * Built edge by edge with a fixed inward offset rather than by shrinking the
+ * polygon: a true inset self-intersects on the concave parts, and these
+ * outlines wrap round buildings and slips.
+ */
+function parkPaths(parks, inset = 7.0, width = 2.6) {
+  const geos = [];
+  for (const { p } of parks) {
+    if (p.length < 4) continue;
+    const b = bounds(p);
+    if (b.w * b.d < 3000 || Math.min(b.w, b.d) < 26) continue;
+
+    let a = 0;
+    for (let i = 0; i < p.length; i++) {
+      const [x0, z0] = p[i];
+      const [x1, z1] = p[(i + 1) % p.length];
+      a += x0 * z1 - x1 * z0;
+    }
+    const inward = a > 0 ? -1 : 1;
+
+    const pos = [];
+    for (let i = 0; i < p.length; i++) {
+      const [x0, z0] = p[i];
+      const [x1, z1] = p[(i + 1) % p.length];
+      const dx = x1 - x0, dz = z1 - z0;
+      const len = Math.hypot(dx, dz);
+      if (len < 6) continue;
+      const nx = (dz / len) * inward, nz = (-dx / len) * inward;
+      const push = (d, e) => [x0 + dx * e + nx * d, z0 + dz * e + nz * d];
+      const q = [push(inset - width / 2, 0), push(inset - width / 2, 1),
+                 push(inset + width / 2, 1), push(inset + width / 2, 0)];
+      // Wound to face up. This quad runs start-inner, end-inner, end-outer,
+      // start-outer, which is the opposite hand to the road paint's corner
+      // order — taking that winding on trust cost an hour of looking for a
+      // depth fight that was not there.
+      for (const [i0, i1, i2] of [[0, 1, 2], [0, 2, 3]]) {
+        for (const k of [i0, i1, i2]) pos.push(q[k][0], 0, q[k][1]);
+      }
+    }
+    if (!pos.length) continue;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    const n = pos.length / 3;
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(
+      Array.from({ length: n * 3 }, (_, i) => (i % 3 === 1 ? 1 : 0)), 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(n * 2), 2));
+    geos.push(g);
+  }
+  return geos.length ? mergeGeometries(geos) : null;
+}
 
 // ---------------------------------------------------------------------------
 // Shore glow
@@ -60964,6 +61082,14 @@ function buildCity(data) {
   //              <  inland water -0.22  <  asphalt -0.20
   layer(data.land || [], -0.30, CITY_MATS.ground, 'land');
   layer(data.parks, -0.24, CITY_MATS.park, 'parks');
+  const walks2 = parkPaths(data.parks || []);
+  if (walks2) {
+    const m = new THREE.Mesh(walks2, CITY_MATS.parkPath);
+    m.position.y = -0.228;
+    m.receiveShadow = true;
+    m.name = 'park-paths';
+    g.add(m);
+  }
   layer(data.water, -0.22, CITY_MATS.water, 'inland-water');
 
   // Streets. The OSM width is the whole right of way, so the carriageway is

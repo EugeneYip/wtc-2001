@@ -16,8 +16,8 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'BufferGeometryUtils';
 import { norm, shapeFrom, flat, extrude, bounds } from './geo.js';
 import { facadeMaps, roofTexture, roadTexture, sidewalkTexture, waterNormal,
-         waterRoughness, landTexture, LAND_TILE_M, storefront,
-         STOREFRONT_H } from './textures.js';
+         waterRoughness, landTexture, LAND_TILE_M, storefront, STOREFRONT_H,
+         grassTexture } from './textures.js';
 
 const FACADE = facadeMaps();
 
@@ -59,7 +59,14 @@ export const CITY_MATS = {
   sidewalk: new THREE.MeshStandardMaterial({
     map: sidewalkTexture(), roughness: 0.94, metalness: 0.0 }),
   park: new THREE.MeshStandardMaterial({
-    color: 0x3d5130, roughness: 0.95, metalness: 0.0 }),
+    map: grassTexture(), roughness: 0.95, metalness: 0.0 }),
+  // The path network inside a park: rolled stone dust, a shade off the
+  // pavement and a good deal warmer than the grass.
+  // Coplanar with the grass a centimetre below it, so it needs the offset:
+  // looking straight down the slope term is nil and the units do the work.
+  parkPath: new THREE.MeshStandardMaterial({
+    color: 0x9c907c, roughness: 0.95, metalness: 0.0,
+    polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -24 }),
   water: makeWater(),
   // The shelf off every shoreline. Barely lighter than the open water and
   // rougher, because at 0x2c4d58 and roughness 0.42 it was a sky mirror: from
@@ -346,6 +353,65 @@ for (const [k, hex] of [['road', 0xffb45c], ['roadMinor', 0xffab4e],
   CITY_MATS[k].emissiveIntensity = 0;
 }
 
+
+/**
+ * A path round the inside of a park.
+ *
+ * Every park here was an unbroken field of green, which is not what any of
+ * them look like: Battery Park and City Hall Park are more path than lawn.
+ * Rather than route anything, this lays a walk a few metres inside the
+ * boundary and follows it round — which is what the main walk in a small city
+ * park does anyway, and it needs no more than the polygon already in the data.
+ *
+ * Built edge by edge with a fixed inward offset rather than by shrinking the
+ * polygon: a true inset self-intersects on the concave parts, and these
+ * outlines wrap round buildings and slips.
+ */
+function parkPaths(parks, inset = 7.0, width = 2.6) {
+  const geos = [];
+  for (const { p } of parks) {
+    if (p.length < 4) continue;
+    const b = bounds(p);
+    if (b.w * b.d < 3000 || Math.min(b.w, b.d) < 26) continue;
+
+    let a = 0;
+    for (let i = 0; i < p.length; i++) {
+      const [x0, z0] = p[i];
+      const [x1, z1] = p[(i + 1) % p.length];
+      a += x0 * z1 - x1 * z0;
+    }
+    const inward = a > 0 ? -1 : 1;
+
+    const pos = [];
+    for (let i = 0; i < p.length; i++) {
+      const [x0, z0] = p[i];
+      const [x1, z1] = p[(i + 1) % p.length];
+      const dx = x1 - x0, dz = z1 - z0;
+      const len = Math.hypot(dx, dz);
+      if (len < 6) continue;
+      const nx = (dz / len) * inward, nz = (-dx / len) * inward;
+      const push = (d, e) => [x0 + dx * e + nx * d, z0 + dz * e + nz * d];
+      const q = [push(inset - width / 2, 0), push(inset - width / 2, 1),
+                 push(inset + width / 2, 1), push(inset + width / 2, 0)];
+      // Wound to face up. This quad runs start-inner, end-inner, end-outer,
+      // start-outer, which is the opposite hand to the road paint's corner
+      // order — taking that winding on trust cost an hour of looking for a
+      // depth fight that was not there.
+      for (const [i0, i1, i2] of [[0, 1, 2], [0, 2, 3]]) {
+        for (const k of [i0, i1, i2]) pos.push(q[k][0], 0, q[k][1]);
+      }
+    }
+    if (!pos.length) continue;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    const n = pos.length / 3;
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(
+      Array.from({ length: n * 3 }, (_, i) => (i % 3 === 1 ? 1 : 0)), 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(n * 2), 2));
+    geos.push(g);
+  }
+  return geos.length ? mergeGeometries(geos) : null;
+}
 
 // ---------------------------------------------------------------------------
 // Shore glow
@@ -849,6 +915,14 @@ export function buildCity(data) {
   //              <  inland water -0.22  <  asphalt -0.20
   layer(data.land || [], -0.30, CITY_MATS.ground, 'land');
   layer(data.parks, -0.24, CITY_MATS.park, 'parks');
+  const walks2 = parkPaths(data.parks || []);
+  if (walks2) {
+    const m = new THREE.Mesh(walks2, CITY_MATS.parkPath);
+    m.position.y = -0.228;
+    m.receiveShadow = true;
+    m.name = 'park-paths';
+    g.add(m);
+  }
   layer(data.water, -0.22, CITY_MATS.water, 'inland-water');
 
   // Streets. The OSM width is the whole right of way, so the carriageway is

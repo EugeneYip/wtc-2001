@@ -394,6 +394,48 @@ export function facadeMaps() {
   return out;
 }
 
+/**
+ * Grass.
+ *
+ * The parks were a single flat colour, which from the air made them read as
+ * billiard cloth cut to shape rather than as ground — and it was the most
+ * saturated green in the frame, so the eye went to them before the city. This
+ * is mown grass under London planes: worn where the paths and the benches are,
+ * darker under the canopy, never one colour anywhere.
+ */
+export const GRASS_TILE_M = 34;
+
+export function grassTexture() {
+  const N = 256;
+  const [c, x] = canvas(N, N);
+  const rand = rng(6143);
+  const base = fbm(N, [2, 5, 11, 23], 3301);
+  const wear = fbm(N, [2, 4], 777);
+  const img = x.createImageData(N, N);
+  const GREEN = [58, 78, 46];
+  const DRY = [88, 88, 66];                     // worn ground and bare earth
+  const DEEP = [38, 54, 34];                    // under the canopy
+  for (let i = 0; i < N * N; i++) {
+    const g = base[i];
+    const w = Math.min(1, Math.max(0, (wear[i] - 0.63) * 2.2));
+    let col = DEEP.map((v, k) => v + (GREEN[k] - v) * Math.min(1, g * 1.5));
+    col = col.map((v, k) => v + (DRY[k] - v) * w);
+    const sh = 0.82 + g * 0.40;
+    img.data[i * 4] = Math.min(255, col[0] * sh);
+    img.data[i * 4 + 1] = Math.min(255, col[1] * sh);
+    img.data[i * 4 + 2] = Math.min(255, col[2] * sh);
+    img.data[i * 4 + 3] = 255;
+  }
+  x.putImageData(img, 0, 0);
+  // Blade speckle, so it does not go to mush at close range.
+  for (let i = 0; i < 14000; i++) {
+    const v = 30 + Math.floor(rand() * 70);
+    x.fillStyle = `rgba(${v},${v + 22},${v - 6},${0.10 + rand() * 0.22})`;
+    x.fillRect(rand() * N, rand() * N, 1, 1 + rand() * 2);
+  }
+  return finish(c, 1 / GRASS_TILE_M, 1 / GRASS_TILE_M);
+}
+
 /** Tar-and-gravel roof, the top surface of nearly every building down there. */
 export function roofTexture() {
   const [c, x] = canvas(128, 128);

@@ -105,6 +105,20 @@ Hydrants and litter bins stand along the kerb, because without something
 knee-high there is nothing in the frame between a lamp standard and a car and
 the pavement reads as a blank apron.
 
+**Parks.** The green was a single flat colour, which from the air read as
+billiard cloth cut to shape rather than as ground — and it was the most
+saturated thing in the frame, so the eye went to the parks before the city. The
+grass is mown turf with worn ground showing through where it would: never one
+colour anywhere.
+
+The larger parks get a walk a few metres inside their boundary, following it
+round. Nothing is routed: it is what the main walk in a small city park does
+anyway, and it needs no more than the polygon already in the data. City Hall
+Park and Battery Park are more path than lawn, and with none at all they were
+just fields.
+
+Foliage varies tree by tree, a little of it already turning in early September.
+
 **Ground floors.** Every building used to run its upper-floor window grid
 straight into the pavement, which is the one thing a street will not survive: a
 street is read from its ground floor, and a ground floor is nothing like the
@@ -237,7 +251,8 @@ Six things are deliberately not raw OpenStreetMap:
    street at one level, where Lower Manhattan in fact slopes — the grade at
    the north-east of the site was not the grade at Liberty Street.
 4. **Roof clutter, street trees, street lamps, signals, hydrants, bins,
-   traffic, harbour vessels and every shopfront are invented.** They are
+   traffic, parked cars, park paths, harbour vessels and every shopfront are
+   invented.** They are
    placed from a fixed seed for plausibility, not from survey, and tested
    against every building footprint, or against the coastline, so nothing
    grows through a wall, parks inside one, or runs aground. Water tanks, stair
@@ -268,7 +283,7 @@ uniform slab. Those are massing, not survey.
 
 ## Performance
 
-About 174 draw calls and 983k triangles in daylight, and roughly 2 to 3 ms a
+About 175 draw calls and 984k triangles in daylight, and roughly 2 to 3 ms a
 frame on an M2 at 2800 × 1800 once shaders are warm, with the post-processing
 running at full resolution and 4x multisampling.
 
