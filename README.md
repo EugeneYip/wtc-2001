@@ -198,7 +198,18 @@ Twin Towers is.
 
 **Light and water.** The sun is placed from real solar geometry for 40.71° N
 on 11 September, so shadow directions through the day are the ones the site
-actually had. Reflections come from a cube probe rendered over the site, so
+actually had. It is drawn by the Mie term of the sky model, and the asymmetry
+of that scattering lobe is what sets the size of the disc: the default 0.82
+gives something twenty degrees across that clips to white with a hard curved
+edge where it falls out of range. A low sun through haze does read large, so
+what is here is still not the half a degree the disc really subtends — but it
+is a sun rather than a flare.
+
+The sky carries no cloud, and that is deliberate rather than unfinished. The
+morning this model is set on was exceptionally clear — the kind of visibility
+pilots call severe clear — and it is one of the things people who were there
+remember first. Putting weather in the sky would be a more elaborate model and
+a less accurate one. Reflections come from a cube probe rendered over the site, so
 the towers' aluminium and the surface of the river pick up the actual skyline
 rather than just the sky.
 
@@ -207,6 +218,12 @@ couple of degrees above the horizon rather than being turned off at it, and
 every night setting — sky, ambient, exposure, haze, bloom, the colour of the
 water — crossfades across civil twilight. Drag the slider through 19:07 and
 the light goes out the way it goes out.
+
+Haze takes a gentler dose of the sunset than the ambient light does. Given the
+full sun-side colour it came out more saturated than the sky it was supposed to
+be dissolving into, and drew a salmon bar along the horizon wherever the far
+shore reached the fog limit — worst of all looking *away* from the sun, where
+the sky is muted and the bar was not.
 
 The rivers are modelled as a dielectric rather than a metal, which is what
 gives water its behaviour: its own dark blue-green looking down, turning to a

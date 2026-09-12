@@ -105,6 +105,7 @@ const SHELF_DAY = new THREE.Color(0x21414f);
 const SHELF_NIGHT = new THREE.Color(0x0d1725);
 const _c = new THREE.Color();
 const _fog = new THREE.Color();
+const _hz = new THREE.Color();
 
 const smooth = THREE.MathUtils.smoothstep;
 const mix = THREE.MathUtils.lerp;
@@ -153,10 +154,15 @@ function applyTime(hour) {
   nightSky.visible = dusk > 0.001;
   const u = sky.material.uniforms;
   u.sunPosition.value.copy(dir);
-  u.turbidity.value = 2.2 + warm * 6.0;
+  u.turbidity.value = 2.0 + warm * 3.2;
   u.rayleigh.value = 0.5 + warm * 2.6;
-  u.mieCoefficient.value = 0.003 + warm * 0.013;
-  u.mieDirectionalG.value = 0.82;
+  // Mie scattering is what draws the sun. The asymmetry g sets how tight the
+  // forward lobe is, and at 0.82 it was not a sun at all: a blob some twenty
+  // degrees across, clipping to white with a hard curved edge where it fell
+  // out of range. A low sun through haze does read large, so this is not the
+  // half a degree the disc really subtends — but it is a sun now.
+  u.mieCoefficient.value = 0.0028 + warm * 0.0018;
+  u.mieDirectionalG.value = 0.9935 - warm * 0.001;
 
   const n = nightSky.material.uniforms;
   n.uSunDir.value.copy(dir);
@@ -171,6 +177,11 @@ function applyTime(hour) {
   n.uStars.value = smooth(e, -11.0, -6.0) * 0.42;
 
   _c.copy(SKY_DAY).lerp(SKY_DUSK, warm * 0.85);
+  // The haze takes a gentler dose of the sunset than the ambient does. Given
+  // the full sun-side colour it came out more saturated than the sky it was
+  // supposed to be dissolving into, which drew a salmon bar along the horizon
+  // wherever the far shore reached the fog limit.
+  _hz.copy(SKY_DAY).lerp(SKY_DUSK, warm * 0.52);
   // Sky glow and moonlight after dark. With neither, the buildings vanish and
   // the windows read as grids floating in a void; ACES crushes the low end
   // hard, so this needs a good deal more than it looks like it should.
@@ -188,7 +199,7 @@ function applyTime(hour) {
   fill.intensity = mix(0.06 + 0.20 * up, 0.33, dusk);
   fill.color.copy(FILL_DAY).lerp(MOON, dusk);
 
-  _fog.copy(_c).lerp(WHITE, 0.22 * (1 - warm * 0.7));
+  _fog.copy(_hz).lerp(WHITE, 0.22 * (1 - warm * 0.7));
   // Haze approaches the radiance of the sky behind it, and at sunset that sky
   // is dim. Taking the fog straight from the sunset colour made the far water
   // more than twice as bright as the sky immediately above it, which put a
