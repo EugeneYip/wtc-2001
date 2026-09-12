@@ -50,12 +50,18 @@
 
   /* ---------- labels ---------- */
   #labels{position:fixed;inset:0;pointer-events:none;z-index:5}
+  /* Labels used to be switched with display, so one that lost a collision for
+     a single frame blinked. They are always laid out now and fade instead;
+     visibility rides the same transition so a hidden one stops painting only
+     once it has finished going. */
   .lbl{position:absolute;top:0;left:0;white-space:nowrap;
     padding:3px 8px 4px;border-radius:5px;
     background:rgba(8,11,16,.62);border:1px solid var(--line);
     backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);
     font-size:10.5px;letter-spacing:.02em;color:var(--dim);
-    transform:translate(-50%,-100%)}
+    transform:translate(-50%,-100%);
+    opacity:0;visibility:hidden;
+    transition:opacity .18s linear,visibility .18s linear}
   .lbl b{display:block;font-weight:550;color:#dfe7ef;font-size:11px}
   .lbl i{display:block;font-style:normal;font-size:9.5px;color:#8fa8bf;
     letter-spacing:.04em;margin-top:1px}
@@ -149,9 +155,16 @@
   #about .sub{margin:0 0 16px;font-size:12px;color:var(--dim)}
   #about h3{margin:18px 0 6px;font-size:10px;letter-spacing:.13em;
     text-transform:uppercase;color:var(--faint)}
-  #about p{margin:0 0 9px;font-size:12.5px;line-height:1.65;color:#b8c3cf}
+  /* 90 characters to the line, which is half again the width the eye tracks
+     comfortably — and this is the only place in the interface with real prose
+     in it. Capped by measure rather than by narrowing the card, so the
+     headings and the dedication panel keep their full width. Note ch is the
+     width of a zero, which in this face runs about a fifth wider than the
+     average letter: 56ch lands at roughly 67 characters, not 56. */
+  #about p{margin:0 0 9px;font-size:12.5px;line-height:1.65;color:#b8c3cf;
+    max-width:56ch;text-wrap:pretty}
   #about ul{margin:0 0 9px;padding-left:17px;font-size:12.5px;line-height:1.65;
-    color:#b8c3cf}
+    color:#b8c3cf;max-width:56ch}
   #about li{margin-bottom:4px}
   #about a{color:var(--accent)}
   #about .ded{margin:18px 0 0;padding:13px 15px;border-radius:9px;
@@ -334,14 +347,14 @@
     <div class="sec">
       <h2>The towers</h2>
       <dl>
-        <dt>Footprint</dt><dd>208 × 208 ft</dd>
-        <dt>1 WTC roof</dt><dd>1,368 ft · 417 m</dd>
-        <dt>1 WTC to mast</dt><dd>1,728 ft · 527 m</dd>
-        <dt>2 WTC roof</dt><dd>1,362 ft · 415 m</dd>
+        <dt>Footprint</dt><dd>208&nbsp;×&nbsp;208&nbsp;ft</dd>
+        <dt>1 WTC roof</dt><dd>1,368&nbsp;ft · 417&nbsp;m</dd>
+        <dt>1 WTC to mast</dt><dd>1,728&nbsp;ft · 527&nbsp;m</dd>
+        <dt>2 WTC roof</dt><dd>1,362&nbsp;ft · 415&nbsp;m</dd>
         <dt>Floors</dt><dd>110</dd>
         <dt>Columns / face</dt><dd>59</dd>
-        <dt>Gap between</dt><dd>130 ft · 40 m</dd>
-        <dt>Site</dt><dd>16 acres</dd>
+        <dt>Gap between</dt><dd>130&nbsp;ft · 40&nbsp;m</dd>
+        <dt>Site</dt><dd>16&nbsp;acres</dd>
       </dl>
     </div>
 
@@ -381,9 +394,9 @@
     <h3>How the position was established</h3>
     <p>The reflecting pools of the 9/11 Memorial are built on the original
     tower footprints, so their corner coordinates give both the tower centres
-    and the exact rotation of the street grid here — 29.11° east of true
-    north. The towers come out offset diagonally by 67.0 m east and 103.8 m
-    south, which leaves the documented 130 ft gap between their facing walls
+    and the exact rotation of the street grid here — 29.11°&nbsp;east of true
+    north. The towers come out offset diagonally by 67.0&nbsp;m east and 103.8&nbsp;m
+    south, which leaves the documented 130&nbsp;ft gap between their facing walls
     as an independent check.</p>
 
     <h3>What was changed, and why</h3>
@@ -394,7 +407,7 @@
       would be incoherent.</li>
       <li><b>Some heights corrected.</b> OpenStreetMap records the World
       Financial Center at its retail podium height, which would extrude into
-      a 140 m wide slab.</li>
+      a 140&nbsp;m wide slab.</li>
       <li><b>Demolished buildings restored,</b> including the Deutsche Bank
       Building at 130 Liberty Street.</li>
       <li><b>Roof clutter, trees and traffic are invented</b> — placed from a
@@ -402,7 +415,7 @@
     </ul>
 
     <h3>Light</h3>
-    <p>The sun is placed from real solar geometry for 40.71° N on 11
+    <p>The sun is placed from real solar geometry for 40.71°&nbsp;N on 11
     September, so shadow directions through the day are the ones the site
     actually had.</p>
 
@@ -62778,7 +62791,7 @@ function applyTime(hour) {
     : warm > 0.72 ? 'golden hour' : 'daylight';
   document.getElementById('clock').textContent =
     `${String(h).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}` +
-    `  ·  sun ${e.toFixed(0)}°  ·  ${phase}`;
+    `  ·  sun\u00a0${e.toFixed(0)}°  ·  ${phase}`;
 }
 
 /**
@@ -62940,12 +62953,131 @@ function labelBudget() {
   return innerWidth < 700 ? 5 : innerWidth < 1100 ? 7 : 9;
 }
 
+// ---------------------------------------------------------------------------
+// Is the building this label names actually in sight?
+//
+// A label used to appear whenever its anchor fell inside the view frustum,
+// whether or not you could see the thing it named. From street level that
+// meant six of the nine labels on screen were naming towers standing behind
+// the facade directly in front of you.
+//
+// Asking the scene with a raycast costs 3.2 ms a label against the merged city
+// meshes — nine of those is a whole frame. This walks a grid of building boxes
+// along the line of sight instead. It only has to be right about whether
+// something tall is in the way, so bounding boxes are enough, and being a
+// little too eager only ever hides a label rather than inventing one.
+// ---------------------------------------------------------------------------
+
+const OCC_CELL = 140;
+let occ = null;
+
+function buildOccluders(d) {
+  const boxes = [];
+  const add = (x0, z0, x1, z1, h) => { if (h > 4) boxes.push({ x0, z0, x1, z1, h, seen: -1 }); };
+  const bbox = (poly) => {
+    let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+    for (const [x, z] of poly) {
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (z < z0) z0 = z;
+      if (z > z1) z1 = z;
+    }
+    return [x0, z0, x1, z1];
+  };
+  for (const b of d.buildings) {
+    const [x0, z0, x1, z1] = bbox(b.p);
+    add(x0, z0, x1, z1, b.h);
+    // A setback tower is much narrower than its podium, so it needs its own
+    // box or every slender tower would block the whole block behind it.
+    if (b.t) {
+      add(b.t.cx - b.t.w / 2, b.t.cz - b.t.d / 2,
+          b.t.cx + b.t.w / 2, b.t.cz + b.t.d / 2, b.t.h);
+    }
+  }
+  for (const b of d.complex) { const [x0, z0, x1, z1] = bbox(b.p); add(x0, z0, x1, z1, b.h); }
+  const half = d.towers.side / 2;
+  for (const k of ['wtc1', 'wtc2']) {
+    const t = d.towers[k];
+    add(t.c[0] - half, t.c[1] - half, t.c[0] + half, t.c[1] + half, t.roof);
+  }
+
+  let minX = Infinity, minZ = Infinity, maxX = -Infinity, maxZ = -Infinity;
+  for (const b of boxes) {
+    if (b.x0 < minX) minX = b.x0;
+    if (b.z0 < minZ) minZ = b.z0;
+    if (b.x1 > maxX) maxX = b.x1;
+    if (b.z1 > maxZ) maxZ = b.z1;
+  }
+  const nx = Math.ceil((maxX - minX) / OCC_CELL) + 1;
+  const nz = Math.ceil((maxZ - minZ) / OCC_CELL) + 1;
+  const cells = new Array(nx * nz);
+  for (const b of boxes) {
+    const i0 = Math.max(0, ((b.x0 - minX) / OCC_CELL) | 0);
+    const i1 = Math.min(nx - 1, ((b.x1 - minX) / OCC_CELL) | 0);
+    const j0 = Math.max(0, ((b.z0 - minZ) / OCC_CELL) | 0);
+    const j1 = Math.min(nz - 1, ((b.z1 - minZ) / OCC_CELL) | 0);
+    for (let j = j0; j <= j1; j++) {
+      for (let i = i0; i <= i1; i++) {
+        const k = j * nx + i;
+        (cells[k] || (cells[k] = [])).push(b);
+      }
+    }
+  }
+  return { minX, minZ, nx, nz, cells, stamp: 0, boxes: boxes.length };
+}
+
+/** True if a building stands between the camera and this point. */
+function hiddenFromView(cx, cy, cz, ax, ay, az) {
+  if (!occ) return false;
+  const dx = ax - cx, dz = az - cz;
+  const len = Math.hypot(dx, dz);
+  if (len < 2) return false;
+  const steps = Math.min(160, Math.ceil(len / (OCC_CELL * 0.5)));
+  occ.stamp++;
+  for (let s = 0; s <= steps; s++) {
+    const t = s / steps;
+    const i = ((cx + dx * t - occ.minX) / OCC_CELL) | 0;
+    const j = ((cz + dz * t - occ.minZ) / OCC_CELL) | 0;
+    if (i < 0 || j < 0 || i >= occ.nx || j >= occ.nz) continue;
+    const cell = occ.cells[j * occ.nx + i];
+    if (!cell) continue;
+    for (const b of cell) {
+      if (b.seen === occ.stamp) continue;
+      b.seen = occ.stamp;
+      // Its own building is not in the way, and neither is the one the camera
+      // happens to be standing inside — an L-shaped footprint has a bounding
+      // box with the street in it, and treating that as solid would blank
+      // every label on the screen.
+      if (ax >= b.x0 - 2 && ax <= b.x1 + 2 && az >= b.z0 - 2 && az <= b.z1 + 2) continue;
+      if (cx >= b.x0 && cx <= b.x1 && cz >= b.z0 && cz <= b.z1) continue;
+      // Where the sight line crosses this box, in fractions of its length.
+      let t0 = 0, t1 = 1;
+      if (dx !== 0) {
+        const a = (b.x0 - cx) / dx, c = (b.x1 - cx) / dx;
+        t0 = Math.max(t0, Math.min(a, c));
+        t1 = Math.min(t1, Math.max(a, c));
+      } else if (cx < b.x0 || cx > b.x1) continue;
+      if (dz !== 0) {
+        const a = (b.z0 - cz) / dz, c = (b.z1 - cz) / dz;
+        t0 = Math.max(t0, Math.min(a, c));
+        t1 = Math.min(t1, Math.max(a, c));
+      } else if (cz < b.z0 || cz > b.z1) continue;
+      if (t1 <= t0) continue;
+      // Height along the sight line is linear in t, so the lowest point of the
+      // crossing is at one end or the other.
+      const low = Math.min(cy + (ay - cy) * t0, cy + (ay - cy) * t1);
+      if (low < b.h - 1) return true;
+    }
+  }
+  return false;
+}
+
 function makeLabels() {
   labelLayer = document.getElementById('labels');
   const items = [
-    { name: '1 World Trade Center', sub: '1,368 ft · 417 m · 110 floors', rank: 0,
+    { name: '1 World Trade Center', sub: '1,368\u00a0ft · 417\u00a0m · 110\u00a0floors', rank: 0,
       x: data.towers.wtc1.c[0], y: 417, z: data.towers.wtc1.c[1], big: true },
-    { name: '2 World Trade Center', sub: '1,362 ft · 415 m · 110 floors', rank: 0,
+    { name: '2 World Trade Center', sub: '1,362\u00a0ft · 415\u00a0m · 110\u00a0floors', rank: 0,
       x: data.towers.wtc2.c[0], y: 415, z: data.towers.wtc2.c[1], big: true },
   ];
   for (const b of data.complex) {
@@ -62962,6 +63094,7 @@ function makeLabels() {
     labelLayer.appendChild(el);
     labels.push({ ...it, el, w: 120, h: 24, v: new THREE.Vector3(it.x, it.y, it.z) });
   }
+  occ = buildOccluders(data);
   relabel();
   measureLabels();
 }
@@ -62978,20 +63111,25 @@ function relabel() {
 
 /** Read real label sizes once, so decluttering needs no layout read per frame. */
 function measureLabels() {
+  // They are laid out whether or not they are showing, so this no longer has
+  // to switch display on and off to get a box out of them.
   for (const l of labels) {
-    l.el.style.display = 'block';
     const r = l.el.getBoundingClientRect();
     if (r.width) { l.w = r.width; l.h = r.height; }
-    l.el.style.display = 'none';
   }
+}
+
+function hideLabel(l) {
+  if (l.el.style.visibility === 'hidden') return;
+  l.el.style.visibility = 'hidden';
+  l.el.style.opacity = '0';
 }
 
 const _v = new THREE.Vector3();
 function updateLabels() {
+  const dpr = renderer.getPixelRatio() || 1;
   if (!showLabels) {
-    for (const l of labels) {
-      if (l.el.style.display !== 'none') l.el.style.display = 'none';
-    }
+    for (const l of labels) hideLabel(l);
     return;
   }
   const W = innerWidth, H = innerHeight;
@@ -62999,12 +63137,17 @@ function updateLabels() {
   for (const l of labels) {
     _v.copy(l.v).project(camera);
     if (_v.z >= 1 || Math.abs(_v.x) > 1.05 || Math.abs(_v.y) > 1.05) {
-      l.el.style.display = 'none';
+      hideLabel(l);
       continue;
     }
     const dist = camera.position.distanceTo(l.v);
     const reach = l.rank === 0 ? 5000 : l.rank === 1 ? 1200 : 900;
-    if (dist > reach) { l.el.style.display = 'none'; continue; }
+    if (dist > reach) { hideLabel(l); continue; }
+    const cp = camera.position;
+    if (hiddenFromView(cp.x, cp.y, cp.z, l.v.x, l.v.y, l.v.z)) {
+      hideLabel(l);
+      continue;
+    }
     cand.push({ l, dist, reach,
                 sx: (_v.x * 0.5 + 0.5) * W, sy: (-_v.y * 0.5 + 0.5) * H });
   }
@@ -63012,18 +63155,36 @@ function updateLabels() {
 
   const placed = [];
   const budget = labelBudget();
+  // Device pixels, so a label lands on the pixel grid instead of halfway
+  // across it. At a fractional offset the text is resampled every frame and
+  // shimmers as the camera moves.
+  const snap = (n) => Math.round(n * dpr) / dpr;
   let shown = 0;
   for (const c of cand) {
     const { l } = c;
-    const box = { x0: c.sx - l.w / 2, x1: c.sx + l.w / 2, y0: c.sy - l.h, y1: c.sy };
-    const hit = shown >= budget || placed.some((p) =>
-      box.x0 < p.x1 && box.x1 > p.x0 && box.y0 < p.y1 && box.y1 > p.y0);
-    if (hit) { l.el.style.display = 'none'; continue; }
-    placed.push(box);
+    // The towers stand 40 m apart and their roofs are 2 m different, so at any
+    // distance their two labels want the same piece of screen — and one of
+    // them lost. Since the whole model is about those two buildings, a label
+    // that collides now tries a couple of rungs higher before it gives up.
+    let sy = c.sy, free = false;
+    for (let lift = 0; lift < 3 && !free; lift++) {
+      sy = c.sy - lift * (l.h + 6);
+      const box = { x0: c.sx - l.w / 2, x1: c.sx + l.w / 2, y0: sy - l.h, y1: sy };
+      free = !placed.some((p) =>
+        box.x0 < p.x1 && box.x1 > p.x0 && box.y0 < p.y1 && box.y1 > p.y0);
+      if (free) placed.push(box);
+    }
+    if (!free || shown >= budget) { hideLabel(l); continue; }
     shown++;
-    l.el.style.display = 'block';
-    l.el.style.transform = `translate(-50%,-100%) translate(${c.sx}px,${c.sy}px)`;
-    l.el.style.opacity = String(THREE.MathUtils.clamp(1.25 - c.dist / c.reach, 0.3, 1));
+    l.el.style.visibility = 'visible';
+    l.el.style.transform =
+      `translate(-50%,-100%) translate(${snap(c.sx)}px,${snap(sy)}px)`;
+    // The fade used to run the whole way from the camera to the reach limit,
+    // so a label at half range sat at 0.4 and took its own backing panel down
+    // with it: grey text with nothing behind it, over a grey city. It now
+    // stays solid until it is nearly out of range and then goes.
+    l.el.style.opacity =
+      String(0.42 + 0.58 * (1 - smooth(c.dist / c.reach, 0.62, 1.0)));
   }
 }
 

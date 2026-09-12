@@ -50,12 +50,18 @@
 
   /* ---------- labels ---------- */
   #labels{position:fixed;inset:0;pointer-events:none;z-index:5}
+  /* Labels used to be switched with display, so one that lost a collision for
+     a single frame blinked. They are always laid out now and fade instead;
+     visibility rides the same transition so a hidden one stops painting only
+     once it has finished going. */
   .lbl{position:absolute;top:0;left:0;white-space:nowrap;
     padding:3px 8px 4px;border-radius:5px;
     background:rgba(8,11,16,.62);border:1px solid var(--line);
     backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);
     font-size:10.5px;letter-spacing:.02em;color:var(--dim);
-    transform:translate(-50%,-100%)}
+    transform:translate(-50%,-100%);
+    opacity:0;visibility:hidden;
+    transition:opacity .18s linear,visibility .18s linear}
   .lbl b{display:block;font-weight:550;color:#dfe7ef;font-size:11px}
   .lbl i{display:block;font-style:normal;font-size:9.5px;color:#8fa8bf;
     letter-spacing:.04em;margin-top:1px}
@@ -149,9 +155,16 @@
   #about .sub{margin:0 0 16px;font-size:12px;color:var(--dim)}
   #about h3{margin:18px 0 6px;font-size:10px;letter-spacing:.13em;
     text-transform:uppercase;color:var(--faint)}
-  #about p{margin:0 0 9px;font-size:12.5px;line-height:1.65;color:#b8c3cf}
+  /* 90 characters to the line, which is half again the width the eye tracks
+     comfortably — and this is the only place in the interface with real prose
+     in it. Capped by measure rather than by narrowing the card, so the
+     headings and the dedication panel keep their full width. Note ch is the
+     width of a zero, which in this face runs about a fifth wider than the
+     average letter: 56ch lands at roughly 67 characters, not 56. */
+  #about p{margin:0 0 9px;font-size:12.5px;line-height:1.65;color:#b8c3cf;
+    max-width:56ch;text-wrap:pretty}
   #about ul{margin:0 0 9px;padding-left:17px;font-size:12.5px;line-height:1.65;
-    color:#b8c3cf}
+    color:#b8c3cf;max-width:56ch}
   #about li{margin-bottom:4px}
   #about a{color:var(--accent)}
   #about .ded{margin:18px 0 0;padding:13px 15px;border-radius:9px;
@@ -334,14 +347,14 @@
     <div class="sec">
       <h2>The towers</h2>
       <dl>
-        <dt>Footprint</dt><dd>208 × 208 ft</dd>
-        <dt>1 WTC roof</dt><dd>1,368 ft · 417 m</dd>
-        <dt>1 WTC to mast</dt><dd>1,728 ft · 527 m</dd>
-        <dt>2 WTC roof</dt><dd>1,362 ft · 415 m</dd>
+        <dt>Footprint</dt><dd>208&nbsp;×&nbsp;208&nbsp;ft</dd>
+        <dt>1 WTC roof</dt><dd>1,368&nbsp;ft · 417&nbsp;m</dd>
+        <dt>1 WTC to mast</dt><dd>1,728&nbsp;ft · 527&nbsp;m</dd>
+        <dt>2 WTC roof</dt><dd>1,362&nbsp;ft · 415&nbsp;m</dd>
         <dt>Floors</dt><dd>110</dd>
         <dt>Columns / face</dt><dd>59</dd>
-        <dt>Gap between</dt><dd>130 ft · 40 m</dd>
-        <dt>Site</dt><dd>16 acres</dd>
+        <dt>Gap between</dt><dd>130&nbsp;ft · 40&nbsp;m</dd>
+        <dt>Site</dt><dd>16&nbsp;acres</dd>
       </dl>
     </div>
 
@@ -381,9 +394,9 @@
     <h3>How the position was established</h3>
     <p>The reflecting pools of the 9/11 Memorial are built on the original
     tower footprints, so their corner coordinates give both the tower centres
-    and the exact rotation of the street grid here — 29.11° east of true
-    north. The towers come out offset diagonally by 67.0 m east and 103.8 m
-    south, which leaves the documented 130 ft gap between their facing walls
+    and the exact rotation of the street grid here — 29.11°&nbsp;east of true
+    north. The towers come out offset diagonally by 67.0&nbsp;m east and 103.8&nbsp;m
+    south, which leaves the documented 130&nbsp;ft gap between their facing walls
     as an independent check.</p>
 
     <h3>What was changed, and why</h3>
@@ -394,7 +407,7 @@
       would be incoherent.</li>
       <li><b>Some heights corrected.</b> OpenStreetMap records the World
       Financial Center at its retail podium height, which would extrude into
-      a 140 m wide slab.</li>
+      a 140&nbsp;m wide slab.</li>
       <li><b>Demolished buildings restored,</b> including the Deutsche Bank
       Building at 130 Liberty Street.</li>
       <li><b>Roof clutter, trees and traffic are invented</b> — placed from a
@@ -402,7 +415,7 @@
     </ul>
 
     <h3>Light</h3>
-    <p>The sun is placed from real solar geometry for 40.71° N on 11
+    <p>The sun is placed from real solar geometry for 40.71°&nbsp;N on 11
     September, so shadow directions through the day are the ones the site
     actually had.</p>
 

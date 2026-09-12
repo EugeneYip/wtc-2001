@@ -370,6 +370,55 @@ the wrong path bought nothing. It now happens on the first idle callback after
 the model appears, so it costs nothing on the way in, and the checkbox responds
 in about 16 ms instead of 900.
 
+## Labels and type
+
+**Only ever one tower.** The two labels that matter most collided: the towers
+stand 40 m apart with 2 m between their roofs, so at any real distance their
+two chips want the same piece of screen, and the declutterer dropped one. From
+the Hudson you got 1 WTC. From the East River you got 2 WTC. From the air you
+got 2 WTC. In a model of two buildings, never both. A label that loses its spot
+now tries a couple of rungs higher before it gives up, and they stack.
+
+**Labels for things you cannot see.** A label appeared whenever its anchor fell
+inside the view frustum, whether or not the building was actually in sight.
+From street level six of the nine labels on screen were naming towers standing
+behind the facade in front of you.
+
+Asking the scene with a raycast costs 3.2 ms per label against the merged city
+meshes — nine of those is a whole frame and then some. Instead there is a grid
+of building bounding boxes, and the line of sight is walked through it: the
+label is dropped if anything tall enough crosses in front. It only has to be
+right about whether something solid is in the way, so boxes are enough, and
+being slightly too eager only hides a label rather than inventing one. Measured
+at 0.0007 ms a call — about 0.016 ms for the whole set, which is nothing.
+
+Worth recording that I nearly optimised this for no reason. A first timing said
+the label pass cost 2.3 ms a frame, so I amortised the occlusion test across
+frames; a second run of the same measurement said 4.8 ms, which made no sense.
+Timing the algorithm on its own gave 0.0007 ms. The millisecond figures were
+DOM and harness noise, the amortisation was solving nothing, and it went back
+out again.
+
+**Three smaller things.** Labels were positioned at fractional pixels, so the
+text was resampled every frame and shimmered as the camera moved; they now
+land on the device pixel grid. The distance fade ran the whole way from the
+camera to the cutoff, so a label at half range sat at 0.4 opacity and took its
+own backing panel down with it — grey text on a grey city — where it now stays
+solid until it is nearly out of range. And they were switched with `display`,
+so a label that lost a collision for a single frame blinked; they cross-fade
+now.
+
+**Type.** The About panel was set 90 characters to the line, half again the
+width the eye tracks comfortably, and it is the only place here with real prose
+in it. Capped by measure rather than by narrowing the card, so the headings and
+the dedication keep their width. One trap: `ch` is the width of a zero, which
+in this face runs about a fifth wider than the average letter, so `56ch` is
+what lands at 67 characters.
+
+Measurements no longer break across lines — `417 m`, `208 × 208 ft`,
+`sun 42°` and the rest carry non-breaking spaces, so a number and its unit stay
+together.
+
 ## Accuracy notes
 
 Tower position and orientation are not estimated. The reflecting pools of the
