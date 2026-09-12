@@ -1064,6 +1064,15 @@ function render() {
 }
 
 init().catch((e) => {
-  document.getElementById('status').textContent = 'Could not start: ' + e.message;
+  // A failure used to be a small grey line under two bars still cheerfully
+  // climbing, with nothing to do about it.
+  document.getElementById('loader').classList.add('failed');
+  document.getElementById('status').textContent =
+    'This did not load. ' + (navigator.onLine === false
+      ? 'The connection looks to be down.'
+      : 'Something went wrong building the model: ' + e.message);
+  const retry = document.getElementById('retry');
+  retry.addEventListener('click', () => location.reload());
+  retry.focus();
   console.error(e);
 });

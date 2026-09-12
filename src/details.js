@@ -9,7 +9,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'BufferGeometryUtils';
-import { norm, bounds } from './geo.js';
+import { norm, bounds, rasterise } from './geo.js';
 
 function rng(seed) {
   let s = seed >>> 0;
@@ -1031,12 +1031,28 @@ export const VESSEL_MATS = {
  */
 export function vessels(land, count = 16, reach = 2600) {
   const rand = rng(60611);
-  const water = obstacleIndex(land.map((p) => p.p));
-  const clear = (x, z, margin) => !water.blocked(x, z, margin);
+  // obstacleIndex buckets whole polygons by their bounding box, which is right
+  // for a building footprint and hopeless for a coastline: the two big rings
+  // carry 3,600 points between them and their boxes cover the whole harbour,
+  // so every water test walked all of it. Placing 38 boats took 2.4 seconds.
+  // A coarse land mask answers the same question by lookup.
+  const M = 60;                                  // metres per mask cell
+  const pad = reach + 1200;
+  const nc = Math.ceil((pad * 2) / M) + 1;
+  const mask = rasterise(land.map((p) => p.p), -pad, -pad, M, nc, nc);
+  const onLand = (x, z) => {
+    const i = Math.round((x + pad) / M), j = Math.round((z + pad) / M);
+    // Outside the mask is open water, which is what the far harbour is.
+    if (i < 0 || j < 0 || i >= nc || j >= nc) return false;
+    return mask[j * nc + i] === 1;
+  };
+  const clear = (x, z, margin) => !(onLand(x, z) ||
+    (margin > 0 && (onLand(x + margin, z) || onLand(x - margin, z) ||
+                    onLand(x, z + margin) || onLand(x, z - margin))));
 
   const runLength = (x, z, ang) => {
     for (let d = 120; d <= 900; d += 120) {
-      if (water.blocked(x + Math.cos(ang) * d, z + Math.sin(ang) * d, 0)) return d;
+      if (onLand(x + Math.cos(ang) * d, z + Math.sin(ang) * d)) return d;
     }
     return 900;
   };

@@ -21,6 +21,7 @@
  */
 
 import * as THREE from 'three';
+import { rasterise } from './geo.js';
 
 const STEP = 170;             // metres between grid points
 // Far enough out to cover everything the haze does not swallow. At 9.6 km the
@@ -44,16 +45,6 @@ function valueNoise(seed) {
     const c = at(fx, fy + 1), d = at(fx + 1, fy + 1);
     return (a + (b - a) * sx) + ((c + (d - c) * sx) - (a + (b - a) * sx)) * sy;
   };
-}
-
-function inside(x, z, poly) {
-  let hit = false;
-  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-    const [xi, zi] = poly[i], [xj, zj] = poly[j];
-    if ((zi > z) !== (zj > z) &&
-        x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) hit = !hit;
-  }
-  return hit;
 }
 
 /** Shortest distance from a point to a polyline, squared. */
@@ -85,14 +76,11 @@ export function buildRelief(relief, landPolys, material) {
   // land mask is a cheap stand-in for a distance transform and all this needs:
   // the height has to be nothing at the water's edge and everything a few
   // hundred metres in.
-  const land = new Float32Array(N * N);
   const rings = landPolys.map((l) => l.p || l);
-  for (let j = 0; j < N; j++) {
-    const z = at(j);
-    for (let i = 0; i < N; i++) {
-      land[j * N + i] = rings.some((r) => inside(at(i), z, r)) ? 1 : 0;
-    }
-  }
+  // Testing every grid point against every coastline edge was 123 million
+  // crossing tests and about four seconds — most of the load. A scanline gets
+  // the same mask by visiting each edge once a row instead of once a cell.
+  const land = rasterise(rings, -REACH, -REACH, STEP, N, N);
   const blur = (src, r) => {
     const tmp = new Float32Array(N * N), out = new Float32Array(N * N);
     const w = r * 2 + 1;

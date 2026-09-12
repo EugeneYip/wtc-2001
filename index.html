@@ -212,12 +212,27 @@
 
   #loadtitle{margin-top:22px;font-size:13.5px;font-weight:600;letter-spacing:.03em;
     color:#93a1af;animation:fadeUp 1.4s cubic-bezier(.2,.7,.2,1) .5s both}
-  #loadtitle span{display:block;font-weight:400;font-size:11px;color:#5b6773;
+  #loadtitle span{display:block;font-weight:400;font-size:11px;color:#7d8a97;
     margin-top:5px;letter-spacing:.02em;max-width:34ch}
-  #status{margin-top:26px;font-size:10.5px;color:#4e5966;letter-spacing:.08em;
+  /* This is the only line telling you what is happening, and it was set at
+     2.6:1 against the backdrop — under half the contrast small text needs to
+     be read. The dedication it turns into was already legible; the progress
+     it starts as was not. */
+  #status{margin-top:26px;font-size:10.5px;color:#8492a0;letter-spacing:.08em;
     animation:fadeUp 1.2s cubic-bezier(.2,.7,.2,1) .8s both;
     transition:color .9s ease,letter-spacing .9s ease}
-  #status.dedication{color:#8fa0b2;letter-spacing:.22em}
+  #status.dedication{color:#9fb0c2;letter-spacing:.22em}
+
+  /* If it cannot start, say so: the bars stop climbing, the line stops
+     pretending to be progress, and there is something to do about it. */
+  #loader.failed .bars i{animation:none;opacity:.18}
+  #loader.failed #status{color:#e3a0a0;letter-spacing:.04em;max-width:44ch;
+    line-height:1.6}
+  #retry{display:none;margin-top:16px;padding:8px 16px;border-radius:8px;
+    border:1px solid var(--line);background:rgba(255,255,255,.05);
+    color:var(--dim);font-size:11.5px;cursor:pointer}
+  #retry:hover{color:var(--ink);background:rgba(255,255,255,.1)}
+  #loader.failed #retry{display:block}
 
   @media (max-width:480px){
     #memoriam{font-size:17px;letter-spacing:.34em;text-indent:.34em}
@@ -437,7 +452,8 @@
   <div id="memoriam">In Memory</div>
   <div id="loadtitle">World Trade Center 2001
     <span>A 3D reconstruction of the World Trade Center and Lower Manhattan</span></div>
-  <div id="status">Starting…</div>
+  <div id="status" role="status" aria-live="polite">Starting…</div>
+  <button id="retry" type="button">Try again</button>
 </div>
 
 <script type="importmap">

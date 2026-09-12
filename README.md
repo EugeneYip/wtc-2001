@@ -419,6 +419,48 @@ Measurements no longer break across lines — `417 m`, `208 × 208 ft`,
 `sun 42°` and the rest carry non-breaking spaces, so a number and its unit stay
 together.
 
+## Loading
+
+The model took about ten seconds to build. Nearly six of those were one
+mistake made twice.
+
+Asking "is this point on land?" by walking a polygon is fine for a building
+footprint and ruinous for a coastline. The two big coast rings here carry 2,116
+and 1,511 points. The relief grid tested 21,609 points against all 5,680
+coastline points — **123 million crossing tests, about four seconds.** And the
+harbour traffic used the same footprint index the streets use, which buckets
+whole polygons by their bounding box: for a coastline that box covers the
+harbour, so every water test walked the entire shoreline. Placing 38 boats took
+2.4 seconds.
+
+Both now go through one scanline rasteriser. For each row of the grid, find
+where the ring's edges cross it, sort the crossings, fill between them in
+pairs: the same even-odd rule and the same answer, but each edge is visited
+once per row instead of once per cell. The relief takes a mask straight from
+it; the boats take a coarse one and look up.
+
+| | before | after |
+|---|---|---|
+| `buildRelief` | 3,882 ms | 472 ms |
+| `vessels` | 2,392 ms | 15 ms |
+
+The relief geometry is identical — 33,548 triangles either way — and no boat
+ends up aground, checked against the exact point-in-polygon test the mask
+replaced.
+
+**What is left is the dedication.** The loading screen is held a minimum of
+five seconds on purpose, so that what it says can be read. Until now that
+minimum never bound: the build always overran it, and the last line — the date
+— appeared for a moment before the screen faded. The build now finishes inside
+the hold, so the dedication gets the few seconds it was always meant to have.
+If that hold is not wanted it is one constant, `MIN_LOADER_MS`.
+
+**Two things the loader was getting wrong.** The status line — the only thing
+telling you what is happening — was set at 2.6:1 against its backdrop, under
+half the contrast small text needs. And a failure left a small grey line under
+two bars still cheerfully climbing, with nothing to do about it; it now says
+so plainly, stops the bars, and offers to try again.
+
 ## Accuracy notes
 
 Tower position and orientation are not estimated. The reflecting pools of the
