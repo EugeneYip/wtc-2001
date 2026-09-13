@@ -662,6 +662,29 @@ const FACADE_OVERRIDE = {
   'American Surety Building': 'terracotta',
 };
 
+/**
+ * What colour this building's roof is.
+ *
+ * Roofs used to take the wall's tint scaled down, which meant they varied
+ * about as little as the walls do — and once the roof texture was lifted to a
+ * believable albedo, every roof in the city came out the same pale grey and
+ * the whole place read as poured concrete from above. Real roofs are a
+ * patchwork: black membrane next door to pale gravel ballast next door to
+ * aluminium paint, and that variety is most of what a roofscape is. This
+ * spreads them from about a third of the texture's brightness to a little
+ * over it, seeded off the footprint so a building keeps its own.
+ */
+function roofTint(b, rgb) {
+  const [x0, z0] = b.p[0];
+  let h = Math.imul(Math.round(x0 * 8) ^ 0x27d4eb2d, 0x165667b1);
+  h = Math.imul(h ^ Math.round(z0 * 8), 0x9e3779b1);
+  h ^= h >>> 13;
+  const u = ((h >>> 0) % 2048) / 2048;
+  // Squared, so dark roofs are commoner than pale ones, which is how it looks.
+  const k = 0.34 + u * u * 0.78;
+  return rgb.map((v) => k * (1 + (v - 1) * 0.35));
+}
+
 function buildingTint(b) {
   const fixed = TINTS[b.n];
   if (fixed) return fixed;
@@ -1046,8 +1069,7 @@ export function buildCity(data) {
                 (WALL_CLASSES.includes(b.c) ? b.c : 'lowrise');
     const into = (walls[cls] = walls[cls] || []);
     const rgb = buildingTint(b);
-    // Roofs weather more than walls and vary more, but in the same direction.
-    const roofRgb = rgb.map((v) => 0.72 + (v - 1) * 0.5);
+    const roofRgb = roofTint(b, rgb);
 
     const base = shell(b.p, b.h);
     if (base.wall) into.push(tint(base.wall, rgb));

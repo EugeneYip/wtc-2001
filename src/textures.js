@@ -468,18 +468,30 @@ export function grassTexture() {
 }
 
 /** Tar-and-gravel roof, the top surface of nearly every building down there. */
+/**
+ * A built-up roof.
+ *
+ * This used to be laid at #3e3d3a, which with the per-building tint on top of
+ * it came out at a linear albedo of 0.033 — three per cent, darker than fresh
+ * asphalt. Tar-and-gravel roofs, which is what nearly every building down here
+ * had, run 0.10 to 0.20, and a good many of them were ballasted with pale
+ * gravel or painted with aluminium. The result was a city whose roofs were the
+ * darkest surfaces in the frame at noon, when they are the ones facing the sun
+ * most squarely, and whose rooftop plant read as polystyrene blocks against
+ * them: the mechanical units are 0.14, which was four times their own roof.
+ */
 export function roofTexture() {
   const [c, x] = canvas(128, 128);
   const rand = rng(305);
-  x.fillStyle = '#3e3d3a';
+  x.fillStyle = '#6d6b66';
   x.fillRect(0, 0, 128, 128);
   for (let i = 0; i < 2600; i++) {
-    const g = 40 + Math.floor(rand() * 55);
+    const g = 78 + Math.floor(rand() * 62);
     x.fillStyle = `rgba(${g},${g - 2},${g - 6},${0.25 + rand() * 0.4})`;
     x.fillRect(rand() * 128, rand() * 128, 1 + rand() * 2, 1 + rand() * 2);
   }
   // Seam lines where the membrane is lapped.
-  x.strokeStyle = 'rgba(24,24,22,0.5)';
+  x.strokeStyle = 'rgba(58,57,53,0.5)';
   x.lineWidth = 1;
   for (let i = 0; i < 4; i++) {
     const y = i * 32 + 6;

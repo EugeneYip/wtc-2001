@@ -230,6 +230,38 @@ One Liberty Plaza, the Barclay-Vesey Building, and the Deutsche Bank Building
 at 130 Liberty Street — damaged on 9/11 and since demolished, so re-added by
 hand.
 
+**Roofs.** Every roof in the city was the darkest surface in the frame at
+noon — which is when they are the ones facing the sun most squarely. Measured:
+the roof texture had a linear albedo of 0.046, and the per-building tint on top
+of it took that to **0.033 effective**. Three per cent, darker than fresh
+asphalt. Tar-and-gravel roofs, which is what nearly all of these had, run 0.10
+to 0.20, and plenty were ballasted with pale gravel or painted with aluminium.
+
+It showed up twice over. The rooftop plant is 0.141 — **four times as bright as
+the roof it was standing on** — so the mechanical units and stair overruns read
+as polystyrene blocks scattered over black felt.
+
+The first attempt simply lifted the texture until the effective albedo was
+0.102, which is a perfectly good number and looked wrong: every roof in the
+city came out the same pale grey and the place read as poured concrete from
+above. Uniformity turned out to be as much of the problem as level, and the old
+darkness had been hiding it. A roofscape is a patchwork — black membrane beside
+pale gravel beside aluminium paint — so roofs now take their own tone per
+building, seeded off the footprint and squared so that dark is commoner than
+pale. They span **0.047 to 0.162 with a mean of 0.083**, and the plant now sits
+at 1.06 times its roof instead of 4.3.
+
+Three things checked and left alone. Parapets already exist, at 0.85 m, which
+is why the clutter is placed 0.8 m down. Water tanks were already there — a
+staved drum with a conical cap on legs, on buildings between 18 and 75 m.
+And the heights are better sourced than expected: of the 971 buildings in the
+extract, 797 carry an explicit OSM height and 28 more give storey counts, so
+only 15% fall back on the estimate. There is also one apparent pencil — 169 m
+standing on a 234 m² footprint, sharing its height with a 2,251 m² neighbour,
+which is one building mapped as two ways. Gone to look at it, it reads as a
+wing of the tower's massing rather than a spike beside it, so it stays. Six
+such fragments exist city-wide and the rest are between 10 and 30 m.
+
 **Facades.** Roughness and metalness vary *within* a facade, not just between
 buildings, so glass behaves like glass: dark head-on, where a dielectric
 returns four per cent of what falls on it, and bright at a glancing angle
