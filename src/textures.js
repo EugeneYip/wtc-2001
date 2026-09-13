@@ -15,6 +15,10 @@ import * as THREE from 'three';
 
 const BAYS = 8;          // window bays across one tile
 const FLOORS = 6;        // floors up one tile
+// What the full range of a facade height field stands for, in metres. The
+// deepest thing on one of these walls is a window reveal, and on the masonry
+// buildings down here that is a foot or so.
+const FACADE_RELIEF = 1.55;
 
 function canvas(w, h) {
   const c = document.createElement('canvas');
@@ -89,16 +93,31 @@ export function facade(opts) {
   const W = BAYS * PX, H = FLOORS * PX;
   const [c, x] = canvas(W, H);
   const [sc, sx] = canvas(W, H);                   // G = roughness, B = metalness
+  // A height field for the relief. Every wall in the model is a flat plane
+  // with the windows painted on it, which is why a facade went dead the moment
+  // the sun came off it: the reveals had a shadow drawn down one side and it
+  // pointed the same way at nine in the morning and at six at night. This is
+  // the same drawing again in depth, and it is what the light then reads.
+  const [hc, hx] = canvas(W, H);
   const rand = rng(seed);
 
   const surf = (r, m) => `rgb(0,${clamp255(r * 255)},${clamp255(m * 255)})`;
   const WALL_SURF = surf(wallRough, wallMetal);
   const GLASS_SURF = surf(glassRough, glassMetal);
+  // Grey levels on the height field, against a wall plane at 150. The full
+  // range stands for FACADE_RELIEF metres, so 150 -> 96 is a reveal a little
+  // over a foot deep and 150 -> 178 a sill standing seven inches proud.
+  const HW = 'rgb(150,150,150)';      // wall
+  const HG = 'rgb(96,96,96)';         // glazing, set back in its opening
+  const HS = 'rgb(178,178,178)';      // sill
+  const HM = 'rgb(166,166,166)';      // mullion, spandrel, anything proud
 
   x.fillStyle = wall;
   x.fillRect(0, 0, W, H);
   sx.fillStyle = WALL_SURF;
   sx.fillRect(0, 0, W, H);
+  hx.fillStyle = HW;
+  hx.fillRect(0, 0, W, H);
 
   // Masonry grain, so flat walls are not dead flat.
   for (let i = 0; i < W * H * grain; i++) {
@@ -134,6 +153,55 @@ export function facade(opts) {
   };
 
   const bw = PX * winW, bh = PX * winH;
+
+  // Weathering, drawn before the openings so it stays on the masonry and off
+  // the glass.
+  //
+  // Every wall in this city was one flat tone between its windows, and from a
+  // few hundred metres up that is what made a block read as a punched card:
+  // identical holes in an even field, with nothing at all happening between
+  // them. What actually happens between them is dirt. Rain runs off a sill and
+  // takes the soot on the wall with it, so a masonry building carries a streak
+  // under every opening, a little different in length and darkness each time,
+  // and that is most of what tells you it is a building and not a pattern.
+  // Ribbon-glazed curtain wall sheds water at the spandrel instead, so it gets
+  // a fainter version and no streaks at all under the glass.
+  if (!ribbon) {
+    for (let f = 0; f < FLOORS; f++) {
+      const y0 = f * PX + (PX - bh) * 0.62;
+      for (let b = 0; b < BAYS; b++) {
+        if (rand() > 0.78) continue;                // not under every one
+        const x0 = b * PX + (PX - bw) / 2;
+        const inset = bw * (0.04 + rand() * 0.16);
+        const top = y0 + bh + 2;
+        const len = PX * (0.25 + rand() * 0.95);
+        const g = x.createLinearGradient(0, top, 0, top + len);
+        const a = 0.05 + rand() * 0.09;
+        g.addColorStop(0, `rgba(28,24,20,${a})`);
+        g.addColorStop(0.35, `rgba(28,24,20,${a * 0.7})`);
+        g.addColorStop(1, 'rgba(28,24,20,0)');
+        x.fillStyle = g;
+        x.fillRect(x0 + inset, top, bw - inset * 2, len);
+      }
+    }
+  }
+  // And the long ones: rain does not only run off sills. A few stains a bay
+  // wide run most of the height of the tile, which is what breaks up the
+  // horizon of a wall seen from across the river.
+  for (let i = 0; i < BAYS; i++) {
+    if (rand() > 0.42) continue;
+    const x0 = i * PX + rand() * PX * 0.6;
+    const w = PX * (0.10 + rand() * 0.30);
+    const top = rand() * H * 0.5;
+    const g = x.createLinearGradient(0, top, 0, H);
+    const a = 0.03 + rand() * 0.05;
+    g.addColorStop(0, 'rgba(30,26,22,0)');
+    g.addColorStop(0.25, `rgba(30,26,22,${a})`);
+    g.addColorStop(1, `rgba(30,26,22,${a * 0.35})`);
+    x.fillStyle = g;
+    x.fillRect(x0, top, w, H - top);
+  }
+
   for (let f = 0; f < FLOORS; f++) {
     const y0 = f * PX + (PX - bh) * 0.62;          // windows sit high in a floor
 
@@ -143,14 +211,18 @@ export function facade(opts) {
       x.fillRect(PX * 0.18, y0, W - PX * 0.36, bh);
       sx.fillStyle = GLASS_SURF;
       sx.fillRect(PX * 0.18, y0, W - PX * 0.36, bh);
+      hx.fillStyle = HG;
+      hx.fillRect(PX * 0.18, y0, W - PX * 0.36, bh);
       for (let b = 0; b < BAYS; b++) {
         pane(b * PX + PX * 0.2, y0, PX * 0.6, bh);
       }
       x.fillStyle = trim;
       sx.fillStyle = WALL_SURF;
+      hx.fillStyle = HM;
       for (let b = 0; b <= BAYS; b++) {
         x.fillRect(b * PX - 1.5, y0, 3, bh);
         sx.fillRect(b * PX - 1.5, y0, 3, bh);
+        hx.fillRect(b * PX - 1.5, y0, 3, bh);
       }
     } else {
       for (let b = 0; b < BAYS; b++) {
@@ -158,9 +230,14 @@ export function facade(opts) {
         pane(x0, y0, bw, bh);
         sx.fillStyle = GLASS_SURF;
         sx.fillRect(x0, y0, bw, bh);
+        hx.fillStyle = HG;
+        hx.fillRect(x0, y0, bw, bh);
         // Reveal shadow on the left and head of each opening. The reveal is
         // masonry, so it goes back to the wall surface as well as the colour.
-        x.fillStyle = 'rgba(0,0,0,0.30)';
+        // Lighter than it was: the relief now throws a real one that turns
+        // with the sun, and this is left only as the ambient occlusion of a
+        // deep opening, which the relief cannot give.
+        x.fillStyle = 'rgba(0,0,0,0.16)';
         x.fillRect(x0, y0, 2, bh);
         x.fillRect(x0, y0, bw, 2);
         sx.fillStyle = WALL_SURF;
@@ -171,6 +248,8 @@ export function facade(opts) {
           x.fillRect(x0 - 2, y0 + bh, bw + 4, 2.5);
           sx.fillStyle = WALL_SURF;
           sx.fillRect(x0 - 2, y0 + bh, bw + 4, 2.5);
+          hx.fillStyle = HS;
+          hx.fillRect(x0 - 2, y0 + bh, bw + 4, 2.5);
         }
       }
     }
@@ -183,11 +262,24 @@ export function facade(opts) {
     if (ribbon) {
       sx.fillStyle = WALL_SURF;
       sx.fillRect(0, f * PX, W, PX * 0.12);
+      hx.fillStyle = HM;
+      hx.fillRect(0, f * PX, W, PX * 0.12);
     }
   }
 
+  // Take the corner off before differencing. A step drawn on one texel is a
+  // wall that turns through ninety degrees in nothing, which aliases into a
+  // crawling line the moment the camera moves. Under a texel of ramp is
+  // enough; at two the openings stopped reading as holes cut in masonry and
+  // started reading as dents pressed into putty.
+  hx.filter = 'blur(0.7px)';
+  hx.drawImage(hc, 0, 0);
+  hx.filter = 'none';
+
   const ru = 1 / (BAYS * bayW), rv = 1 / (FLOORS * floorH);
-  return { map: finish(c, ru, rv), surface: finishData(sc, ru, rv) };
+  const normal = finishData(
+    normalFromCanvas(hc, W, H, FACADE_RELIEF, bayW / PX, floorH / PX), ru, rv);
+  return { map: finish(c, ru, rv), surface: finishData(sc, ru, rv), normal };
 }
 
 /**
@@ -213,6 +305,7 @@ export function storefront() {
   const [c, x] = canvas(W, H);
   const [sc, sx] = canvas(W, H);
   const [lc, lx] = canvas(W, H);                     // what is lit after dark
+  const [hc, hx] = canvas(W, H);                     // and the relief
   const rand = rng(4801);
   // A second generator, for the decisions rather than the detail.
   //
@@ -237,10 +330,20 @@ export function storefront() {
   // y is measured up from the pavement; the canvas runs the other way.
   const band = (y0, y1) => [H - y1 * m, (y1 - y0) * m];
 
+  // Depth, on the same 0..FACADE_RELIEF scale the upper floors use. This is
+  // the wall closest to anyone standing on the pavement, and it would have
+  // been the one left flat.
+  const HW = 'rgb(150,150,150)';      // the wall behind it all
+  const HG = 'rgb(104,104,104)';      // shop glazing, behind its frame
+  const HP = 'rgb(170,170,170)';      // plinth, pier, fascia: all proud
+  const HM = 'rgb(163,163,163)';      // mullions and the transom board
+
   x.fillStyle = '#9a948b';                          // the wall behind it all
   x.fillRect(0, 0, W, H);
   sx.fillStyle = STONE;
   sx.fillRect(0, 0, W, H);
+  hx.fillStyle = HW;
+  hx.fillRect(0, 0, W, H);
 
   for (let b = 0; b < BAYS_S; b++) {
     const bx = b * PX;
@@ -255,6 +358,8 @@ export function storefront() {
       x.fillRect(bx + 3, gy, PX - 6, gh);
       x.fillStyle = 'rgba(0,0,0,0.22)';
       x.fillRect(bx + 3, gy, 3, gh);
+      hx.fillStyle = HP;
+      hx.fillRect(bx + 3, gy, PX - 6, gh);
     } else {
       // Shopfront glazing, dark because you are looking into a room, with a
       // lighter head where the light inside falls on the ceiling.
@@ -267,6 +372,8 @@ export function storefront() {
       x.fillRect(bx + 3, gy, PX - 6, gh);
       sx.fillStyle = GLASS;
       sx.fillRect(bx + 3, gy, PX - 6, gh);
+      hx.fillStyle = HG;
+      hx.fillRect(bx + 3, gy, PX - 6, gh);
       // A lit shop. Most are: at street level after dark the ground floor is
       // the brightest thing on the block, and leaving it unlit put a band of
       // pitch black under every building while the offices above glowed.
@@ -288,10 +395,12 @@ export function storefront() {
       // Mullions.
       x.fillStyle = '#6e6a64';
       sx.fillStyle = METAL;
+      hx.fillStyle = HM;
       for (let k = 1; k < 3; k++) {
         const mx = Math.round(bx + (PX * k) / 3);
         x.fillRect(mx, gy, 2, gh);
         sx.fillRect(mx, gy, 2, gh);
+        hx.fillRect(mx, gy, 2, gh);
       }
     }
     // Transom band over the shopfront: signage, canopy, or nothing.
@@ -301,6 +410,8 @@ export function storefront() {
     x.fillRect(bx + 2, ty, PX - 4, th);
     sx.fillStyle = STONE;
     sx.fillRect(bx + 2, ty, PX - 4, th);
+    hx.fillStyle = HM;
+    hx.fillRect(bx + 2, ty, PX - 4, th);
     // An illuminated fascia over about a third of them.
     if (sign < 0.34) {
       const t = 130 + Math.floor(rand() * 90);
@@ -314,9 +425,13 @@ export function storefront() {
   const [py, ph] = band(0, 0.5);
   x.fillStyle = '#7c766d';
   x.fillRect(0, py, W, ph);
+  hx.fillStyle = HP;
+  hx.fillRect(0, py, W, ph);
   const [fy, fh] = band(4.45, STOREFRONT_H);
   x.fillStyle = '#8d8780';
   x.fillRect(0, fy, W, fh);
+  hx.fillStyle = HP;
+  hx.fillRect(0, fy, W, fh);
   // A shadow line under the fascia, which is what actually reads from across
   // the street.
   x.fillStyle = 'rgba(0,0,0,0.32)';
@@ -328,9 +443,16 @@ export function storefront() {
     x.fillRect(gx, gy2, 1 + rand() * 2, 1);
   }
 
+  hx.filter = 'blur(0.9px)';
+  hx.drawImage(hc, 0, 0);
+  hx.filter = 'none';
+
   const ru = 1 / (BAYS_S * STOREFRONT_BAY), rv = 1 / STOREFRONT_H;
+  const normal = finishData(
+    normalFromCanvas(hc, W, H, FACADE_RELIEF,
+                     STOREFRONT_BAY / PX, STOREFRONT_H / H), ru, rv);
   return { map: finish(c, ru, rv), surface: finishData(sc, ru, rv),
-           lights: finish(lc, ru, rv) };
+           lights: finish(lc, ru, rv), normal };
 }
 
 /** Lit windows for the same tile grid, so night lights land on real windows. */
@@ -420,7 +542,8 @@ export function facadeMaps() {
   const out = {};
   for (const [k, spec] of Object.entries(SPECS)) {
     const f = facade(spec);
-    out[k] = { map: f.map, surface: f.surface, lights: facadeLights(spec) };
+    out[k] = { map: f.map, surface: f.surface, normal: f.normal,
+               lights: facadeLights(spec) };
   }
   return out;
 }
@@ -480,24 +603,51 @@ export function grassTexture() {
  * most squarely, and whose rooftop plant read as polystyrene blocks against
  * them: the mechanical units are 0.14, which was four times their own roof.
  */
+const ROOF_TILE_M = 18;
+
 export function roofTexture() {
-  const [c, x] = canvas(128, 128);
+  const N = 256;
+  const [c, x] = canvas(N, N);
   const rand = rng(305);
-  x.fillStyle = '#6d6b66';
-  x.fillRect(0, 0, 128, 128);
-  for (let i = 0; i < 2600; i++) {
+  const K = N / ROOF_TILE_M;                      // pixels per metre
+
+  // Patches, first, and they are the whole reason this tile is 18 m across
+  // rather than 9. Everything that used to be on it — gravel a few centimetres
+  // wide, seams every couple of metres — is below a pixel by the time a roof
+  // is two hundred metres off, so it mipped away to one flat tone and the city
+  // read from above as a field of grey plates. A roof is not one tone: it has
+  // been patched, recoated and ponded, and those are metres across, which is
+  // the one scale that survives the distance these are actually seen from.
+  const blotch = fbm(N, [2, 4, 8], 4177);
+  const img = x.createImageData(N, N);
+  const BASE = [109, 107, 102];
+  for (let i = 0; i < N * N; i++) {
+    // Squared, so the bright recoated patches are the exception. Kept to
+    // half a stop either side: at a wider spread they stopped reading as
+    // coating and started reading as snow.
+    const v = Math.min(1, Math.max(0, (blotch[i] - 0.34) * 1.9));
+    const k = 0.86 + v * v * 0.40;
+    img.data[i * 4] = clamp255(BASE[0] * k);
+    img.data[i * 4 + 1] = clamp255(BASE[1] * k);
+    img.data[i * 4 + 2] = clamp255(BASE[2] * k);
+    img.data[i * 4 + 3] = 255;
+  }
+  x.putImageData(img, 0, 0);
+
+  // Gravel.
+  for (let i = 0; i < 10400; i++) {
     const g = 78 + Math.floor(rand() * 62);
     x.fillStyle = `rgba(${g},${g - 2},${g - 6},${0.25 + rand() * 0.4})`;
-    x.fillRect(rand() * 128, rand() * 128, 1 + rand() * 2, 1 + rand() * 2);
+    x.fillRect(rand() * N, rand() * N, 1 + rand() * 2, 1 + rand() * 2);
   }
-  // Seam lines where the membrane is lapped.
+  // Seam lines where the membrane is lapped, every couple of metres.
   x.strokeStyle = 'rgba(58,57,53,0.5)';
   x.lineWidth = 1;
-  for (let i = 0; i < 4; i++) {
-    const y = i * 32 + 6;
-    x.beginPath(); x.moveTo(0, y); x.lineTo(128, y); x.stroke();
+  for (let i = 0; i * 2.25 * K < N; i++) {
+    const y = Math.round(i * 2.25 * K + 6);
+    x.beginPath(); x.moveTo(0, y); x.lineTo(N, y); x.stroke();
   }
-  return finish(c, 1 / 9, 1 / 9, 4);
+  return finish(c, 1 / ROOF_TILE_M, 1 / ROOF_TILE_M, 4);
 }
 
 /** Austin J. Tobin Plaza: a granite grid, laid to the towers' own geometry. */
@@ -644,6 +794,41 @@ function fbm(N, octaves, seed) {
   }
   for (let i = 0; i < h.length; i++) h[i] /= total;
   return h;
+}
+
+/**
+ * A normal map from a height field drawn on a canvas, in world units.
+ *
+ * `depth` is what the full 0..255 range of the height stands for in metres,
+ * and `mu`/`mv` are how many metres one texel covers along each axis. Working
+ * in metres rather than in an arbitrary strength is what keeps a window reveal
+ * the same depth whether the bay it sits in is 1.6 m or 3.2 m wide.
+ *
+ * Green is up: three.js reads tangent-space maps the OpenGL way, and the wall
+ * UVs run up the building, so a surface that rises with v tilts towards +y.
+ */
+function normalFromCanvas(src, W, H, depth, mu, mv) {
+  const sx = src.getContext('2d', { willReadFrequently: true });
+  const h = sx.getImageData(0, 0, W, H).data;
+  const [c, x] = canvas(W, H);
+  const img = x.createImageData(W, H);
+  const at = (a, b) => h[((((b % H) + H) % H) * W + (((a % W) + W) % W)) * 4];
+  const kx = (depth / 255) / (2 * mu);
+  const ky = (depth / 255) / (2 * mv);
+  for (let y = 0; y < H; y++) {
+    for (let x0 = 0; x0 < W; x0++) {
+      const i = y * W + x0;
+      const nx = -(at(x0 + 1, y) - at(x0 - 1, y)) * kx;
+      const ny = (at(x0, y + 1) - at(x0, y - 1)) * ky;
+      const l = Math.hypot(nx, ny, 1);
+      img.data[i * 4] = ((nx / l) * 0.5 + 0.5) * 255;
+      img.data[i * 4 + 1] = ((ny / l) * 0.5 + 0.5) * 255;
+      img.data[i * 4 + 2] = (1 / l) * 0.5 * 255 + 127.5;
+      img.data[i * 4 + 3] = 255;
+    }
+  }
+  x.putImageData(img, 0, 0);
+  return c;
 }
 
 function normalFromHeight(h, N, strength) {

@@ -251,6 +251,24 @@ building, seeded off the footprint and squared so that dark is commoner than
 pale. They span **0.047 to 0.162 with a mean of 0.083**, and the plant now sits
 at 1.06 times its roof instead of 4.3.
 
+Uniformity came back a second time, in a different place. The tone varies
+building to building; it did not vary *within* a roof, because everything on
+the texture was small — gravel a few centimetres across, lapped seams every
+couple of metres — and all of that is below a pixel by the time a roof is two
+hundred metres off. It mipped away to one flat tone, and from above the city
+was a field of grey plates with the per-building tint the only thing separating
+them. The tile is now 18 m rather than 9, and carries patches at three to nine
+metres: recoating, repairs, where the water stands. Metres are the one scale
+that survives the distance a roof is actually seen from.
+
+And five roofs were **pure black**, which took a while to see for what it was.
+The WTC complex builds its own roofs and pools them onto the same tar-and-
+gravel material as the rest of the city — but that material reads a vertex
+colour, and geometry that does not carry one gets zero for it. Not dark: zero.
+Five flat black rectangles in the middle of the model, one of them with a flag
+flying over it. They take the same per-building spread the rest of the roofs do
+now.
+
 Three things checked and left alone. Parapets already exist, at 0.85 m, which
 is why the clutter is placed 0.8 m down. Water tanks were already there — a
 staved drum with a conical cap on legs, on buildings between 18 and 75 m.
@@ -280,6 +298,47 @@ to that — the Woolworth and the American Surety, both clad in pale terracotta
 rather than the brownstone around them — so they are given a facade family
 instead of a tint, because multiplying a colour lightens it without ever
 desaturating it.
+
+**The walls have depth in them.** Every wall in this model was a flat plane
+with its windows painted on, and the giveaway was the shadow: each opening had
+a dark line drawn down its left side, and that line pointed the same way at
+nine in the morning and at six at night. A facade went dead the moment the sun
+came off it, because there was nothing there for the light to find.
+
+So the same drawing is made twice — once in colour, once in depth — and the
+depth becomes a normal map. Window glazing sits back about a foot in its
+opening, sills and mullions and spandrel bands stand proud, and the reveal
+throws a real shadow that turns through the day. The height field is kept in
+metres rather than in an arbitrary strength, which is what stops a reveal
+being deeper in a 3.2 m bay than in a 1.6 m one.
+
+Three things had to be got right about it:
+
+- **Strength.** At full it read as quilting: a warm highlight all the way
+  round every opening and a wall that looked pressed rather than cut. A third
+  gives a lit edge on the sun side and a dark one opposite, which is what a
+  reveal actually is.
+- **Sharpness.** A step drawn on one texel is a wall that turns ninety degrees
+  in nothing, and it crawls as the camera moves. Under a texel of blur is
+  enough to chamfer it; at two the openings stopped reading as holes cut in
+  masonry and started reading as dents pressed into putty.
+- **The painted shadow had to come down**, from 0.30 to 0.16, or the two
+  doubled up. What is left of it is the ambient occlusion of a deep opening,
+  which a normal map cannot give.
+
+The shopfronts got the same treatment, and had to: they are the wall closest
+to anyone standing on the pavement, and a relieved wall sitting on a flat
+painted ground floor is worse than neither.
+
+**And weathering.** From a few hundred metres up a block used to read as a
+punched card — identical holes in an even field, with nothing happening
+between them. What happens between them is dirt. Rain runs off a sill and
+takes the soot on the wall with it, so a masonry building carries a streak
+under most of its openings, a little different in length and darkness each
+time, and a few longer stains running most of its height. That, more than any
+amount of window detail, is what tells you it is a building and not a pattern.
+Curtain wall sheds water at the spandrel instead, so the ribbon-glazed
+families get the long stains and no sill streaks.
 
 **Relief.** The land across the rivers was a table — a flat plane meeting the
 sky in a ruled horizontal line, which no real shore does, and the eye files

@@ -49,7 +49,10 @@ dimensions and historic site plans, and any error in them is mine:
 Roof clutter, street trees, street lamps, traffic signals, hydrants, litter
 bins, manhole covers, moving and parked traffic, the harbour vessels and their
 courses, the walks inside the parks and every ground-floor shopfront are
-procedurally placed for plausibility and are not survey data. The night sky
+procedurally placed for plausibility and are not survey data. So is every
+facade: the window rhythm, the depth of the reveals and the weathering under
+the sills are drawn from the family a building was assigned and a seed, not
+from any photograph of that building. The night sky
 and the city's light on the water are rendering models, not observations: the
 sky is a hand-written gradient with a skyglow term, and the light on the
 rivers is read off a plan of where the buildings are, bounced off the water

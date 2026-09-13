@@ -20,6 +20,10 @@ import { facadeMaps, roofTexture, roadTexture, sidewalkTexture, waterNormal,
          grassTexture } from './textures.js';
 
 const FACADE = facadeMaps();
+// A third. At full strength the reveals took a warm highlight all the way
+// round every opening and the wall read as quilted; at this it is a lit edge
+// on the sun side and a dark one opposite, which is what a reveal is.
+const FACADE_RELIEF_SCALE = 0.35;
 
 export const CITY_MATS = {
   masonry_old:  new THREE.MeshStandardMaterial({ roughness: 0.86, metalness: 0.04 }),
@@ -35,6 +39,8 @@ export const CITY_MATS = {
     const f = storefront();
     return new THREE.MeshStandardMaterial({
       map: f.map, roughnessMap: f.surface, metalnessMap: f.surface,
+      normalMap: f.normal,
+      normalScale: new THREE.Vector2(FACADE_RELIEF_SCALE, FACADE_RELIEF_SCALE),
       emissiveMap: f.lights, emissive: new THREE.Color(0xffe2b6),
       emissiveIntensity: 0,
       roughness: 1, metalness: 1, vertexColors: true });
@@ -483,6 +489,11 @@ for (const k of WALL_CLASSES) {
   // Roughness and metalness now vary within the facade, so the material's own
   // values become plain multipliers and the map carries the real numbers.
   m.roughnessMap = m.metalnessMap = FACADE[k].surface;
+  // And the relief: window reveals set back, sills and mullions standing
+  // proud. Without it a wall is a photograph of a wall — every opening keeps
+  // the same painted shadow down its left side whatever the sun is doing.
+  m.normalMap = FACADE[k].normal;
+  m.normalScale = new THREE.Vector2(FACADE_RELIEF_SCALE, FACADE_RELIEF_SCALE);
   m.roughness = 1;
   m.metalness = 1;
   m.emissiveMap = FACADE[k].lights;
@@ -828,7 +839,7 @@ const FACADE_OVERRIDE = {
  * spreads them from about a third of the texture's brightness to a little
  * over it, seeded off the footprint so a building keeps its own.
  */
-function roofTint(b, rgb) {
+export function roofTint(b, rgb) {
   const [x0, z0] = b.p[0];
   let h = Math.imul(Math.round(x0 * 8) ^ 0x27d4eb2d, 0x165667b1);
   h = Math.imul(h ^ Math.round(z0 * 8), 0x9e3779b1);
@@ -856,7 +867,7 @@ function buildingTint(b) {
 }
 
 /** Give a geometry a flat vertex colour so it can be merged with the rest. */
-function tint(geo, rgb) {
+export function tint(geo, rgb) {
   if (!geo) return geo;
   const n = geo.getAttribute('position').count;
   const a = new Float32Array(n * 3);

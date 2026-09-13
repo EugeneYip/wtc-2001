@@ -19,7 +19,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'BufferGeometryUtils';
 import { norm, extrude } from './geo.js';
 import { plazaTexture, facade, facadeLights } from './textures.js';
-import { shell, CITY_MATS } from './city.js';
+import { shell, tint, roofTint, CITY_MATS } from './city.js';
 
 const SIDE = 63.40;            // 208 ft square footprint
 const FLOOR = 3.66;            // 12 ft floor-to-floor
@@ -188,6 +188,7 @@ export const MATS = {
   lowrise: new THREE.MeshStandardMaterial({
     map: LOW_FACE.map, emissiveMap: facadeLights(LOW_SPEC),
     roughnessMap: LOW_FACE.surface, metalnessMap: LOW_FACE.surface,
+    normalMap: LOW_FACE.normal, normalScale: new THREE.Vector2(0.35, 0.35),
     emissive: new THREE.Color(0xffd6a4), emissiveIntensity: 0,
     metalness: 1, roughness: 1,
   }),
@@ -195,6 +196,7 @@ export const MATS = {
   wtc7: new THREE.MeshStandardMaterial({
     map: WTC7_FACE.map, emissiveMap: facadeLights(WTC7_SPEC),
     roughnessMap: WTC7_FACE.surface, metalnessMap: WTC7_FACE.surface,
+    normalMap: WTC7_FACE.normal, normalScale: new THREE.Vector2(0.35, 0.35),
     emissive: new THREE.Color(0xffd6a4), emissiveIntensity: 0,
     metalness: 1, roughness: 1,
   }),
@@ -766,7 +768,12 @@ export function buildComplex(data) {
   for (const b of data.complex) {
     const parts = shell(b.p, b.h);
     if (parts.wall) (byMat[b.c] || byMat.wtc_low).push(parts.wall);
-    if (parts.roof) roofs.push(parts.roof);
+    // The roof material reads a vertex colour, and geometry that does not
+    // carry one gets zero for it — so these came out not tar and gravel but
+    // pure black, five flat black rectangles in the middle of the model. They
+    // take the same per-building spread off their own footprint that the rest
+    // of the city's roofs do.
+    if (parts.roof) roofs.push(tint(parts.roof, roofTint(b, [1, 1, 1])));
   }
   for (const [k, list] of Object.entries(byMat)) {
     if (!list.length) continue;
