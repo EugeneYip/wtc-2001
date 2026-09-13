@@ -875,7 +875,12 @@ export const GRANITE_TILE_M = 7.2;
  * block by block rather than within a block, because that is how a quarry
  * delivers them.
  */
+let _granite = null;
+
 export function graniteTexture() {
+  // The bridge towers and the Statue of Liberty's pedestal are both faced in
+  // coursed granite and both ask for this at module load, so it is drawn once.
+  if (_granite) return _granite;
   const N = 256;
   const K = N / GRANITE_TILE_M;                  // pixels per metre
   const [c, x] = canvas(N, N);
@@ -936,9 +941,116 @@ export function graniteTexture() {
   // divides by the tile size twice, which put courses three metres deep on a
   // tower whose real ones are under a metre.
   const m = GRANITE_TILE_M;
-  return {
+  _granite = {
     map: finish(c, 1, 1),
     normal: finishData(normalFromCanvas(hc, N, N, 0.42, m / N, m / N), 1, 1),
+  };
+  return _granite;
+}
+
+// ---------------------------------------------------------------------------
+// Copper
+// ---------------------------------------------------------------------------
+
+export const COPPER_TILE_M = 8.0;
+
+/**
+ * The Statue of Liberty's skin.
+ *
+ * She is not a green statue, she is three hundred and something sheets of
+ * copper two and a half millimetres thick, hammered over wooden forms and
+ * hung on an iron armature, and every one of those sheets shows. The seams
+ * run in a crazy-paving of quadrilaterals rather than a grid, because they
+ * follow the shapes Bartholdi's workmen could raise in one piece.
+ *
+ * The patina is not one green either. It is pale and chalky where rain washes
+ * it, darker and bluer where it sits in shelter, and it runs in vertical
+ * streaks down every surface that sheds water — which is most of what makes
+ * her read as a hundred-and-forty-year-old metal object rather than as a
+ * green-painted one.
+ */
+export function copperTexture() {
+  const N = 512;
+  const K = N / COPPER_TILE_M;                   // pixels per metre
+  const [c, x] = canvas(N, N);
+  const [hc, hx] = canvas(N, N);
+  const rand = rng(8861);
+
+  // Mottled patina under everything else.
+  const h = fbm(N, [4, 9, 22, 48], 4412);
+  const g2 = fbm(N, [3, 7], 9003);
+  const img = x.createImageData(N, N);
+  for (let i = 0; i < N * N; i++) {
+    const t = h[i], w = g2[i];
+    // Weathered copper carbonate: a grey-green base, greener where it is thick
+    // and paler where the rain has scoured it back towards the sulphate.
+    const k = 0.80 + t * 0.44;
+    const pale = Math.max(0, w - 0.58) * 1.5;
+    img.data[i * 4]     = clamp255((92 + pale * 58) * k);
+    img.data[i * 4 + 1] = clamp255((126 + pale * 40) * k);
+    img.data[i * 4 + 2] = clamp255((112 + pale * 44) * k);
+    img.data[i * 4 + 3] = 255;
+  }
+  x.putImageData(img, 0, 0);
+
+  hx.fillStyle = 'rgb(128,128,128)';
+  hx.fillRect(0, 0, N, N);
+
+  // The seams. A grid of about 1.6 m panels with every node pushed around, so
+  // the sheets come out as irregular quadrilaterals the way they really are.
+  const CELL = Math.round(1.6 * K);
+  const G = Math.round(N / CELL);
+  const jx = [], jz = [];
+  for (let j = 0; j <= G; j++) {
+    jx.push([]); jz.push([]);
+    for (let i = 0; i <= G; i++) {
+      const edge = (i === 0 || i === G || j === 0 || j === G);
+      jx[j].push((i * N) / G + (edge ? 0 : (rand() - 0.5) * CELL * 0.44));
+      jz[j].push((j * N) / G + (edge ? 0 : (rand() - 0.5) * CELL * 0.44));
+    }
+  }
+  const seam = (ctx, colour, width) => {
+    ctx.strokeStyle = colour;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    for (let j = 0; j <= G; j++) {
+      for (let i = 0; i <= G; i++) {
+        if (i < G) { ctx.moveTo(jx[j][i], jz[j][i]); ctx.lineTo(jx[j][i + 1], jz[j][i + 1]); }
+        if (j < G) { ctx.moveTo(jx[j][i], jz[j][i]); ctx.lineTo(jx[j + 1][i], jz[j + 1][i]); }
+      }
+    }
+    ctx.stroke();
+  };
+  // A sheet's edge is turned over and riveted to its neighbour, so the seam
+  // stands proud of both faces rather than sinking between them.
+  seam(hx, 'rgb(168,168,168)', Math.max(1.5, 0.035 * K));
+  seam(x, 'rgba(64,88,80,0.30)', Math.max(1, 0.022 * K));
+  seam(x, 'rgba(176,196,184,0.20)', Math.max(1, 0.012 * K));
+
+  // Rain. Vertical, and it does not care where the seams are.
+  for (let i = 0; i < 150; i++) {
+    const sx = rand() * N, w = 1 + rand() * 7;
+    const a = 0.025 + rand() * 0.055;
+    const grd = x.createLinearGradient(0, 0, 0, N);
+    const dark = rand() < 0.6;
+    const col = dark ? '46,70,64' : '186,206,192';
+    grd.addColorStop(0, `rgba(${col},0)`);
+    grd.addColorStop(0.3, `rgba(${col},${a})`);
+    grd.addColorStop(1, `rgba(${col},${a * 0.5})`);
+    x.fillStyle = grd;
+    x.fillRect(sx, 0, w, N);
+  }
+
+  hx.filter = 'blur(1.1px)';
+  hx.drawImage(hc, 0, 0);
+  hx.filter = 'none';
+
+  const m = COPPER_TILE_M;
+  return {
+    map: finish(c, 1, 1),
+    // Two and a half centimetres of relief on a seam — enough to catch a low
+    // sun, not enough to make her look quilted.
+    normal: finishData(normalFromCanvas(hc, N, N, 0.05, m / N, m / N), 1, 1),
   };
 }
 

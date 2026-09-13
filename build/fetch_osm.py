@@ -71,6 +71,23 @@ QUERIES = {
          way["highway"]["name"="Brooklyn Bridge"](40.69,-74.02,40.72,-73.96););
         out geom;""",
 
+    # Liberty Island: the eleven-pointed star of Fort Wood, the statue's own
+    # outline, and the island's buildings. It falls outside the building box
+    # the way the Brooklyn Bridge does, and closes the view down the harbour
+    # the way the bridge closes the one up the river.
+    "liberty": """[out:json][timeout:60];
+        (way["historic"="fort"](40.685,-74.050,40.693,-74.039);
+         way["man_made"="monument"](40.685,-74.050,40.693,-74.039);
+         way["building"](40.685,-74.050,40.693,-74.039);
+         way["building:part"](40.685,-74.050,40.693,-74.039);
+         way["barrier"](40.685,-74.050,40.693,-74.039);
+         way["highway"](40.685,-74.050,40.693,-74.039);
+         node["tourism"="artwork"](40.685,-74.050,40.693,-74.039);
+         way["historic"](40.685,-74.050,40.693,-74.039);
+         way["natural"="tree_row"](40.685,-74.050,40.693,-74.039);
+         node["natural"="tree"](40.685,-74.050,40.693,-74.039););
+        out geom;""",
+
     # High ground around the harbour. The named hills carry real elevations and
     # the Palisades are mapped as a cliff line, so the far shore can be given
     # relief that is where the relief actually is rather than invented.

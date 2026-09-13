@@ -1420,6 +1420,113 @@ def build_bridge(land):
 RELIEF_REACH = 16000.0      # metres from the origin worth carrying
 
 
+
+# ---------------------------------------------------------------------------
+# Liberty Island
+# ---------------------------------------------------------------------------
+
+# The visitor buildings on the island are almost all later than 2001 — the
+# museum opened in 2019, the screening building is a consequence of that
+# September — so nothing on the island is carried through except what the
+# statue stands on and the trees.
+def build_liberty(land):
+    """The star of Fort Wood, the pedestal's plan, and which way she looks.
+
+    Everything in here is surveyed except the heights, which come from the
+    published section the same way the towers' and the bridge's do. The one
+    thing that could not be had either way is the direction the statue faces,
+    and it turns out not to need a source: Hunt's pedestal is square and is
+    mapped, so its own faces give the axis, and only one of the four looks out
+    to sea.
+    """
+    path = os.path.join(RAW, "liberty.json")
+    if not os.path.exists(path):
+        print("  statue of liberty     : no extract, skipped")
+        return None
+    els = json.load(open(path))["elements"]
+
+    fort = None
+    for e in els:
+        if e.get("tags", {}).get("name") == "Statue of Liberty":
+            fort = [project(p["lat"], p["lon"]) for p in e.get("geometry", [])]
+    if not fort:
+        print("  statue of liberty     : no fort outline, skipped")
+        return None
+    if fort[0] == fort[-1]:
+        fort = fort[:-1]
+
+    # Area centroid of the star, which is where the pedestal stands.
+    a2 = cx = cz = 0.0
+    n = len(fort)
+    for i in range(n):
+        x0, z0 = fort[i]
+        x1, z1 = fort[(i + 1) % n]
+        cr = x0 * z1 - x1 * z0
+        a2 += cr
+        cx += (x0 + x1) * cr
+        cz += (z0 + z1) * cr
+    cx /= 3.0 * a2
+    cz /= 3.0 * a2
+
+    # The pedestal is mapped as a stack of squares. Take the largest one that
+    # is actually square and centred on the star, and read the grid bearing of
+    # its sides off it.
+    axis = None
+    best = 0.0
+    for e in els:
+        t = e.get("tags", {})
+        if not t.get("building:part") or t.get("name"):
+            continue
+        g = [project(p["lat"], p["lon"]) for p in e.get("geometry", [])]
+        if g and g[0] == g[-1]:
+            g = g[:-1]
+        if len(g) != 4:
+            continue
+        if math.dist((sum(p[0] for p in g) / 4, sum(p[1] for p in g) / 4),
+                     (cx, cz)) > 20:
+            continue
+        sides = [math.dist(g[i], g[(i + 1) % 4]) for i in range(4)]
+        if max(sides) > 1.15 * min(sides):
+            continue
+        if max(sides) > best:
+            best = max(sides)
+            dx = g[1][0] - g[0][0]
+            dz = g[1][1] - g[0][1]
+            axis = math.degrees(math.atan2(dx, -dz)) % 90.0
+    if axis is None:
+        print("  statue of liberty     : no pedestal square, skipped")
+        return None
+
+    # Four face normals, 90 degrees apart, one of which she looks along. Grid
+    # north is 29.11 degrees east of true, so a grid bearing of b is a true
+    # bearing of b + 29.11; the seaward one is the one nearest south-east.
+    face = min((((axis + k * 90) % 360) for k in range(4)),
+               key=lambda b: abs(((b + math.degrees(THETA)) - 135 + 180) % 360 - 180))
+
+    # The island she is on, so it can be given grass instead of being left the
+    # same bare ground as the far shore.
+    island = None
+    for l in land:
+        if _point_in((cx, cz), l["p"]):
+            island = l["p"]
+            break
+
+    trees = []
+    for e in els:
+        t = e.get("tags", {})
+        if e["type"] == "node" and t.get("natural") == "tree":
+            x, z = project(e["lat"], e["lon"])
+            if math.dist((x, z), (cx, cz)) < 320:
+                trees.append([round(x, 1), round(z, 1)])
+
+    return {
+        "fort": [[round(x, 2), round(z, 2)] for x, z in ccw(fort)],
+        "at": [round(cx, 2), round(cz, 2)],
+        "face": round(face, 2),
+        "island": island,
+        "trees": trees,
+    }
+
 def build_relief():
     path = os.path.join(RAW, "relief.json")
     if not os.path.exists(path):
@@ -1490,6 +1597,7 @@ def main():
     water, parks = build_areas()
     land = build_land()
     bridge = build_bridge(land)
+    liberty = build_liberty(land)
     relief = build_relief()
     if relief:
         print("  relief                : %d hills, %d ridge lines"
@@ -1497,6 +1605,12 @@ def main():
     if bridge:
         print("  brooklyn bridge       : span %.0f m, towers at %s"
               % (bridge["s1"] - bridge["s0"], bridge["towers"]))
+    if liberty:
+        print("  statue of liberty     : star of %d, facing grid %.1f deg "
+              "(true %.1f), %d trees"
+              % (len(liberty["fort"]), liberty["face"],
+                 (liberty["face"] + math.degrees(THETA)) % 360,
+                 len(liberty["trees"])))
 
     scene = {
         "meta": {
@@ -1523,6 +1637,7 @@ def main():
                   "stairs": PLAZA_STAIRS},
         "land": land,
         "bridge": bridge,
+        "liberty": liberty,
         "relief": relief,
         "buildings": buildings,
         "roads": roads,

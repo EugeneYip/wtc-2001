@@ -622,6 +622,113 @@ and the lamp standards follow the edge in. Ending all of it square, the way it
 was, put a twenty-six metre cliff and a timber walk in mid-air at the exact
 point where the bridge is meant to become a road.
 
+**The Statue of Liberty.** She is three and a half kilometres south-west of
+the towers, and until now Liberty Island was a bare dark slab in the harbour —
+which is a worse absence than leaving out something nobody would miss, because
+everybody already knows what is supposed to be standing on it. From the
+observation deck she was the thing people looked for first.
+
+The plan is surveyed, not drawn. OpenStreetMap carries the eleven-pointed star
+of Fort Wood as a traced outline, and carries Richard Morris Hunt's pedestal as
+a stack of concentric squares, so the star, the point she stands on and the
+width of every stage of the pedestal are measured. The section is from the
+published figures the way the towers and the bridge are: 305 ft 1 in from the
+ground to the tip of the torch, of which 65 ft is foundation, 89 ft is
+pedestal, and 151 ft 1 in is Bartholdi's copper; 111 ft 1 in of that is heel to
+the top of her head. The head is 17 ft 3 in chin to cranium and 10 ft ear to
+ear, the raised arm is 42 ft, the hand 16 ft 5 in, the waist 35 ft, and the
+tablet 23 ft 7 in by 13 ft 7 in by 2 ft. All of those are in here at those
+sizes.
+
+**Which way she looks came off the stone, not out of a book.** Every account
+says she faces south-east, out past the Narrows, and that is the one number
+neither the survey nor the published dimensions state outright. It turns out
+not to need stating. The pedestal is square and it is mapped: its faces run on
+grid bearings 28 and 118, so she can only be looking along one of four normals
+— true 57, 147, 237 or 327 — and exactly one of those is seaward. The model
+takes 147 and derives it at build time from the traced pedestal, so if the
+survey is ever corrected the statue turns with it.
+
+**What she is not is a scan.** The figure is built from thirty-one horizontal
+cross sections lofted into one surface, with the drapery from three sine
+periods beating against each other and drifting with height — one period alone
+gives fluting, which is a column and not a cloth. On top of that go the arms,
+the tablet, the crown and its seven nine-foot rays, the torch with the gallery
+round it that visitors were allowed onto until 1916, and a face. It is a
+likeness at the distance she is looked at from and not a copy of Bartholdi's
+modelling, and the face in particular is a suggestion. What is not a
+suggestion is anything that decides the silhouette.
+
+Three things had to be got wrong first to find them:
+
+*Normals.* Everything in this model is flattened to non-indexed geometry so
+that merges work, and `computeVertexNormals` on non-indexed geometry gives
+every triangle its own normal. On boxes that is correct and on a figure it is
+ruinous: the first statue was faceted from hem to crown, the arm a stack of
+drainpipe sections and the robe chiselled stone rather than beaten sheet. The
+loft is now built indexed, averaged, and flattened afterwards — the smooth
+normals survive the flattening.
+
+*Winding.* The nose was listed the way a nose is drawn, down from the bridge.
+But a band between two rings takes its facing from which of them is passed
+first, so every triangle of it faced into her head and the whole nose was
+invisible while being demonstrably present in the buffer — 0.86 m of it, which
+is what eventually settled the question.
+
+*Restraint.* The first nose that was actually visible was a beak, the first
+brow a bar laid across her face, and between them they turned her into an
+idol. How far a nose stands out is not a published figure and instinct
+overshoots it badly.
+
+**Her eyes are a hole, not a shape.** What makes an eye at this scale is that
+it sits in a shadow under a brow, and there is no shadow to spare out here: the
+sun's shadow map is sized for the sixteen acres round the towers. So the socket
+is cut into the head's own cross sections, and what goes in it is a material
+that is only ever dark — standing in for occlusion that cannot be computed
+three and a half kilometres from the origin. The same material fills the
+twenty-five openings between the mullions of the crown.
+
+**The flame is gold, and that is a date.** Bartholdi's original torch was solid
+copper; the 1916 replacement was glass; the 1986 restoration went back to
+copper and gilded it. On the morning this model is set to it has been gold leaf
+for fifteen years, so it is gold here and not green and not glass.
+
+**At night she is lit from the ground.** Floodlights stand at the points of the
+star, and the direction is the whole character of it: everything facing down is
+bright and everything facing up is not. Flat emissive cannot say that, and
+turning it up far enough to lift her out of a black harbour stopped her being a
+figure at all — she became a pale green cut-out of one with a tan cut-out of a
+pedestal underneath. A point light at her feet would be one more light in the
+loop of every shader in a frame that is already fill-bound, for one object
+three and a half kilometres out. So the emissive is steered by the world normal
+instead: full on a surface looking at the ground, half on a vertical one,
+nothing on anything looking at the sky. It is not a light and it illuminates
+nothing else, but it puts the brightness where the floodlights put it.
+
+**And the island is green.** She used to stand on the same bare ground as the
+far shore, which from the towers read as an oil slick with a monument in it.
+Liberty Island is mown grass and trees inside a concrete promenade, and at
+three and a half kilometres the only part of that anyone can see is that it is
+green with a pale rim, so that is what is built: a lawn inset thirteen metres
+from the seawall, the walk round the outside of it, and the island's 277 trees
+where OpenStreetMap has them. The inset is done vertex by vertex along the
+bisector of each corner rather than by scaling the ring about its centre — the
+island is twice as long as it is wide, and a scale that takes ten metres off
+the ends takes five off the sides.
+
+The trees are not a 2001 survey and are not claimed as one. The island has been
+planted since the 1930s and the beds were rearranged again in 2019; what is
+here is the right kind of planting in roughly the right places. The visitor
+buildings are all later than 2001 — the museum opened in 2019, the screening
+building is a consequence of that September — so none of them are here.
+
+Hiding the whole island and putting it back, in a view that has both it and
+the city in it, is **7 draw calls and 13,894 triangles** — everything above
+except the trees, which are instances of the city's own and cost no call at
+all. There are no shadows on her: the sun's shadow camera covers about a
+kilometre around the towers and she is three and a half out. At the range she
+is normally seen from, her own shading carries her.
+
 **Light and water.** The sun is placed from real solar geometry for 40.71° N
 on 11 September, so shadow directions through the day are the ones the site
 actually had. It is drawn by the Mie term of the sky model, and the asymmetry
@@ -1009,7 +1116,7 @@ out offset diagonally by 67.0 m east and 103.8 m south, which leaves the
 documented ~130 ft gap between their facing walls as an independent check
 that was never fed into the calculation.
 
-Six things are deliberately not raw OpenStreetMap:
+Seven things are deliberately not raw OpenStreetMap:
 
 1. **Post-2001 buildings are removed** — the modern WTC site, and the towers
    that filled in the Financial District and Battery Park City between 2002
@@ -1066,6 +1173,16 @@ Six things are deliberately not raw OpenStreetMap:
    cannot do is put an image of a particular tower on the water: it knows
    where the city is and roughly how much light is there, not what it looks
    like. The honest description is a reflection of a map, not of a skyline.
+7. **The Statue of Liberty is a plan with a figure lofted onto it.** Fort
+   Wood's star, the squares of the pedestal, the island's outline and the
+   positions of its trees are all traced in OSM and used as they stand; the
+   heights are the National Park Service's published figures; the direction she
+   faces is derived from the mapped pedestal rather than taken from a source.
+   The figure between those is not survey and is not a scan — it is thirty-one
+   cross sections lofted into a surface, and it is a likeness at the distance
+   she is looked at from. The face is a suggestion. The trees are where the
+   trees are now rather than in 2001, and the visitor buildings on the island,
+   which all postdate 2001, are not modelled at all.
 
 Background buildings with no height in OSM get a deterministic estimate from
 their id and footprint area, so the fabric varies instead of reading as one
@@ -1073,7 +1190,8 @@ uniform slab. Those are massing, not survey.
 
 ## Performance
 
-About 173 draw calls and 1.05M triangles in daylight, and roughly 2 to 3 ms a
+About 180 draw calls and 1.34M triangles in daylight — 191 and 1.35M from out
+in the harbour with Liberty Island in frame as well — and roughly 2 to 3 ms a
 frame on an M2 at 2800 × 1800 once shaders are warm, with the post-processing
 running at full resolution and 4x multisampling.
 
@@ -1161,11 +1279,12 @@ wtc.html              the same thing inlined into one file
 src/
   main.js             renderer, sun, camera rig, UI
   bridge.js           the Brooklyn Bridge
+  liberty.js          the Statue of Liberty, her pedestal and her island
   terrain.js          relief on the far shores
   wtc.js              the towers, the complex, the plaza
   city.js             footprint extrusion, crowns, streets, water
   nightsky.js         the twilight and night dome
-  textures.js         procedural facade, roof, plaza and water textures
+  textures.js         procedural facade, roof, plaza, granite and copper
   details.js          roof clutter, trees, traffic, street lamps
   geo.js              shared geometry helpers
 build/
@@ -1177,6 +1296,8 @@ raw/                  cached Overpass responses
   water/green.json
   bridge.json           the Brooklyn Bridge carriageway, outside the
                         building box but inside the view
+  liberty.json          Fort Wood, the pedestal as mapped squares, and
+                        the trees on Liberty Island
   relief.json           named hills with elevations, and the Palisades
   coast.json            the coastline, which defines where land is
   pools_geom.json       memorial pool corners — the source of the
@@ -1219,4 +1340,6 @@ Rendering with [three.js](https://threejs.org) r160 (MIT), vendored under
 The code in this repository is MIT licensed — see [LICENSE](LICENSE).
 
 Tower dimensions are from published figures for the Port Authority's
-1966–1973 construction.
+1966–1973 construction. The Statue of Liberty's dimensions are from the
+National Park Service's published figures; her plan — Fort Wood's star and the
+pedestal's squares — is from OpenStreetMap like everything else here.

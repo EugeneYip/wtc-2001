@@ -52,6 +52,30 @@ export function norm(g) {
   return out;
 }
 
+/**
+ * UVs from world position, for anything faced in a tiling material.
+ *
+ * Masonry is laid in courses that run level and carry on round a corner, so
+ * its texture has to be keyed to where a surface is in the world rather than
+ * to how its geometry happens to be unwrapped. Each triangle is projected
+ * along whichever axis its normal is most aligned with, and `tile` is how many
+ * metres one repeat of the map covers — so the material's own repeat stays at
+ * one, or the tile size is applied twice.
+ */
+export function boxUV(g, tile) {
+  const p = g.getAttribute('position');
+  const n = g.getAttribute('normal');
+  const uv = g.getAttribute('uv');
+  const k = 1 / tile;
+  for (let i = 0; i < p.count; i++) {
+    const nx = Math.abs(n.getX(i)), ny = Math.abs(n.getY(i)), nz = Math.abs(n.getZ(i));
+    if (ny > nx && ny > nz) uv.setXY(i, p.getX(i) * k, p.getZ(i) * k);
+    else uv.setXY(i, (nx > nz ? p.getZ(i) : p.getX(i)) * k, p.getY(i) * k);
+  }
+  uv.needsUpdate = true;
+  return g;
+}
+
 /** Footprint ring (x, z pairs) to a THREE.Shape with correct winding. */
 export function shapeFrom(poly) {
   const pts = poly.map(([x, z]) => new THREE.Vector2(x, -z));

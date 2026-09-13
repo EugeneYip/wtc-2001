@@ -31,6 +31,7 @@ import { roofClutter, trees, traffic, parkedCars, manholes, vessels,
          DETAIL_MATS, VESSEL_MATS } from './details.js';
 import { makeNightSky } from './nightsky.js';
 import { buildBridge, BRIDGE_MATS } from './bridge.js';
+import { buildLiberty, setLibertyNight } from './liberty.js';
 import { buildRelief } from './terrain.js';
 import { GROUND } from './geo.js';
 
@@ -301,6 +302,7 @@ function applyTime(hour) {
   BRIDGE_MATS.lamp.emissiveIntensity = lit * 2.4;
   VESSEL_MATS.navLight.emissiveIntensity = lit * 4.2;
   BRIDGE_MATS.deck.emissiveIntensity = lit * 0.10;
+  setLibertyNight(lit);
   BRIDGE_MATS.walk.emissiveIntensity = lit * 0.10;
 
   CITY_MATS.water.color.copy(WATER_DAY).lerp(WATER_NIGHT, dusk);
@@ -648,6 +650,14 @@ function makeLabels() {
     { name: '2 World Trade Center', sub: '1,362\u00a0ft · 415\u00a0m · 110\u00a0floors', rank: 0,
       x: data.towers.wtc2.c[0], y: 415, z: data.towers.wtc2.c[1], big: true },
   ];
+  if (data.liberty) {
+    // Rank 0, which is what the towers get: it is three and a half kilometres
+    // out, so at rank 1 it would never be within reach of a label at all.
+    items.push({ name: 'Statue of Liberty',
+                 sub: '305\u00a0ft · 93\u00a0m · Bartholdi, 1886', rank: 0,
+                 x: data.liberty.at[0], y: GROUND.land + 92.99,
+                 z: data.liberty.at[1] });
+  }
   for (const b of data.complex) {
     const cx = b.p.reduce((s, p) => s + p[0], 0) / b.p.length;
     const cz = b.p.reduce((s, p) => s + p[1], 0) / b.p.length;
@@ -896,6 +906,12 @@ async function init() {
     }
   }
 
+  // Three and a half kilometres down the harbour, and the only thing out there
+  // anybody would notice the absence of.
+  const liberty = buildLiberty(data.liberty,
+                               { grass: CITY_MATS.park, walk: CITY_MATS.sidewalk });
+  if (liberty) scene.add(liberty);
+
   // Relief on the far shores, laid over the flat land rather than displacing
   // it: the coastline underneath is accurate to a few metres and a grid coarse
   // enough to afford would have chewed it up.
@@ -916,9 +932,9 @@ async function init() {
   const footprints = obstacleIndex(data.buildings.map((b) => b.p));
   // The complex's low-rise roofs take the same plant as the rest of the city.
   for (const m of roofClutter(data.buildings.concat(data.complex))) detail.add(m);
-  for (const m of trees(data.parks, PLAZA_TREE_SITES(data, obstacleIndex), footprints)) {
-    detail.add(m);
-  }
+  const treeSites = PLAZA_TREE_SITES(data, obstacleIndex)
+    .concat((liberty && liberty.userData.treeSites) || []);
+  for (const m of trees(data.parks, treeSites, footprints)) detail.add(m);
   // Sit them on the carriageway, not on the pavement level.
   const roadFleet = traffic(data.roads, tier.cars, footprints, GROUND.asphalt);
   for (const m of roadFleet) detail.add(m);

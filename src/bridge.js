@@ -19,7 +19,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'BufferGeometryUtils';
-import { norm, GROUND } from './geo.js';
+import { norm, boxUV, GROUND } from './geo.js';
 import { graniteTexture, GRANITE_TILE_M, roadTexture } from './textures.js';
 
 const TOWER_H = 84.3;
@@ -227,19 +227,7 @@ function tower(deckY) {
  * already in world coordinates by the time they are merged, so it is a pass
  * over the vertices and costs nothing to draw.
  */
-function stoneUV(g) {
-  const p = g.getAttribute('position');
-  const n = g.getAttribute('normal');
-  const uv = g.getAttribute('uv');
-  const k = 1 / GRANITE_TILE_M;
-  for (let i = 0; i < p.count; i++) {
-    const nx = Math.abs(n.getX(i)), ny = Math.abs(n.getY(i)), nz = Math.abs(n.getZ(i));
-    if (ny > nx && ny > nz) uv.setXY(i, p.getX(i) * k, p.getZ(i) * k);
-    else uv.setXY(i, (nx > nz ? p.getZ(i) : p.getX(i)) * k, p.getY(i) * k);
-  }
-  uv.needsUpdate = true;
-  return g;
-}
+const stoneUV = (g) => boxUV(g, GRANITE_TILE_M);
 
 /** A run of thin box segments along a polyline, as a cable or a stay. */
 function strand(points, r, open = false) {

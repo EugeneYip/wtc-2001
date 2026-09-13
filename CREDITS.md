@@ -17,6 +17,13 @@ are built on the original tower footprints, as mapped in OpenStreetMap.
 Flags are placed from a fixed seed, not from any record of which buildings
 flew one. Their size and proportions are the standard ones.
 
+Liberty Island's outline, the eleven-pointed star of Fort Wood, the stack of
+squares that is Richard Morris Hunt's pedestal and the positions of the
+island's trees are all from OpenStreetMap. The direction the statue faces is
+derived from the pedestal's own mapped faces rather than taken from a source:
+they run on grid bearings 28 and 118, which leaves four possible normals, of
+which one is seaward.
+
 Relief on the far shores is placed from the named hills around the harbour,
 which OpenStreetMap carries with real elevations, and from the Palisades, which
 it maps as a cliff line. The gentle undulation between them is invented.
@@ -41,6 +48,14 @@ dimensions and historic site plans, and any error in them is mine:
 - The Deutsche Bank Building at 130 Liberty Street, demolished 2007–2011
 - The Brooklyn Bridge: plan from OpenStreetMap, section from published figures
   for the 1883 structure — 1,595 ft 6 in main span, 276 ft 6 in towers
+- The Statue of Liberty: plan from OpenStreetMap, dimensions from the National
+  Park Service's published figures for the 1886 statue and pedestal — 305 ft
+  1 in overall, 151 ft 1 in of copper on an 89 ft pedestal on a 65 ft
+  foundation. The figure itself is lofted from cross sections and is a likeness
+  at the distance she is looked at from, not a copy of Bartholdi's modelling;
+  the face is a suggestion. The trees on her island are where OpenStreetMap has
+  them now, which is not a 2001 survey — the beds were rearranged in 2019 — and
+  the visitor buildings on it, all of which postdate 2001, are not modelled
 - Height and massing corrections for the World Financial Center, the
   Woolworth Building and the Barclay-Vesey Building
 - Cladding corrections for the Woolworth and American Surety buildings, which

@@ -279,9 +279,13 @@ export function trees(parks, extraSites, avoid) {
   }
   for (const site of extraSites || []) {
     // Plaza trees stand on the deck, not at street level, and have to keep
-    // clear of the towers and the low-rise buildings around them.
-    for (const [x, z] of scatter(site.poly, site.n, rand,
-                                 { avoid: site.avoid, margin: site.margin || 6 })) {
+    // clear of the towers and the low-rise buildings around them. A site can
+    // also carry its own positions rather than a polygon to scatter in — the
+    // trees on Liberty Island are mapped individually, so they are placed and
+    // not sown.
+    const at = site.at || scatter(site.poly, site.n, rand,
+                                  { avoid: site.avoid, margin: site.margin || 6 });
+    for (const [x, z] of at) {
       spots.push([x, z, site.scale || 1, site.y || 0]);
     }
   }
