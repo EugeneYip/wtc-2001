@@ -371,38 +371,78 @@ function carriageway(w) {
 }
 
 /**
- * Body shells. Each is one merged geometry so a vehicle costs a single
- * instance: the glass is a vertex colour rather than a second mesh.
+ * Body shells.
+ *
+ * These were three flat-sided boxes each, sitting on the road with nothing
+ * under them, and from across the street a rank of parked cars read as a row
+ * of shipping containers. What a vehicle needs before it reads as one is not
+ * detail but two things in the silhouette: it has to be **up on wheels**, with
+ * daylight under the sills and a gap between the axles, and it has to **narrow
+ * towards the roof**. Neither costs much.
+ *
+ * The wheels are one dark block per axle running the full width rather than
+ * four separate ones. Down the side — which is every view of a parked car
+ * there is — the two are identical, and it halves what the wheels cost on
+ * three thousand instances. Looked at square from in front, low down, the
+ * block reads as solid where two wheels should be; there is no light under
+ * there to give it away.
+ *
+ * Each is still one merged geometry, so a vehicle is a single instance: the
+ * glass and the tyres are vertex colours rather than separate meshes.
  */
 function shells() {
-  const box = (w, h, d, x, y, c) => {
-    const g = norm(new THREE.BoxGeometry(w, h, d));
-    g.translate(x, y, 0);
+  const tint = (g, c) => {
     const n = g.getAttribute('position').count;
     const col = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) { col[i * 3] = c[0]; col[i * 3 + 1] = c[1]; col[i * 3 + 2] = c[2]; }
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));
     return g;
   };
+  const box = (w, h, d, x, y, c) => {
+    const g = norm(new THREE.BoxGeometry(w, h, d));
+    g.translate(x, y, 0);
+    return tint(g, c);
+  };
+  // A box whose top face is pulled in: tuck-in on the body sides, and the rake
+  // of a windscreen and a backlight on the cabin.
+  const wedge = (w, h, d, x, y, c, kx, kz, sh) => {
+    const g = new THREE.BoxGeometry(w, h, d);
+    const p = g.getAttribute('position');
+    for (let i = 0; i < p.count; i++) {
+      if (p.getY(i) > 0) {
+        p.setX(i, p.getX(i) * kx + (sh || 0));
+        p.setZ(i, p.getZ(i) * kz);
+      }
+    }
+    g.computeVertexNormals();
+    g.translate(x, y, 0);
+    return tint(norm(g), c);
+  };
+  // An axle: the tyres and what little of the running gear shows between them.
+  const axle = (x, r, w) => box(r * 2, r * 2, w, x, r, TYRE);
   const BODY = [1, 1, 1];                    // takes the instance colour
   const GLASS = [0.13, 0.15, 0.18];
+  const TYRE = [0.10, 0.10, 0.11];
   const DARK = [0.28, 0.28, 0.29];
   return {
-    // A saloon: bonnet, cabin, boot.
+    // A saloon: bonnet, cabin, boot, up on 0.64 m wheels.
     car: mergeGeometries([
-      box(4.4, 1.05, 1.85, 0, 0.52, BODY),
-      box(2.3, 0.85, 1.62, -0.25, 1.42, GLASS),
+      axle(1.38, 0.32, 1.72), axle(-1.34, 0.32, 1.72),
+      wedge(4.40, 0.68, 1.86, 0, 0.76, BODY, 1.0, 0.96),
+      wedge(2.46, 0.44, 1.72, -0.18, 1.32, GLASS, 0.68, 0.88, -0.16),
     ]),
     // A step van, the workhorse of every delivery street down here.
     van: mergeGeometries([
-      box(6.6, 2.45, 2.35, 0.3, 1.45, BODY),
-      box(1.9, 1.05, 2.20, -2.6, 1.75, GLASS),
-      box(7.2, 0.35, 2.10, 0.1, 0.35, DARK),
+      axle(2.05, 0.42, 2.14), axle(-1.95, 0.42, 2.14),
+      wedge(6.60, 1.95, 2.34, 0.30, 1.78, BODY, 1.0, 0.97),
+      box(1.90, 0.90, 2.22, -2.60, 2.10, GLASS),
+      box(7.00, 0.30, 2.05, 0.10, 0.66, DARK),
     ]),
     bus: mergeGeometries([
-      box(11.6, 2.35, 2.55, 0, 1.65, BODY),
-      box(11.0, 0.85, 2.45, 0.1, 2.35, GLASS),
-      box(11.8, 0.40, 2.30, 0, 0.42, DARK),
+      axle(4.15, 0.50, 2.42), axle(-3.60, 0.50, 2.42), axle(-4.70, 0.50, 2.42),
+      wedge(11.60, 1.95, 2.54, 0, 1.98, BODY, 1.0, 0.97),
+      box(11.00, 0.82, 2.46, 0.10, 2.68, GLASS),
+      box(11.60, 0.28, 2.24, 0, 0.84, DARK),
     ]),
   };
 }
@@ -1099,12 +1139,20 @@ const HULL = [
 ];
 
 export const VESSEL_MATS = {
-  // No vertexColors: the hulls are instanced now and take their colour from
+  // No vertexColors: the hulls are instanced and take their colour from
   // instanceColor. Left on, three declares the colour attribute the unit
   // geometry does not have, WebGL supplies its default of zero, and every
   // vessel in the harbour renders black.
   hull: new THREE.MeshStandardMaterial({
     color: 0xffffff, roughness: 0.62, metalness: 0.20 }),
+  // The deck is a mesh of its own rather than part of the hull, and the reason
+  // is worth writing down: a vertex colour *multiplies* the instance colour,
+  // so greying the deck down inside the hull geometry only gives a darker
+  // version of whatever she is painted — a dark orange deck on an orange boat,
+  // which is still a raft. A deck is not the colour of the topsides at all. It
+  // costs one more instanced draw for thirty-eight boats.
+  deck: new THREE.MeshStandardMaterial({
+    color: 0x6b6f6a, roughness: 0.88, metalness: 0.04 }),
   wake: new THREE.MeshStandardMaterial({
     color: 0xc7d8de, roughness: 0.4, metalness: 0.0, vertexColors: true,
     transparent: true, opacity: 0.34, depthWrite: false }),
@@ -1176,19 +1224,86 @@ export function vessels(land, count = 16, reach = 2600) {
   // baked in place cannot move, and a wake behind a vessel that never moves is
   // a frozen frame: the water drifts, the boats sit still, and the wake claims
   // a speed the boat plainly does not have.
+  // A hull rather than a box with one end pinched.
+  //
+  // What was here was a single cuboid with the bow corners pulled in — twelve
+  // triangles — and from anywhere close it read as a raft, or as a piece of
+  // dock that had come adrift. A boat is not hard to suggest: it needs a stem
+  // that rakes forward, a beam that is widest amidships and gone by the bow, a
+  // flat transom at the stern, and a sheer line that lifts at both ends. Built
+  // as stations along the length, which is how a hull is faired anyway, it
+  // comes to thirty-four triangles, and there are only thirty-eight boats.
+  // The deck is built alongside the shell but kept in its own list; see
+  // VESSEL_MATS.deck for why it cannot simply be a colour on the hull.
+  const deckPos = [];
   const hullGeo = (() => {
-    const g = new THREE.BoxGeometry(1, 1, 1);
-    g.translate(0, 0.5, 0);
-    const p = g.getAttribute('position');
-    for (let i = 0; i < p.count; i++) {
-      if (p.getX(i) > 0) p.setZ(i, p.getZ(i) * 0.45);   // taper the bow
+    // x from -0.5 (transom) to 0.5 (stem); y 0 at the keel, about 1 at deck.
+    const st = [
+      // [ x, half-beam at deck, half-beam at keel, deck height ]
+      [-0.50, 0.44, 0.30, 0.96],
+      [-0.22, 0.50, 0.44, 0.88],
+      [ 0.10, 0.50, 0.42, 0.87],
+      [ 0.34, 0.39, 0.22, 0.93],
+      [ 0.50, 0.07, 0.03, 1.00],
+    ];
+    const pos = [];
+    const tri = (a, b, c) => { pos.push(...a, ...b, ...c); };
+    const quad = (a, b, c, d) => { tri(a, b, c); tri(a, c, d); };
+    const deck = (a, b, c, d) => {
+      deckPos.push(...a, ...b, ...c, ...a, ...c, ...d);
+    };
+    // A quad on the shell, wound so its normal points out of the boat. The two
+    // sides are mirror images, so one of them has to run the other way round;
+    // taken on trust, the whole starboard side faces inward and is culled, and
+    // a hull with one side missing looks exactly like a hull that is mostly
+    // underwater.
+    const shell = (s, a, b, c, d) => (s > 0 ? quad(a, d, c, b) : quad(a, b, c, d));
+    for (let i = 0; i < st.length - 1; i++) {
+      const [x0, d0, k0, h0] = st[i], [x1, d1, k1, h1] = st[i + 1];
+      for (const s of [1, -1]) {
+        // Topsides, then the turn of the bilge down to the keel line.
+        shell(s, [x0, h0, s * d0], [x1, h1, s * d1], [x1, 0.22, s * k1], [x0, 0.22, s * k0]);
+        shell(s, [x0, 0.22, s * k0], [x1, 0.22, s * k1], [x1, 0, 0], [x0, 0, 0]);
+        // Deck. Set a little below the sheer line, so the topsides stand
+        // proud of it as a bulwark rather than the deck running out flush to
+        // the edge — which is what a raft does. Kept aside as its own mesh.
+        if (s > 0) {
+          deck([x0, h0 - 0.05, d0 * 0.96], [x1, h1 - 0.05, d1 * 0.96],
+               [x1, h1 - 0.05, -d1 * 0.96], [x0, h0 - 0.05, -d0 * 0.96]);
+        }
+      }
     }
-    return norm(g);
+    // Transom.
+    const [, d0, k0, h0] = st[0];
+    quad([-0.5, h0, d0], [-0.5, h0, -d0], [-0.5, 0.22, -k0], [-0.5, 0.22, k0]);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(
+      new Float32Array((pos.length / 3) * 2), 2));
+    g.computeVertexNormals();
+    return g;
   })();
+  const deckGeo = (() => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(deckPos, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(
+      new Float32Array((deckPos.length / 3) * 2), 2));
+    g.computeVertexNormals();
+    return g;
+  })();
+  // A deckhouse in two steps with a mast on it, rather than one blank cube.
   const houseGeo = (() => {
-    const g = new THREE.BoxGeometry(1, 1, 1);
-    g.translate(0, 0.5, 0);
-    return norm(g);
+    const part = (w, h, d, x, y) => {
+      const b = new THREE.BoxGeometry(w, h, d);
+      b.translate(x, y, 0);
+      return norm(b);
+    };
+    const g = mergeGeometries([
+      part(1, 0.62, 1, 0, 0.31),               // accommodation
+      part(0.52, 0.30, 0.78, 0.12, 0.77),      // wheelhouse
+      part(0.07, 0.55, 0.07, -0.10, 1.19),     // mast
+    ]);
+    return g;
   })();
   // The wake: a wedge astern, bright where the water is broken and fading out
   // along its length. Alpha lives in the vertex colour, so the taper is in the
@@ -1216,14 +1331,17 @@ export function vessels(land, count = 16, reach = 2600) {
 
   const n = picks.length;
   const hulls = new THREE.InstancedMesh(hullGeo, VESSEL_MATS.hull, n);
+  const decks = new THREE.InstancedMesh(deckGeo, VESSEL_MATS.deck, n);
   const houses = new THREE.InstancedMesh(houseGeo, VESSEL_MATS.hull, n);
   const wakes = new THREE.InstancedMesh(wakeGeo, VESSEL_MATS.wake, n);
   const lamps = new THREE.InstancedMesh(
     norm(new THREE.SphereGeometry(0.5, 6, 5)), VESSEL_MATS.navLight, n);
   hulls.castShadow = hulls.receiveShadow = true;
+  decks.receiveShadow = true;
   houses.castShadow = houses.receiveShadow = true;
   wakes.renderOrder = 1;
   hulls.name = 'vessels';
+  decks.name = 'vessel-decks';
   houses.name = 'vessel-houses';
   wakes.name = 'wakes';
   lamps.name = 'vessel-lights';
@@ -1243,9 +1361,9 @@ export function vessels(land, count = 16, reach = 2600) {
     if (im.instanceColor) im.instanceColor.needsUpdate = true;
   }
   hulls.userData.tracks = tracks;
-  hulls.userData.crew = { houses, wakes, lamps };
+  hulls.userData.crew = { decks, houses, wakes, lamps };
   animateVessels(hulls, 0);
-  return [hulls, houses, wakes, lamps];
+  return [hulls, decks, houses, wakes, lamps];
 }
 
 const _vm = new THREE.Matrix4();
@@ -1261,7 +1379,7 @@ const _vup = new THREE.Vector3(0, 1, 0);
  */
 export function animateVessels(hulls, t) {
   if (!hulls || !hulls.userData.tracks) return;
-  const { houses, wakes, lamps } = hulls.userData.crew;
+  const { decks, houses, wakes, lamps } = hulls.userData.crew;
   const tracks = hulls.userData.tracks;
   for (let i = 0; i < tracks.length; i++) {
     const k = tracks[i];
@@ -1274,13 +1392,19 @@ export function animateVessels(hulls, t) {
     const x = k.x + ux * along, z = k.z + uz * along;
     _vq.setFromAxisAngle(_vup, -heading);
 
-    _vp.set(x, -1.1, z);
+    // Sit her at her marks. This used to be a fixed -1.1, which was three
+    // tenths of a metre of draught when the sea was at -0.55 and less than
+    // that after the ground levels were sorted out; a working boat floats a
+    // good deal deeper than that, and how deep depends on how big she is.
+    _vp.set(x, GROUND.sea - 0.26 * k.kind.h, z);
     _vs.set(k.kind.l, k.kind.h, k.kind.w);
     _vm.compose(_vp, _vq, _vs);
     hulls.setMatrixAt(i, _vm);
+    decks.setMatrixAt(i, _vm);
 
     const [hw, hh, hd] = k.kind.house;
-    _vp.set(x - Math.cos(heading) * k.kind.l * 0.18, k.kind.h - 1.1,
+    const deck = GROUND.sea + 0.74 * k.kind.h;
+    _vp.set(x - Math.cos(heading) * k.kind.l * 0.18, deck,
             z - Math.sin(heading) * k.kind.l * 0.18);
     _vs.set(hw, hh, hd);
     _vm.compose(_vp, _vq, _vs);
@@ -1290,20 +1414,21 @@ export function animateVessels(hulls, t) {
     // lengths and a couple of beams: at nine lengths and three beams it was a
     // white sheet half a kilometre long lying on the harbour.
     const speed = Math.abs(vel);
-    _vp.set(x - Math.cos(heading) * k.kind.l * 0.5, -0.42,
+    _vp.set(x - Math.cos(heading) * k.kind.l * 0.5, GROUND.sea + 0.13,
             z - Math.sin(heading) * k.kind.l * 0.5);
     _vs.set(k.kind.l * (0.6 + 1.6 * speed), 1, k.kind.w * (0.45 + 0.6 * speed));
     _vm.compose(_vp, _vq, _vs);
     wakes.setMatrixAt(i, _vm);
 
     _vp.set(x - Math.cos(heading) * k.kind.l * 0.18,
-            k.kind.h + hh - 0.7,
+            deck + hh * 1.2,
             z - Math.sin(heading) * k.kind.l * 0.18);
     _vs.set(1, 1, 1);
     _vm.compose(_vp, _vq, _vs);
     lamps.setMatrixAt(i, _vm);
   }
   hulls.instanceMatrix.needsUpdate = true;
+  decks.instanceMatrix.needsUpdate = true;
   houses.instanceMatrix.needsUpdate = true;
   wakes.instanceMatrix.needsUpdate = true;
   lamps.instanceMatrix.needsUpdate = true;

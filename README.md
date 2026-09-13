@@ -204,6 +204,45 @@ vans and buses as well as cars, and a slot may carry a second vehicle close
 behind the first, because traffic bunches at the lights rather than spacing
 itself evenly.
 
+**What makes a vehicle read as one.** Every car, van and bus was two or three
+flat-sided boxes sitting on the road with nothing under them, and from across
+the street a rank of parked cars was a row of shipping containers. What a
+vehicle needs is not detail; it is two things in the silhouette. It has to be
+**up on wheels**, with daylight under the sills and a gap between the axles.
+And it has to **narrow towards the roof** — a tuck-in on the body sides and the
+rake of a windscreen and a backlight, which is most of what tells a car from a
+crate at any distance at all.
+
+The wheels are one dark block per axle running the full width rather than four
+separate ones. Down the side — which is every view of a parked car there is —
+the two are identical, and it halves what wheels cost on three thousand
+instances. Square on from in front, low down, the block reads as solid where
+two wheels should be; there is no light under there to give it away.
+
+**And the boats were rafts.** A vessel was a single cuboid with the bow corners
+pulled in: twelve triangles, and from anywhere close it read as a piece of dock
+that had come adrift. A boat is not hard to suggest — a stem that rakes
+forward, a beam widest amidships and gone by the bow, a flat transom, and a
+sheer that lifts at both ends. Built as stations along the length, which is how
+a hull is faired anyway, it comes to thirty-four triangles, and there are only
+thirty-eight boats.
+
+Two things about it were wrong the first time and both are worth the note. The
+two sides of a hull are mirror images, so **one of them has to be wound the
+other way round**; taken on trust, the whole starboard side faced inward and
+was culled, and a hull with one side missing looks exactly like a hull sitting
+too low in the water. And the deck cannot be greyed down inside the hull
+geometry, because a vertex colour *multiplies* the instance colour: on an
+orange boat it gives a dark orange deck, which is still a raft. The deck is a
+mesh of its own, and one more instanced draw for the whole harbour.
+
+The hulls also sit at their marks now. Their base was a fixed −1.1 m, which was
+three tenths of a metre of draught when the sea was at −0.55 and less than that
+once the ground levels were sorted out. Draught goes with size.
+
+All of it costs 213,000 triangles and one draw call, on a frame that was
+already established as fill-bound rather than geometry-bound.
+
 Junctions come free: OpenStreetMap splits ways where they meet, so the ends of
 the ways *are* the junctions and no intersection test is needed. Every crossing
 of two real streets gets painted crosswalks and a stop bar on each approach —
