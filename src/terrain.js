@@ -47,6 +47,16 @@ function valueNoise(seed) {
   };
 }
 
+function ringContains(poly, x, z) {
+  let hit = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, zi] = poly[i], [xj, zj] = poly[j];
+    if ((zi > z) !== (zj > z) &&
+        x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) hit = !hit;
+  }
+  return hit;
+}
+
 /** Shortest distance from a point to a polyline, squared. */
 function distToLine2(x, z, pts) {
   let best = Infinity;
@@ -81,6 +91,17 @@ export function buildRelief(relief, landPolys, material) {
   // crossing tests and about four seconds — most of the load. A scanline gets
   // the same mask by visiting each edge once a row instead of once a cell.
   const land = rasterise(rings, -REACH, -REACH, STEP, N, N);
+  // The island this model stands on is not far shore. Its ground, its streets
+  // and its parks are all modelled in detail, and the relief has no business
+  // lifting them: run over Lower Manhattan it put a sheet a few metres up
+  // across the whole street grid, so from anywhere above eye level the roads
+  // were a layer of grey. Even at zero height it would sit two centimetres
+  // over the flat ground and fight it for depth. Find the ring the origin is
+  // standing in and keep the relief out of it altogether.
+  const homeRings = rings.filter((r) => ringContains(r, 0, 0));
+  const home = homeRings.length
+    ? rasterise(homeRings, -REACH, -REACH, STEP, N, N)
+    : new Uint8Array(N * N);
   const blur = (src, r) => {
     const tmp = new Float32Array(N * N), out = new Float32Array(N * N);
     const w = r * 2 + 1;
@@ -154,6 +175,8 @@ export function buildRelief(relief, landPolys, material) {
       const wet = land[j * N + i] < 1 || land[j * N + i + 1] < 1 ||
                   land[(j + 1) * N + i] < 1 || land[(j + 1) * N + i + 1] < 1;
       if (wet) continue;
+      if (home[j * N + i] || home[j * N + i + 1] ||
+          home[(j + 1) * N + i] || home[(j + 1) * N + i + 1]) continue;
       const inl = Math.min(inland[j * N + i], inland[j * N + i + 1],
                            inland[(j + 1) * N + i], inland[(j + 1) * N + i + 1]);
       if (inl < SHORE_FADE[0] + 0.04) continue;

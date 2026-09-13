@@ -293,6 +293,28 @@ undulates gently, and that part carries no claim; it is kept modest on purpose,
 because the near shores of this harbour really are low and flat and giving
 Jersey City a mountain range would be a worse lie than the table it replaces.
 
+It also has to stay off this island, which took far too long to notice. The
+land mask is built from the coastline, and Manhattan is land: so the relief was
+generated over Lower Manhattan too, and the inland blur that decides how far
+from the water you are made the middle of the island count as thoroughly
+inland. The result was an invented hill under the city — 2.5 m at the WTC site,
+6 m half a kilometre out, 10 m at a kilometre — carrying the grey ground
+material, sitting above the roads. The buildings were tall enough to poke
+through it, so what you saw was a sheet of grey filling every street, and
+whether it hid the road depended on the angle you looked from. Rendered in red
+over an aerial view, it was the entire street grid.
+
+Even at zero height it would have been wrong: a relief cell over the city sits
+two centimetres above the flat ground and fights it for depth. So the relief
+now finds the ring the origin is standing in and is not generated inside it at
+all. That is 2,722 triangles saved and the closest relief vertex to the towers
+goes from 14 m to 1.7 km, which is the far side of the river, where it belongs.
+
+Worth saying plainly: this arrived with the relief and was not caught when it
+did. The checks then were all about the far shore and the coastline — whether
+the horizon was broken and whether the pier fingers survived — and none of them
+looked at what the new surface was doing to the ground underfoot.
+
 It is a separate surface laid a couple of centimetres over the flat land rather
 than a displacement of it. The coastline is the most carefully built thing in
 this model and is accurate to a few metres; a grid coarse enough to afford
