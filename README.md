@@ -729,6 +729,94 @@ all. There are no shadows on her: the sun's shadow camera covers about a
 kilometre around the towers and she is three and a half out. At the range she
 is normally seen from, her own shading carries her.
 
+**Ellis Island.** Nearer to the towers than the statue is — two and a half
+kilometres — and sitting between her and the city, so it is in almost every
+view down the harbour. It was two bare slabs of ground.
+
+It is the most thoroughly mapped thing this model reaches. OpenStreetMap
+carries all **fifty-one buildings** on both islands as traced footprints and
+names most of them: the Main Building, the Ferry Building, the Powerhouse, the
+Kitchen, the Mortuary, and on the south island the whole hospital complex down
+to the individual Contagious Disease Wards A to H. Even the covered corridors
+that link the pavilions are mapped. All of that is used as it stands.
+
+What the data does not carry is a single height. That is the curated part, and
+it lives in `build/build_scene.py` next to every other judgement call here. It
+is not fifty-one guesses: the whole complex went up between 1900 and 1936 for
+one service, in one brick, and the hospital pavilions are two storeys with the
+same floor-to-floor throughout, so the heights come off the elevations in
+groups. Everything is red brick with limestone dressings, which is a facade
+family this model did not have and now does.
+
+**The Main Building's four towers are placed off the survey, not off a
+photograph.** They do not stand on the corners of the footprint — they stand on
+the corners of the pavilion in the middle of it, and that pavilion is in the
+traced outline twice over: as a step forward on the harbour side and a step
+back behind. Which of the two long sides is the front is not something anybody
+had to decide either. A projecting pavilion is a run of wall in the *middle* of
+an elevation with wing either side of it; the back wall of a wing runs out to
+the ends of the building. So the side whose extreme vertices span an interior
+third of the length is the front, and the other one is not.
+
+What is *not* off the survey is how high they go. No source gives it, so the
+towers are proportioned against the cornice — a shaft, a belt course, an open
+stage with an arcade in it, a cornice, an ogee copper dome and a lantern — and
+that is the one dimension on this island that is drawn rather than measured.
+
+**Roofs, and why they are lofted rather than boxed.** Left flat, forty
+pavilions read from the towers as a grey industrial estate: these are steep
+slate roofs and they are most of what the island looks like from above. The
+first attempt put a hipped roof on each building's oriented bounding box, which
+roofs a rectangle correctly and nothing else — and half of these are not
+rectangles. The Baggage and Dormitory range is a T and the Main Building is a
+long U, so those two, the largest roofs on the island, stayed flat.
+
+What is here instead lofts the roof off the footprint's own outline: move the
+ring inward on all sides, lift it, and join the two. It is not a straight
+skeleton and it will not give the exact valley lines a real roof has at a
+reflex corner, but every ridge is where a ridge goes and every slope runs the
+right way, on any shape. The Main Building keeps a hand-built roof in three
+pieces, because the towers have to come up between them.
+
+Pitch is the thing to watch. A slate roof wants about thirty-eight degrees and
+these wings are fifty metres deep, so at thirty-eight the roof rises nineteen
+metres and is taller than the building under it. The wings run at sixteen
+degrees and the block between the towers at twelve, which is what stops the
+roof burying the domes it is meant to stand between.
+
+**Three great arched windows** on each face of the central block — the whole
+elevation of the Registry Room, and after the domes the thing the building is.
+Drawn as glazing rather than as holes: at a flat near-black with no sheen on
+it they came out as three caves cut into the front. Enough gloss to take the
+sky is what makes them windows, and at night they are the only thing on the
+island that is lit from inside.
+
+**The island is not lit like a street.** Every wall family in this city carries
+a map of lit windows and runs it at 0.95 after dark, which is an occupied
+office block. This was a museum that shut at six with a derelict hospital
+behind it, so the brick here is a copy of the family with the windows at a
+fifth of that: a few lights on, and most of the island dark. The roofs, the
+stone and the domes take the statue's floodlighting trick — emissive steered by
+the world normal, so it lands where a lamp on the ground would put it — which
+matters most on the roofs, because flat emissive made forty pale planes the
+brightest thing in a black harbour, and a roof is the one surface a floodlight
+standing on the ground never reaches.
+
+The paved walk round both harbour islands is laid in the same concrete as a
+Manhattan pavement and takes the same material, but no longer the same light: a
+pavement here carries a glow standing in for the sodium lamps over it, and
+neither island has a street lamp on it. Run at the city's level it drew a
+bright orange ring round each one.
+
+Also here: the Ferry Building's cupola, the covered corridors on their posts,
+and the 1986 service bridge to Liberty State Park — private, closed to
+visitors, and the only thing that joins either island to anywhere.
+
+**7 draw calls and 6,172 triangles** with the island in frame, plus 210 trees
+that are instances of the city's own and cost no call at all. The visitor
+buildings that postdate 2001 are not here, because there are none: everything
+on Ellis Island is older than the model.
+
 **Light and water.** The sun is placed from real solar geometry for 40.71° N
 on 11 September, so shadow directions through the day are the ones the site
 actually had. It is drawn by the Mie term of the sky model, and the asymmetry
@@ -1116,7 +1204,7 @@ out offset diagonally by 67.0 m east and 103.8 m south, which leaves the
 documented ~130 ft gap between their facing walls as an independent check
 that was never fed into the calculation.
 
-Seven things are deliberately not raw OpenStreetMap:
+Eight things are deliberately not raw OpenStreetMap:
 
 1. **Post-2001 buildings are removed** — the modern WTC site, and the towers
    that filled in the Financial District and Battery Park City between 2002
@@ -1183,6 +1271,14 @@ Seven things are deliberately not raw OpenStreetMap:
    she is looked at from. The face is a suggestion. The trees are where the
    trees are now rather than in 2001, and the visitor buildings on the island,
    which all postdate 2001, are not modelled at all.
+8. **Ellis Island's heights are the curated part of it.** Every footprint on
+   both islands is traced in OSM and used as it stands, and so are the covered
+   corridors, the seawalls and the trees. Not one of those buildings carries a
+   height, so the heights are assigned from what the complex is: one service,
+   one brick, two storeys on the hospital pavilions, three on the Main
+   Building, which is the only one OSM gives a storey count for. The four
+   towers are placed off the steps in the traced outline; how high they go is
+   proportioned, because no source states it.
 
 Background buildings with no height in OSM get a deterministic estimate from
 their id and footprint area, so the fabric varies instead of reading as one
@@ -1190,8 +1286,8 @@ uniform slab. Those are massing, not survey.
 
 ## Performance
 
-About 180 draw calls and 1.34M triangles in daylight — 191 and 1.35M from out
-in the harbour with Liberty Island in frame as well — and roughly 2 to 3 ms a
+About 190 draw calls and 1.40M triangles in daylight — 198 and 1.40M from out
+in the harbour with both Ellis and Liberty Island in frame — and roughly 2 to 3 ms a
 frame on an M2 at 2800 × 1800 once shaders are warm, with the post-processing
 running at full resolution and 4x multisampling.
 
@@ -1280,6 +1376,7 @@ src/
   main.js             renderer, sun, camera rig, UI
   bridge.js           the Brooklyn Bridge
   liberty.js          the Statue of Liberty, her pedestal and her island
+  ellis.js            Ellis Island, its fifty-one buildings and its roofs
   terrain.js          relief on the far shores
   wtc.js              the towers, the complex, the plaza
   city.js             footprint extrusion, crowns, streets, water
@@ -1298,6 +1395,8 @@ raw/                  cached Overpass responses
                         building box but inside the view
   liberty.json          Fort Wood, the pedestal as mapped squares, and
                         the trees on Liberty Island
+  ellis.json            every building on both of Ellis Island's islands,
+                        the covered corridors, and the trees
   relief.json           named hills with elevations, and the Palisades
   coast.json            the coastline, which defines where land is
   pools_geom.json       memorial pool corners — the source of the

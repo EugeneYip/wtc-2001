@@ -24,6 +24,12 @@ derived from the pedestal's own mapped faces rather than taken from a source:
 they run on grid bearings 28 and 118, which leaves four possible normals, of
 which one is seaward.
 
+Ellis Island's outline, all fifty-one buildings on its two islands, the
+covered corridors between the hospital pavilions, the seawalls, the 1986
+service bridge to Liberty State Park and the positions of its trees are from
+OpenStreetMap. None of those buildings carries a height in the data; the
+heights are assigned in `build/build_scene.py` and are the curated part of it.
+
 Relief on the far shores is placed from the named hills around the harbour,
 which OpenStreetMap carries with real elevations, and from the Palisades, which
 it maps as a cliff line. The gentle undulation between them is invented.
@@ -48,6 +54,14 @@ dimensions and historic site plans, and any error in them is mine:
 - The Deutsche Bank Building at 130 Liberty Street, demolished 2007–2011
 - The Brooklyn Bridge: plan from OpenStreetMap, section from published figures
   for the 1883 structure — 1,595 ft 6 in main span, 276 ft 6 in towers
+- Ellis Island's Main Building (Boring & Tilton, 1900): footprint from
+  OpenStreetMap, three storeys to the cornice as the data says, and four
+  copper-domed towers placed on the corners of the central pavilion, which are
+  found from the steps in the traced outline. How high the towers go is
+  proportioned against the cornice and not taken from any source. Every other
+  height on the island is assigned from the storey counts the complex was
+  built to, not measured, and every roof is lofted off its own footprint
+  rather than surveyed
 - The Statue of Liberty: plan from OpenStreetMap, dimensions from the National
   Park Service's published figures for the 1886 statue and pedestal — 305 ft
   1 in overall, 151 ft 1 in of copper on an 89 ft pedestal on a 65 ft

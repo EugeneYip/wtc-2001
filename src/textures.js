@@ -523,6 +523,14 @@ const SPECS = {
   terracotta:   { seed: 97, bayW: 2.6, floorH: 4.0, wall: '#cdc4b0', trim: '#ab9f88',
                   glass: '#242a31', winW: 0.40, winH: 0.66, sill: '#ded5c2',
                   wallRough: 0.90, glassRough: 0.11 },
+  // Red brick with limestone trim, in tall segmental-arched bays. Nothing in
+  // the Financial District is clad in this — it is here for Ellis Island,
+  // where every building on both islands is the same brick and the same
+  // dressings, because they were all put up by the same service between 1900
+  // and 1936.
+  brick_red:    { seed: 61, bayW: 3.5, floorH: 4.4, wall: '#8f5340', trim: '#c6bba4',
+                  glass: '#1d2228', winW: 0.40, winH: 0.68, sill: '#d4c9b2',
+                  grain: 0.05, wallRough: 0.95, glassRough: 0.12 },
   lowrise:      { seed: 53, bayW: 2.8, floorH: 3.9, wall: '#7e766c', trim: '#645d55',
                   glass: '#20262d', winW: 0.42, winH: 0.60, sill: '#8d857a',
                   wallRough: 0.93, glassRough: 0.11 },
@@ -969,7 +977,13 @@ export const COPPER_TILE_M = 8.0;
  * her read as a hundred-and-forty-year-old metal object rather than as a
  * green-painted one.
  */
+let _copper = null;
+
 export function copperTexture() {
+  // The statue's skin and the domes on Ellis Island's Main Building are the
+  // same material weathering the same way in the same harbour, so they share
+  // one drawing of it.
+  if (_copper) return _copper;
   const N = 512;
   const K = N / COPPER_TILE_M;                   // pixels per metre
   const [c, x] = canvas(N, N);
@@ -1046,12 +1060,13 @@ export function copperTexture() {
   hx.filter = 'none';
 
   const m = COPPER_TILE_M;
-  return {
+  _copper = {
     map: finish(c, 1, 1),
     // Two and a half centimetres of relief on a seam — enough to catch a low
     // sun, not enough to make her look quilted.
     normal: finishData(normalFromCanvas(hc, N, N, 0.05, m / N, m / N), 1, 1),
   };
+  return _copper;
 }
 
 // ---------------------------------------------------------------------------

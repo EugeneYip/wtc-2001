@@ -76,6 +76,61 @@ export function boxUV(g, tile) {
   return g;
 }
 
+/**
+ * A polygon moved in on itself by d metres, vertex by vertex along the
+ * bisector of the two edges that meet there. Scaling about the centroid is the
+ * cheap way to do this and it is wrong on anything long: Liberty Island is
+ * twice as long as it is wide, so a scale that takes ten metres off the ends
+ * takes five off the sides.
+ */
+export function inset(ring, d) {
+  const n = ring.length;
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const a = ring[(i + n - 1) % n], b = ring[i], c = ring[(i + 1) % n];
+    const e0 = [b[0] - a[0], b[1] - a[1]], e1 = [c[0] - b[0], c[1] - b[1]];
+    const l0 = Math.hypot(e0[0], e0[1]) || 1, l1 = Math.hypot(e1[0], e1[1]) || 1;
+    // Inward normal of an edge running (dx, dz) on a ring wound this way.
+    const n0 = [e0[1] / l0, -e0[0] / l0], n1 = [e1[1] / l1, -e1[0] / l1];
+    let bx = n0[0] + n1[0], bz = n0[1] + n1[1];
+    const lb = Math.hypot(bx, bz) || 1;
+    bx /= lb; bz /= lb;
+    // At a sharp corner the bisector has to reach further to stay d from both
+    // edges, but not without limit or a spike shoots off to infinity.
+    const k = d / Math.max(0.4, bx * n0[0] + bz * n0[1]);
+    out.push([b[0] + bx * k, b[1] + bz * k]);
+  }
+  return out;
+}
+
+/**
+ * The ground of an island in the harbour: lawn inside, and the paved walk that
+ * runs round the seawall outside it.
+ *
+ * Without this both of them stood on the same bare dark ground as the far
+ * shore, which from the towers read as oil slicks with monuments on them. They
+ * are mown grass and trees inside a concrete promenade, and at two or three
+ * kilometres the only part of that anyone can see is that they are green with
+ * a pale rim — so that is what this is. Returns the two surfaces and the ring
+ * the lawn stops at, which is also where anything planted has to stay inside.
+ */
+export function islandGround(ring, walk, levels) {
+  const edge = inset(ring, 1.5);
+  const lawn = inset(ring, walk);
+  const y = levels.walk;
+  const band = [];
+  for (let i = 0; i < edge.length; i++) {
+    const j = (i + 1) % edge.length;
+    const a = [edge[i][0], y, edge[i][1]], b = [edge[j][0], y, edge[j][1]];
+    const c = [lawn[j][0], y, lawn[j][1]], d = [lawn[i][0], y, lawn[i][1]];
+    band.push(...a, ...b, ...c, ...a, ...c, ...d);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(band, 3));
+  g.computeVertexNormals();
+  return { walk: norm(g), lawn: flat(lawn, levels.lawn), ring: lawn };
+}
+
 /** Footprint ring (x, z pairs) to a THREE.Shape with correct winding. */
 export function shapeFrom(poly) {
   const pts = poly.map(([x, z]) => new THREE.Vector2(x, -z));

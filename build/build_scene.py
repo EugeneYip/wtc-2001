@@ -1527,6 +1527,266 @@ def build_liberty(land):
         "trees": trees,
     }
 
+
+# ---------------------------------------------------------------------------
+# Ellis Island
+# ---------------------------------------------------------------------------
+
+# Not one of these buildings carries a height or a storey count in OSM except
+# the Main Building, which says three. Everything below is read off the
+# elevations: the whole complex went up between 1900 and 1936 for one service,
+# in one brick, and the hospital pavilions are all two storeys with the same
+# floor-to-floor. Heights are to the eaves; the roof is put on in the viewer.
+#
+# "canopy" is a roof on posts with no walls — the covered corridors that link
+# the hospital pavilions, which is what everybody photographs down there.
+ELLIS_BUILDINGS = {
+    "Ellis Island Immigration Museum": (19.5, "main"),
+    # The Kitchen and Laundry and the Baggage and Dormitory Building, in one
+    # mass behind the Main Building and joined to it.
+    95161972: (15.0, "brick"),
+    "Ferry Building": (10.5, "ferry"),
+    "Main Hospital Building": (13.0, "brick"),
+    "Hospital Extension": (13.0, "brick"),
+    "Hospital Administration Building": (10.0, "brick"),
+    "Contagious Disease Hospital Administration Building": (9.5, "brick"),
+    "Psychopathic Ward": (9.0, "brick"),
+    "Hospital Outbuilding": (8.5, "brick"),
+    "Office Building / Laboratory": (8.5, "brick"),
+    "Recreation Building": (9.0, "brick"),
+    "Staff House": (9.5, "brick"),
+    "Powerhouse": (12.0, "flat"),
+    "Kitchen": (6.0, "brick"),
+    "Mortuary": (5.5, "brick"),
+    "Recreation Shelter": (4.5, "canopy"),
+}
+ELLIS_WARD_H = 9.0          # the wards, A to H and J to L, all identical
+
+
+def _ellis_kind(tags, wid, area):
+    name = tags.get("name", "")
+    key = ELLIS_BUILDINGS.get(name) or ELLIS_BUILDINGS.get(wid)
+    if key:
+        return key
+    if "Ward" in name:
+        return (ELLIS_WARD_H, "brick")
+    if tags.get("building") == "roof" or tags.get("building:part") == "roof":
+        return (4.2, "canopy")
+    if tags.get("man_made") == "water_tower":
+        return (14.0, "flat")
+    # Unnamed: the only thing left to go on is how big it is.
+    if area > 3000:
+        return (15.0, "brick")
+    if area > 800:
+        return (12.0, "brick")
+    if area > 350:
+        return (9.0, "brick")
+    if area > 120:
+        return (6.5, "brick")
+    return (4.0, "flat")
+
+
+def _obb(pts):
+    """Minimum-area oriented bounding box: (origin, u, v, length, depth)."""
+    best = None
+    n = len(pts)
+    for i in range(n):
+        x0, z0 = pts[i]
+        x1, z1 = pts[(i + 1) % n]
+        dx, dz = x1 - x0, z1 - z0
+        L = math.hypot(dx, dz)
+        if L < 0.5:
+            continue
+        u = (dx / L, dz / L)
+        v = (-u[1], u[0])
+        us = [(p[0] - x0) * u[0] + (p[1] - z0) * u[1] for p in pts]
+        vs = [(p[0] - x0) * v[0] + (p[1] - z0) * v[1] for p in pts]
+        a = (max(us) - min(us)) * (max(vs) - min(vs))
+        if best is None or a < best[0]:
+            best = (a, (x0, z0), u, v, min(us), max(us), min(vs), max(vs))
+    if not best:
+        return None
+    _, o, u, v, u0, u1, v0, v1 = best
+    ox = o[0] + u[0] * u0 + v[0] * v0
+    oz = o[1] + u[1] * u0 + v[1] * v0
+    L, D = u1 - u0, v1 - v0
+    # Always come back with u along the longer side. Which edge of the ring
+    # happened to win the search decides nothing about the building, and
+    # anything reading this — a ridge line, a row of towers — wants the length.
+    if D > L:
+        ox, oz = ox + u[0] * L, oz + u[1] * L
+        u, v = v, (-u[0], -u[1])
+        L, D = D, L
+    return {
+        "o": [round(ox, 2), round(oz, 2)],
+        "u": [round(u[0], 5), round(u[1], 5)],
+        "L": round(L, 2), "D": round(D, 2),
+    }
+
+
+def _ellis_towers(pts):
+    """The four corners of the Main Building's central block.
+
+    Its towers do not stand on the corners of the footprint — they stand on the
+    corners of the pavilion in the middle: the part that steps forward of the
+    wings on the harbour side, with the back wall of the same block stepped in
+    behind it. Both steps are in the traced outline, so both can be found
+    rather than guessed.
+
+    Which of the two long sides the pavilion is on is decided by what the wall
+    at each extreme covers. A projecting pavilion is a run in the *middle* of
+    the elevation with wing on either side of it; the back wall of a wing runs
+    out to the ends of the building. So the side whose extreme vertices span an
+    interior third of the length is the front, and the other one is not.
+    """
+    box = _obb(pts)
+    if not box:
+        return None
+    ox, oz = box["o"]
+    ux, uz = box["u"]
+    vx, vz = -uz, ux
+    uv = [((p[0] - ox) * ux + (p[1] - oz) * uz,
+           (p[0] - ox) * vx + (p[1] - oz) * vz) for p in pts]
+    L = box["L"]
+    best = None
+    for sign in (1, -1):
+        w = [(u, v * sign) for u, v in uv]
+        vmin = min(v for _, v in w)
+        run = [u for u, v in w if v < vmin + 1.0]
+        if len(run) < 2:
+            continue
+        u0, u1 = min(run), max(run)
+        # Interior, and between a fifth and two thirds of the elevation.
+        if u0 < 0.12 * L or u1 > 0.88 * L:
+            continue
+        if not (0.20 * L < u1 - u0 < 0.66 * L):
+            continue
+        inner = [v for u, v in w if u0 + 2 < u < u1 - 2]
+        if not inner:
+            continue
+        best = (sign, u0, u1, vmin, max(inner))
+        break
+    if not best:
+        return None
+    sign, u0, u1, vf, vb = best
+    s = 3.2                                  # half a tower, less its projection
+    w = [(u, v * sign) for u, v in uv]
+
+    def at(du, dv):
+        dvs = dv * sign
+        return [round(ox + ux * du + vx * dvs, 2),
+                round(oz + uz * du + vz * dvs, 2)]
+
+    out = [at(u0 + s, vf + s), at(u1 - s, vf + s),
+           at(u0 + s, vb - s), at(u1 - s, vb - s)]
+
+    # The two wings, either side of the pavilion. Both are plain rectangles in
+    # this frame, so both can take a hipped roof — which matters, because left
+    # flat they are the two largest surfaces on the building, and from above
+    # they read as a pair of grey slabs either side of the only part of it that
+    # has a roof. A wing's depth comes off its own gable end: there are no
+    # vertices along its length to read it from, because it is a rectangle.
+    wings = []
+    for lo, hi, outer in ((0.0, u0, 0.0), (u1, L, L)):
+        if hi - lo < 8:
+            continue
+        vs = [v for u, v in w if abs(u - outer) < 1.5]
+        if len(vs) < 2 or max(vs) - min(vs) < 8:
+            continue
+        v0, v1 = min(vs), max(vs)
+        # The box is handed back in a frame whose +u and +v both run into it,
+        # whichever way the search happened to orient v.
+        if sign > 0:
+            wings.append({"o": at(lo, v0), "u": [round(ux, 5), round(uz, 5)],
+                          "L": round(hi - lo, 2), "D": round(v1 - v0, 2)})
+        else:
+            wings.append({"o": at(hi, v0), "u": [round(-ux, 5), round(-uz, 5)],
+                          "L": round(hi - lo, 2), "D": round(v1 - v0, 2)})
+    return {"at": out, "u": [round(ux, 5), round(uz, 5)],
+            "span": round(u1 - u0, 2), "depth": round(vb - vf, 2),
+            "wings": wings}
+
+
+def build_ellis(land):
+    """Ellis Island: both islands, every building on them, and the trees.
+
+    Closer to the site than Liberty Island and mapped in far more detail — the
+    hospital pavilions on the south island are all named individually. What is
+    missing from the data is every height, so those are the curated part.
+    """
+    path = os.path.join(RAW, "ellis.json")
+    if not os.path.exists(path):
+        print("  ellis island          : no extract, skipped")
+        return None
+    els = json.load(open(path))["elements"]
+
+    buildings, main, trees = [], None, []
+    link = None
+    for e in els:
+        t = e.get("tags", {})
+        if e["type"] == "node" and t.get("natural") == "tree":
+            trees.append([round(c, 1) for c in project(e["lat"], e["lon"])])
+            continue
+        if e["type"] != "way":
+            continue
+        g = [project(p["lat"], p["lon"]) for p in e.get("geometry", [])]
+        if g and g[0] == g[-1]:
+            g = g[:-1]
+        if t.get("man_made") == "bridge" and len(g) >= 4:
+            # The 1986 service bridge to Liberty State Park. Private, and the
+            # only thing that joins either island to anywhere.
+            box = _obb(g)
+            if box:
+                link = box
+            continue
+        if len(g) < 3:
+            continue
+        if not (t.get("building") or t.get("building:part") == "roof"
+                or t.get("man_made") == "water_tower"):
+            continue
+        a2 = 0.0
+        for i in range(len(g)):
+            x0, z0 = g[i]
+            x1, z1 = g[(i + 1) % len(g)]
+            a2 += x0 * z1 - x1 * z0
+        area = abs(a2) / 2.0
+        if area < 8:
+            continue
+        h, kind = _ellis_kind(t, e["id"], area)
+        rec = {"p": [[round(x, 2), round(z, 2)] for x, z in ccw(g)],
+               "h": h, "k": kind}
+        if t.get("name"):
+            rec["n"] = t["name"]
+        box = _obb(g)
+        if box:
+            # How square the footprint is to its own bounding box decides
+            # whether a hipped roof can go on it without lying about the plan.
+            rec["box"] = box
+            rec["fill"] = round(area / max(1.0, box["L"] * box["D"]), 3)
+        if kind == "main":
+            main = _ellis_towers(g)
+        buildings.append(rec)
+
+    if not buildings:
+        return None
+
+    cx = sum(b["box"]["o"][0] for b in buildings) / len(buildings)
+    cz = sum(b["box"]["o"][1] for b in buildings) / len(buildings)
+    island = None
+    for l in land:
+        if _point_in((cx, cz), l["p"]):
+            island = l["p"]
+            break
+
+    return {
+        "island": island,
+        "at": [round(cx, 2), round(cz, 2)],
+        "b": buildings,
+        "main": main,
+        "link": link,
+        "trees": trees,
+    }
+
 def build_relief():
     path = os.path.join(RAW, "relief.json")
     if not os.path.exists(path):
@@ -1598,6 +1858,7 @@ def main():
     land = build_land()
     bridge = build_bridge(land)
     liberty = build_liberty(land)
+    ellis = build_ellis(land)
     relief = build_relief()
     if relief:
         print("  relief                : %d hills, %d ridge lines"
@@ -1611,6 +1872,10 @@ def main():
               % (len(liberty["fort"]), liberty["face"],
                  (liberty["face"] + math.degrees(THETA)) % 360,
                  len(liberty["trees"])))
+    if ellis:
+        print("  ellis island          : %d buildings, %d trees, towers %s"
+              % (len(ellis["b"]), len(ellis["trees"]),
+                 "found" if ellis["main"] else "NOT FOUND"))
 
     scene = {
         "meta": {
@@ -1638,6 +1903,7 @@ def main():
         "land": land,
         "bridge": bridge,
         "liberty": liberty,
+        "ellis": ellis,
         "relief": relief,
         "buildings": buildings,
         "roads": roads,

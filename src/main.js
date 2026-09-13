@@ -32,6 +32,7 @@ import { roofClutter, trees, traffic, parkedCars, manholes, vessels,
 import { makeNightSky } from './nightsky.js';
 import { buildBridge, BRIDGE_MATS } from './bridge.js';
 import { buildLiberty, setLibertyNight } from './liberty.js';
+import { buildEllis, setEllisNight } from './ellis.js';
 import { buildRelief } from './terrain.js';
 import { GROUND } from './geo.js';
 
@@ -303,6 +304,7 @@ function applyTime(hour) {
   VESSEL_MATS.navLight.emissiveIntensity = lit * 4.2;
   BRIDGE_MATS.deck.emissiveIntensity = lit * 0.10;
   setLibertyNight(lit);
+  setEllisNight(lit);
   BRIDGE_MATS.walk.emissiveIntensity = lit * 0.10;
 
   CITY_MATS.water.color.copy(WATER_DAY).lerp(WATER_NIGHT, dusk);
@@ -351,6 +353,7 @@ function setNightGround(lit) {
   CITY_MATS.road.emissiveIntensity = lit * 0.14;
   CITY_MATS.roadMinor.emissiveIntensity = lit * 0.12;
   CITY_MATS.sidewalk.emissiveIntensity = lit * 0.09;
+  ISLAND_WALK.emissiveIntensity = lit * 0.015;
   CITY_MATS.ground.emissiveIntensity = lit * 0.03;
   // A park is not lit, but it is not a hole in the city either: enough for the
   // grass to separate from the buildings round it, and the walks a little more
@@ -432,6 +435,13 @@ function renderProbe() {
 
 // A 1.7 second camera flight is a long involuntary movement. If the reader has
 // asked the system for less of that, the viewpoint buttons cut straight there.
+// The walk round both harbour islands is laid in the same concrete as a
+// Manhattan pavement and takes the same material — but not the same light. A
+// pavement here carries an emissive glow standing in for the sodium lamps over
+// it, and neither island has a street lamp on it: run at the city's level it
+// drew a bright orange ring round each one in the middle of a black harbour.
+const ISLAND_WALK = CITY_MATS.sidewalk.clone();
+
 const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const VIEWS = {
@@ -909,8 +919,14 @@ async function init() {
   // Three and a half kilometres down the harbour, and the only thing out there
   // anybody would notice the absence of.
   const liberty = buildLiberty(data.liberty,
-                               { grass: CITY_MATS.park, walk: CITY_MATS.sidewalk });
+                               { grass: CITY_MATS.park, walk: ISLAND_WALK });
   if (liberty) scene.add(liberty);
+
+  // Ellis Island is nearer than she is, and sits between her and the city.
+  const ellis = buildEllis(data.ellis, { grass: CITY_MATS.park,
+                                         walk: ISLAND_WALK,
+                                         brick: CITY_MATS.brick_red });
+  if (ellis) scene.add(ellis);
 
   // Relief on the far shores, laid over the flat land rather than displacing
   // it: the coastline underneath is accurate to a few metres and a grid coarse
@@ -933,7 +949,8 @@ async function init() {
   // The complex's low-rise roofs take the same plant as the rest of the city.
   for (const m of roofClutter(data.buildings.concat(data.complex))) detail.add(m);
   const treeSites = PLAZA_TREE_SITES(data, obstacleIndex)
-    .concat((liberty && liberty.userData.treeSites) || []);
+    .concat((liberty && liberty.userData.treeSites) || [])
+    .concat((ellis && ellis.userData.treeSites) || []);
   for (const m of trees(data.parks, treeSites, footprints)) detail.add(m);
   // Sit them on the carriageway, not on the pavement level.
   const roadFleet = traffic(data.roads, tier.cars, footprints, GROUND.asphalt);

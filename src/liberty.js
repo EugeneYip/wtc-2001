@@ -44,7 +44,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'BufferGeometryUtils';
-import { norm, flat, boxUV, GROUND } from './geo.js';
+import { norm, boxUV, islandGround, GROUND } from './geo.js';
 import { graniteTexture, GRANITE_TILE_M,
          copperTexture, COPPER_TILE_M } from './textures.js';
 
@@ -316,65 +316,6 @@ function cylUV(g, tile, ax = 0, az = 0) {
   }
   uv.needsUpdate = true;
   return g;
-}
-
-/**
- * A polygon moved in on itself by d metres, vertex by vertex along the
- * bisector of the two edges that meet there. Scaling about the centroid is the
- * cheap way to do this and it is wrong on anything long: Liberty Island is
- * twice as long as it is wide, so a scale that takes ten metres off the ends
- * takes five off the sides.
- */
-function inset(ring, d) {
-  const n = ring.length;
-  const out = [];
-  for (let i = 0; i < n; i++) {
-    const a = ring[(i + n - 1) % n], b = ring[i], c = ring[(i + 1) % n];
-    const e0 = [b[0] - a[0], b[1] - a[1]], e1 = [c[0] - b[0], c[1] - b[1]];
-    const l0 = Math.hypot(e0[0], e0[1]) || 1, l1 = Math.hypot(e1[0], e1[1]) || 1;
-    // Inward normal of an edge running (dx, dz) on a ring wound this way.
-    const n0 = [e0[1] / l0, -e0[0] / l0], n1 = [e1[1] / l1, -e1[0] / l1];
-    let bx = n0[0] + n1[0], bz = n0[1] + n1[1];
-    const lb = Math.hypot(bx, bz) || 1;
-    bx /= lb; bz /= lb;
-    // At a sharp corner the bisector has to reach further to stay d from both
-    // edges, but not without limit or a spike shoots off to infinity.
-    const k = d / Math.max(0.4, bx * n0[0] + bz * n0[1]);
-    out.push([b[0] + bx * k, b[1] + bz * k]);
-  }
-  return out;
-}
-
-/**
- * The island itself: lawn inside, and the paved walk that runs round the
- * seawall outside it.
- *
- * Without this she stood on the same bare dark ground as the far shore, which
- * from the towers read as an oil slick with a monument in it. The island is
- * mown grass and trees and a concrete promenade, and at three and a half
- * kilometres the only part of that anyone can see is that it is green with a
- * pale rim — so that is what this is.
- */
-function island(ring, mats) {
-  const out = [];
-  const WALK = 13.0;
-  const edge = inset(ring, 1.5);
-  const lawn = inset(ring, WALK);
-  if (mats.walk) {
-    const at = (r, y) => r.map(([x, z]) => [x, y, z]);
-    const g = band(at(edge, GROUND.walk), at(lawn, GROUND.walk));
-    const m = new THREE.Mesh(g, mats.walk);
-    m.name = 'liberty-walk';
-    m.receiveShadow = true;
-    out.push(m);
-  }
-  if (mats.grass) {
-    const m = new THREE.Mesh(flat(lawn, GROUND.park), mats.grass);
-    m.name = 'liberty-lawn';
-    m.receiveShadow = true;
-    out.push(m);
-  }
-  return { meshes: out, lawn };
 }
 
 // ---------------------------------------------------------------------------
@@ -925,8 +866,17 @@ export function buildLiberty(liberty, mats = {}) {
   g.position.y = GROUND.land;
 
   if (liberty.island && liberty.island.length > 3) {
-    const isle = island(liberty.island, mats);
-    for (const m of isle.meshes) { m.position.y = -GROUND.land; g.add(m); }
+    const isle = islandGround(liberty.island, 13.0,
+                              { walk: GROUND.walk, lawn: GROUND.park });
+    for (const [geo, mat, name] of [[isle.walk, mats.walk, 'liberty-walk'],
+                                    [isle.lawn, mats.grass, 'liberty-lawn']]) {
+      if (!mat) continue;
+      const m = new THREE.Mesh(geo, mat);
+      m.name = name;
+      m.receiveShadow = true;
+      m.position.y = -GROUND.land;
+      g.add(m);
+    }
     // The trees are where OpenStreetMap has them, one node each. What they are
     // not is a 2001 survey: the island has been planted since the 1930s and
     // the beds were rearranged again in 2019, so this is the right kind of

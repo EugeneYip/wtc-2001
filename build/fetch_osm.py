@@ -71,6 +71,20 @@ QUERIES = {
          way["highway"]["name"="Brooklyn Bridge"](40.69,-74.02,40.72,-73.96););
         out geom;""",
 
+    # Ellis Island. Closer to the site than Liberty Island is, and the whole
+    # of it — the Main Building, the hospital complex on the south island, the
+    # ferry house, the seawalls — falls outside the building box.
+    "ellis": """[out:json][timeout:60];
+        (way["building"](40.6955,-74.0445,40.7035,-74.0355);
+         way["building:part"](40.6955,-74.0445,40.7035,-74.0355);
+         way["man_made"](40.6955,-74.0445,40.7035,-74.0355);
+         way["barrier"](40.6955,-74.0445,40.7035,-74.0355);
+         way["highway"](40.6955,-74.0445,40.7035,-74.0355);
+         way["historic"](40.6955,-74.0445,40.7035,-74.0355);
+         way["natural"="water"](40.6955,-74.0445,40.7035,-74.0355);
+         node["natural"="tree"](40.6955,-74.0445,40.7035,-74.0355););
+        out geom;""",
+
     # Liberty Island: the eleven-pointed star of Fort Wood, the statue's own
     # outline, and the island's buildings. It falls outside the building box
     # the way the Brooklyn Bridge does, and closes the view down the harbour
