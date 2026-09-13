@@ -547,7 +547,14 @@ is a sun rather than a flare.
 The sky carries no cloud, and that is deliberate rather than unfinished. The
 morning this model is set on was exceptionally clear — the kind of visibility
 pilots call severe clear — and it is one of the things people who were there
-remember first. Putting weather in the sky would be a more elaborate model and
+remember first.
+
+It carries no aircraft either, and that is deliberate too, and not for the same
+reason. There were aircraft over this harbour on any ordinary morning — the
+Downtown Manhattan Heliport is a few hundred metres from the Battery and worked
+all day. But this is a model of two buildings on the morning of 11 September
+2001, and nothing with wings or rotors is going into the sky above them. The
+only vehicles here are on the ground and on the water. Putting weather in the sky would be a more elaborate model and
 a less accurate one. Reflections come from a cube probe rendered over the site,
 so the towers' aluminium picks up the actual skyline rather than just the sky.
 There are two probes, because the water cannot use that one — see below.
