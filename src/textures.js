@@ -771,3 +771,43 @@ export function landTexture() {
 // Bigger than it was. At 620 m the tile repeated ten times across a wide shot
 // and the fbm read as one cloud pattern tiled.
 export const LAND_TILE_M = 860;
+
+/**
+ * The flag.
+ *
+ * Proportions are the official ones: the fly is 1.9 times the hoist, the union
+ * is seven of the thirteen stripes tall and two fifths of the fly wide. At the
+ * size these actually appear — a couple of metres of cloth two hundred metres
+ * away — the stars are three or four pixels, so they are drawn as a staggered
+ * grid of dots rather than pretended at. The alternative was a blue rectangle,
+ * which reads as a blank.
+ */
+export function flagTexture() {
+  const W = 190, H = 100;
+  const [c, x] = canvas(W, H);
+  const RED = '#b22234', WHITE = '#ffffff', BLUE = '#3c3b6e';
+  const stripe = H / 13;
+  x.fillStyle = WHITE;
+  x.fillRect(0, 0, W, H);
+  x.fillStyle = RED;
+  for (let i = 0; i < 13; i += 2) x.fillRect(0, i * stripe, W, stripe);
+  const uw = W * 0.4, uh = stripe * 7;
+  x.fillStyle = BLUE;
+  x.fillRect(0, 0, uw, uh);
+  // Nine rows of stars, alternating six and five across.
+  x.fillStyle = WHITE;
+  const r = Math.max(0.9, uh / 30);
+  for (let row = 0; row < 9; row++) {
+    const n = row % 2 === 0 ? 6 : 5;
+    const dy = uh * (row + 1) / 10;
+    for (let k = 0; k < n; k++) {
+      const dx = uw * (k + (row % 2 === 0 ? 1 : 1.5)) / 6.5;
+      x.beginPath();
+      x.arc(dx, dy, r, 0, Math.PI * 2);
+      x.fill();
+    }
+  }
+  const t = finish(c, 1, 1, 8);
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  return t;
+}

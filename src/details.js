@@ -10,6 +10,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'BufferGeometryUtils';
 import { norm, bounds, rasterise } from './geo.js';
+import { flagTexture } from './textures.js';
 
 function rng(seed) {
   let s = seed >>> 0;
@@ -415,6 +416,24 @@ function shells() {
  * going one way puts you on one side of the line, going the other puts you on
  * the other, and in New York that means keeping right.
  */
+// A road has to be long enough that a vehicle can run down it for a while
+// before it reaches the end. Below this the traffic on it simply stands, which
+// is not a cheat: at any given moment a good deal of the traffic in Lower
+// Manhattan is stopped, and a street of waiting cars with the avenue beside it
+// moving is what the place actually looks like.
+const MOVE_MIN_ROAD = 90;
+const MOVE_FADE = 4.5;         // metres of shrink either end of the run
+
+/** Cumulative lengths along a road, so a vehicle can be put at a distance. */
+function pathOf(r) {
+  const pts = r.p;
+  const cum = [0];
+  for (let i = 1; i < pts.length; i++) {
+    cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  }
+  return { pts, cum, total: cum[cum.length - 1] };
+}
+
 export function traffic(roads, limit = 420, avoid, deck = 0) {
   const rand = rng(1313);
   const G = shells();
@@ -429,13 +448,15 @@ export function traffic(roads, limit = 420, avoid, deck = 0) {
   // Candidate slots. Traffic bunches at the lights rather than spacing itself
   // evenly, so a slot may carry a second vehicle close behind the first.
   const picks = [];
+  const paths = new Map();
   for (const r of roads) {
     for (let i = 0; i < r.p.length - 1 && picks.length < limit * 3; i++) {
       const [x0, z0] = r.p[i], [x1, z1] = r.p[i + 1];
       const len = Math.hypot(x1 - x0, z1 - z0);
       if (len < 14) continue;
+      if (!paths.has(r)) paths.set(r, pathOf(r));
       const n = Math.max(1, Math.floor(len / 26));
-      for (let k = 0; k < n; k++) picks.push([x0, z0, x1, z1, r.w, len]);
+      for (let k = 0; k < n; k++) picks.push([x0, z0, x1, z1, r.w, len, r, i]);
     }
   }
   if (!picks.length) return [];
@@ -465,34 +486,35 @@ export function traffic(roads, limit = 420, avoid, deck = 0) {
   const up = new THREE.Vector3(0, 1, 0);
   let nCar = 0, nVan = 0, nBus = 0;
 
-  const place = (x, z, ang, kind) => {
+  const moving = [];
+  const place = (x, z, ang, kind, run) => {
     if (avoid && avoid.blocked(x, z)) return;
     q.setFromAxisAngle(up, -ang);
     pos.set(x, deck, z);
     m.compose(pos, q, scl);
+    let which = null, slot = -1;
     if (kind === 'bus') {
       if (nBus >= buses.count) return;
       buses.setMatrixAt(nBus, m);
       buses.setColorAt(nBus, col.setHex(0xdfe3e6));
-      nBus++;
-      return;
-    }
-    if (kind === 'van') {
+      which = 'bus'; slot = nBus++;
+    } else if (kind === 'van') {
       if (nVan >= vans.count) return;
       vans.setMatrixAt(nVan, m);
       vans.setColorAt(nVan, col.setHex(VAN_COLORS[Math.floor(rand() * VAN_COLORS.length)]));
-      nVan++;
-      return;
+      which = 'van'; slot = nVan++;
+    } else {
+      if (nCar >= cars.count) return;
+      cars.setMatrixAt(nCar, m);
+      heads.setMatrixAt(nCar, m);
+      tails.setMatrixAt(nCar, m);
+      cars.setColorAt(nCar, col.setHex(CAR_COLORS[Math.floor(rand() * CAR_COLORS.length)]));
+      which = 'car'; slot = nCar++;
     }
-    if (nCar >= cars.count) return;
-    cars.setMatrixAt(nCar, m);
-    heads.setMatrixAt(nCar, m);
-    tails.setMatrixAt(nCar, m);
-    cars.setColorAt(nCar, col.setHex(CAR_COLORS[Math.floor(rand() * CAR_COLORS.length)]));
-    nCar++;
+    if (run) moving.push({ ...run, which, slot, seg: 0 });
   };
 
-  chosen.forEach(([x0, z0, x1, z1, w, len]) => {
+  chosen.forEach(([x0, z0, x1, z1, w, len, road, segIndex]) => {
     const ang = Math.atan2(z1 - z0, x1 - x0);
     const ux = Math.cos(ang), uz = Math.sin(ang);
     // Rotating a vehicle by -ang sends its nose along u and its own right
@@ -505,12 +527,22 @@ export function traffic(roads, limit = 420, avoid, deck = 0) {
     const cx = x0 + (x1 - x0) * t + rx * off;
     const cz = z0 + (z1 - z0) * t + rz * off;
     const heading = back > 0 ? ang : ang + Math.PI;
+    const path = paths.get(road);
+    // Where this vehicle stands measured along the whole road, not just the
+    // segment, so it can drive on round the bends.
+    const s0 = path.cum[segIndex] + len * t;
+    const runs = path.total >= MOVE_MIN_ROAD;
+    const run = runs ? { path, s0, dir: back, off: off * back, speed: 4.6 + rand() * 4.2 }
+                     : null;
     const roll = rand();
-    place(cx, cz, heading, roll < 0.08 ? 'bus' : roll < 0.30 ? 'van' : 'car');
+    place(cx, cz, heading, roll < 0.08 ? 'bus' : roll < 0.30 ? 'van' : 'car', run);
     // A second vehicle close behind, so the street is not evenly spaced dots.
     if (rand() < 0.45 && len > 40) {
       const gap = (9 + rand() * 9) * (back > 0 ? -1 : 1);
-      place(cx + ux * gap, cz + uz * gap, heading, rand() < 0.2 ? 'van' : 'car');
+      const run2 = runs
+        ? { path, s0: s0 + gap * back, dir: back, off: off * back, speed: run.speed }
+        : null;
+      place(cx + ux * gap, cz + uz * gap, heading, rand() < 0.2 ? 'van' : 'car', run2);
     }
   });
 
@@ -526,7 +558,71 @@ export function traffic(roads, limit = 420, avoid, deck = 0) {
   buses.name = 'traffic-buses';
   heads.name = 'traffic-headlights';
   tails.name = 'traffic-tails';
+  cars.userData.moving = moving;
+  cars.userData.fleet = { vans, buses, heads, tails, deck };
+  animateTraffic(cars, 0);
   return [cars, vans, buses, heads, tails];
+}
+
+const _tm = new THREE.Matrix4();
+const _tq = new THREE.Quaternion();
+const _tp = new THREE.Vector3();
+const _ts = new THREE.Vector3();
+const _tup = new THREE.Vector3(0, 1, 0);
+
+/**
+ * Drive the traffic.
+ *
+ * Each vehicle runs along the road it was placed on, following the bends, and
+ * starts again at the far end when it runs out of road. OSM splits its ways at
+ * junctions, so the roads here have a median length of 49 m — short enough
+ * that a car crossing one in six seconds would spend its life restarting. Only
+ * vehicles on a road of 90 m or more move at all, and the rest stand: a street
+ * of stopped cars beside an avenue that is flowing is what this part of the
+ * city actually looks like.
+ *
+ * A vehicle shrinks away over the last few metres and grows back at the start,
+ * so the moment it goes round is a car leaving the far end of a street rather
+ * than one blinking from one kerb to the other.
+ */
+export function animateTraffic(cars, t) {
+  const moving = cars && cars.userData.moving;
+  if (!moving || !moving.length) return;
+  const { vans, buses, heads, tails, deck } = cars.userData.fleet;
+  for (const k of moving) {
+    const { pts, cum, total } = k.path;
+    let d = (k.s0 + k.dir * k.speed * t) % total;
+    if (d < 0) d += total;
+    // Walk on from where this vehicle was last time rather than searching.
+    let i = k.seg;
+    if (cum[i] > d) i = 0;
+    while (i < cum.length - 2 && cum[i + 1] <= d) i++;
+    k.seg = i;
+    const span = cum[i + 1] - cum[i];
+    const f = span > 1e-6 ? (d - cum[i]) / span : 0;
+    const [x0, z0] = pts[i], [x1, z1] = pts[i + 1];
+    const ang = Math.atan2(z1 - z0, x1 - x0);
+    const rx = -Math.sin(ang), rz = Math.cos(ang);
+    const off = k.off * k.dir;
+    const x = x0 + (x1 - x0) * f + rx * off;
+    const z = z0 + (z1 - z0) * f + rz * off;
+    const heading = k.dir > 0 ? ang : ang + Math.PI;
+    // Shrink into and out of the ends of the run.
+    const edge = Math.min(d, total - d);
+    const grow = Math.min(1, edge / MOVE_FADE);
+    _tq.setFromAxisAngle(_tup, -heading);
+    _tp.set(x, deck, z);
+    _ts.set(grow, grow, grow);
+    _tm.compose(_tp, _tq, _ts);
+    if (k.which === 'bus') buses.setMatrixAt(k.slot, _tm);
+    else if (k.which === 'van') vans.setMatrixAt(k.slot, _tm);
+    else {
+      cars.setMatrixAt(k.slot, _tm);
+      heads.setMatrixAt(k.slot, _tm);
+      tails.setMatrixAt(k.slot, _tm);
+    }
+  }
+  for (const im of [cars, vans, buses, heads, tails]) im.instanceMatrix.needsUpdate = true;
 }
 
 /**
@@ -1222,4 +1318,117 @@ function paint(geo, colour) {
   }
   geo.setAttribute('color', new THREE.BufferAttribute(c, 3));
   return geo;
+}
+
+// ---------------------------------------------------------------------------
+// Flags
+// ---------------------------------------------------------------------------
+
+export const FLAG_MATS = {
+  time: { value: 0 },
+  cloth: null,      // built on first use, so the texture is made only once
+  pole: new THREE.MeshStandardMaterial({
+    color: 0xb9bcc0, roughness: 0.45, metalness: 0.5, name: 'flagpole',
+  }),
+};
+
+/**
+ * Flags on the roofs, and the wind in them.
+ *
+ * Where they are is invented, the same way the trees and the roof plant are:
+ * there is no survey of which buildings down here flew one. What is not
+ * invented is the size. A commercial rooftop pole is about eight metres with a
+ * five by nine foot flag on it — 1.5 m by 2.8 m — and at that scale, from the
+ * river, a flag is a few pixels of moving colour. Drawn at the size the eye
+ * expects from photographs they come out as bedsheets.
+ *
+ * The wave is a travelling sine in the vertex shader, growing from nothing at
+ * the hoist to its full throw at the fly, with a second slower wave across it
+ * so the cloth does not look like corrugated iron. Each flag takes its phase
+ * from where it stands, so they are not all snapping together.
+ */
+export function flags(buildings, limit = 90) {
+  if (!FLAG_MATS.cloth) {
+    FLAG_MATS.cloth = new THREE.MeshStandardMaterial({
+      map: flagTexture(), side: THREE.DoubleSide, roughness: 0.82,
+      metalness: 0.0, name: 'flag-cloth',
+    });
+    FLAG_MATS.cloth.onBeforeCompile = (sh) => {
+      sh.uniforms.uTime = FLAG_MATS.time;
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <common>', `#include <common>
+          uniform float uTime;`)
+        .replace('#include <begin_vertex>', `#include <begin_vertex>
+          // x runs 0 at the hoist to 1 at the fly, so the throw grows along it.
+          float fly = transformed.x;
+          float ph = uTime * 2.7 + instanceMatrix[3][0] * 0.31 + instanceMatrix[3][2] * 0.19;
+          transformed.z += sin(fly * 8.5 - ph) * 0.26 * fly;
+          transformed.z += sin(fly * 3.1 - ph * 0.55 + transformed.y * 4.0) * 0.09 * fly;
+          transformed.y += sin(fly * 6.0 - ph * 0.9) * 0.05 * fly;`);
+    };
+  }
+
+  const rand = rng(90211);
+  const HOIST = 1.52;                       // 5 ft
+  const FLY = 2.84;                         // 9 ft
+  const POLE = 8.2;
+
+  const cloth = new THREE.PlaneGeometry(1, 1, 14, 3);
+  cloth.translate(0.5, 0, 0);               // hoist at x = 0
+  const poleGeo = norm(new THREE.CylinderGeometry(0.07, 0.09, POLE, 6));
+  poleGeo.translate(0, POLE / 2, 0);
+
+  const sites = [];
+  for (const b of buildings) {
+    const top = (b.t ? b.t.h : b.h) + (b.rh || 0);
+    // Nothing on a pitched roof, nothing on the low sheds, and nothing on the
+    // towers — the two that carried one down here did not carry it up there.
+    if (b.r && b.r !== 'flat') continue;
+    if (top < 22 || top > 200) continue;
+    if (rand() > 0.17) continue;
+    const bb = b.t ? { cx: b.t.cx, cz: b.t.cz, w: b.t.w, d: b.t.d }
+                   : (() => { const g = bounds(b.p); return { cx: g.cx, cz: g.cz, w: g.w, d: g.d }; })();
+    if (Math.min(bb.w, bb.d) < 12) continue;
+    // Towards a corner of the roof rather than the middle of it.
+    const sx = rand() < 0.5 ? -1 : 1, sz = rand() < 0.5 ? -1 : 1;
+    const x = bb.cx + sx * (bb.w / 2 - 3.4);
+    const z = bb.cz + sz * (bb.d / 2 - 3.4);
+    if (!b.t && !inside(x, z, b.p)) continue;
+    sites.push([x, top, z, rand() * Math.PI * 2]);
+    if (sites.length >= limit) break;
+  }
+  if (!sites.length) return [];
+
+  const poles = new THREE.InstancedMesh(poleGeo, FLAG_MATS.pole, sites.length);
+  const sheet = new THREE.InstancedMesh(cloth, FLAG_MATS.cloth, sites.length);
+  poles.castShadow = poles.receiveShadow = true;
+  // The wave lives in this material's vertex shader, and the depth material
+  // the shadow pass uses knows nothing about it — so a flag would throw the
+  // shadow of the flat quad it started as. At a metre and a half of cloth the
+  // shadow is worth nothing and the mismatch is worth less than nothing.
+  sheet.castShadow = false;
+  sheet.receiveShadow = true;
+  poles.name = 'flagpoles';
+  sheet.name = 'flags';
+
+  const m = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const pos = new THREE.Vector3();
+  const scl = new THREE.Vector3();
+  const up = new THREE.Vector3(0, 1, 0);
+  sites.forEach(([x, y, z, ang], i) => {
+    q.setFromAxisAngle(up, ang);
+    pos.set(x, y, z);
+    scl.set(1, 1, 1);
+    m.compose(pos, q, scl);
+    poles.setMatrixAt(i, m);
+    // Hung from the top of the pole, the hoist against it.
+    pos.set(x, y + POLE - HOIST * 0.62, z);
+    scl.set(FLY, HOIST, 1);
+    m.compose(pos, q, scl);
+    sheet.setMatrixAt(i, m);
+  });
+  poles.instanceMatrix.needsUpdate = true;
+  sheet.instanceMatrix.needsUpdate = true;
+  return [poles, sheet];
 }

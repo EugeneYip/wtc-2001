@@ -14,6 +14,9 @@ Tower footprint position and the rotation of the street grid are derived from
 the footprints of the National September 11 Memorial reflecting pools, which
 are built on the original tower footprints, as mapped in OpenStreetMap.
 
+Flags are placed from a fixed seed, not from any record of which buildings
+flew one. Their size and proportions are the standard ones.
+
 Relief on the far shores is placed from the named hills around the harbour,
 which OpenStreetMap carries with real elevations, and from the Palisades, which
 it maps as a cliff line. The gentle undulation between them is invented.

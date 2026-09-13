@@ -116,6 +116,46 @@ Hydrants and litter bins stand along the kerb, because without something
 knee-high there is nothing in the frame between a lamp standard and a car and
 the pavement reads as a blank apron.
 
+**Traffic that moves.** For a long time the cars did not. Six hundred vehicles
+were placed on the streets at build time and never touched again — a city
+photographed rather than running.
+
+They drive now, along the road they were put on, following its bends. The
+awkward part is that OpenStreetMap splits its ways at every junction, so the
+roads here have a median length of 49 m: a car crossing one in six seconds
+would spend its life starting over. So only vehicles on a road of 90 m or more
+move at all, and the rest stand. That is not a dodge. At any moment a good deal
+of the traffic in Lower Manhattan is stopped, and a side street of waiting cars
+beside an avenue that is flowing is what the place actually looks like. Where a
+vehicle does run out of road it shrinks away over the last few metres and grows
+back at the far end, so the moment it goes round reads as a car leaving the end
+of a street rather than blinking from one kerb to the other.
+
+Speeds are 4.6 to 8.8 m/s — 17 to 32 km/h, which is what that grid manages.
+509 of the 586 vehicles are moving, and driving them costs 0.37 ms a frame.
+
+**Flags.** Where they are is invented, the same way the trees and the roof
+plant are: there is no survey of which buildings down here flew one, so they
+are scattered from a fixed seed across flat roofs between 22 and 200 m. What is
+not invented is the size, which is the thing that usually goes wrong. A
+commercial rooftop pole is about eight metres with a five by nine foot flag on
+it — 1.52 m by 2.84 m — and the official proportions are a fly 1.9 times the
+hoist with the union seven stripes tall and two fifths of the fly wide. Drawn
+at the size the eye remembers from photographs they come out as bedsheets.
+
+The wind is a travelling sine in the vertex shader, growing from nothing at the
+hoist to its full throw at the fly, with a slower second wave across it so the
+cloth is not corrugated iron; each flag takes its phase from where it stands so
+they do not all snap together. The stars are a staggered grid of dots — at a
+couple of metres of cloth two hundred metres off they are three or four pixels,
+and the alternative was a blue rectangle that reads as a blank.
+
+One consequence worth writing down: the wave lives in the cloth's own vertex
+shader, and the depth material the shadow pass uses knows nothing about it, so
+a flag would have thrown the shadow of the flat quad it started as. The flags
+do not cast. At that size the shadow is worth nothing and a wrong one is worth
+less.
+
 **Parks.** The green was a single flat colour, which from the air read as
 billiard cloth cut to shape rather than as ground — and it was the most
 saturated thing in the frame, so the eye went to the parks before the city. The

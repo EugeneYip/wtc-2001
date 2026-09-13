@@ -22,7 +22,8 @@ import { buildCity, cityLabels, animateWater, setShoreGlow, lampPoolShading,
 import { buildComplex, MATS as WTC_MATS, PLAZA_TREE_SITES,
          PLAZA_LAMP_SITES, SPHERE_AT } from './wtc.js';
 import { roofClutter, trees, traffic, parkedCars, manholes, vessels,
-         animateVessels, streetLamps, lampPoolTexture, trafficSignals,
+         animateVessels, animateTraffic, flags, FLAG_MATS,
+         streetLamps, lampPoolTexture, trafficSignals,
          kerbFurniture, obstacleIndex, DETAIL_MATS, VESSEL_MATS } from './details.js';
 import { makeNightSky } from './nightsky.js';
 import { buildBridge, BRIDGE_MATS } from './bridge.js';
@@ -42,7 +43,7 @@ let shadowTexels = 4096;
 // normalised depth, where the number means nothing without knowing the shadow
 // camera's near/far range; kept here in the unit it is actually about.
 const SHADOW_BIAS_M = 0.05;
-let labels = [], labelLayer, data, waterMesh;
+let labels = [], labelLayer, data, waterMesh, cityTraffic;
 let showLabels = true;
 let beaconLevel = 0;
 let harbour = null;
@@ -55,9 +56,9 @@ const clock = new THREE.Clock();
 // ---------------------------------------------------------------------------
 
 const TIERS = {
-  low:    { dpr: 1.5,  maxPx: 2.3e6, shadow: 1024, bloom: false, probe: 128, cars: 190, parked: 900,  parkReach: 450, boats: 14, lamps: 260, props: 110, pool: 512,  shadowSpan: 800 },
-  medium: { dpr: 1.75, maxPx: 4.5e6, shadow: 2048, bloom: true,  probe: 192, cars: 420, parked: 2100, parkReach: 650, boats: 26, lamps: 480, props: 200, pool: 1024, shadowSpan: 950 },
-  high:   { dpr: 2.0,  maxPx: 8.3e6, shadow: 4096, bloom: true,  probe: 256, cars: 620, parked: 4100, parkReach: 900, boats: 38, lamps: 700, props: 300, pool: 1024, shadowSpan: 1050 },
+  low:    { dpr: 1.5,  maxPx: 2.3e6, shadow: 1024, bloom: false, probe: 128, flags: 22, cars: 190, parked: 900,  parkReach: 450, boats: 14, lamps: 260, props: 110, pool: 512,  shadowSpan: 800 },
+  medium: { dpr: 1.75, maxPx: 4.5e6, shadow: 2048, bloom: true,  probe: 192, flags: 50, cars: 420, parked: 2100, parkReach: 650, boats: 26, lamps: 480, props: 200, pool: 1024, shadowSpan: 950 },
+  high:   { dpr: 2.0,  maxPx: 8.3e6, shadow: 4096, bloom: true,  probe: 256, flags: 90, cars: 620, parked: 4100, parkReach: 900, boats: 38, lamps: 700, props: 300, pool: 1024, shadowSpan: 1050 },
 };
 
 function detectQuality() {
@@ -799,11 +800,15 @@ async function init() {
     detail.add(m);
   }
   // Sit them on the carriageway, not on the pavement level.
-  for (const m of traffic(data.roads, tier.cars, footprints, -0.20)) detail.add(m);
+  const roadFleet = traffic(data.roads, tier.cars, footprints, -0.20);
+  for (const m of roadFleet) detail.add(m);
+  cityTraffic = roadFleet[0] || null;
   // The rank is only worth having if it is continuous, so it is dense inside a
   // radius and simply absent outside it rather than thin everywhere.
   for (const m of parkedCars(data.roads, tier.parked, footprints, -0.20,
                              tier.parkReach)) detail.add(m);
+  // Flags on the roofs. Where they are is invented; the size is not.
+  for (const m of flags(data.buildings.concat(data.complex), tier.flags)) detail.add(m);
   const lids = manholes(data.roads, tier.props, footprints, -0.20);
   if (lids) detail.add(lids);
   const lamps = streetLamps(data.roads, tier.lamps, footprints,
@@ -1154,6 +1159,8 @@ function render() {
   const t = clock.getElapsedTime();
   animateWater(t);
   animateVessels(harbour, t);
+  animateTraffic(cityTraffic, t);
+  FLAG_MATS.time.value = t;
   // The mast tip flashed; the roof corner lights did not.
   const on = (t % 2.0) < 0.55;
   WTC_MATS.beaconFlash.emissiveIntensity = beaconLevel * (on ? 2.2 : 0.10);
