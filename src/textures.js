@@ -702,13 +702,15 @@ export function roadTexture(marked) {
   // Darker wheel tracks either side of the crown.
   x.fillStyle = 'rgba(20,20,19,0.16)';
   for (const u of [0.28, 0.72]) x.fillRect(u * W - 7, 0, 14, H);
-  // Gutters. The kerb is not geometry, so the shadow line at the edge of the
-  // carriageway has to come from here.
+  // Gutters. This used to carry the kerb as well — a hard dark line at either
+  // edge, standing in for a shadow there was no geometry to cast. There is a
+  // kerb now, so what is left here is only what a gutter actually is: the
+  // strip the sweeper misses, dirtier than the crown and not a line at all.
   const gut = x.createLinearGradient(0, 0, W, 0);
-  gut.addColorStop(0.00, 'rgba(12,12,11,0.75)');
-  gut.addColorStop(0.05, 'rgba(12,12,11,0.12)');
-  gut.addColorStop(0.95, 'rgba(12,12,11,0.12)');
-  gut.addColorStop(1.00, 'rgba(12,12,11,0.75)');
+  gut.addColorStop(0.00, 'rgba(12,12,11,0.34)');
+  gut.addColorStop(0.09, 'rgba(12,12,11,0.12)');
+  gut.addColorStop(0.91, 'rgba(12,12,11,0.12)');
+  gut.addColorStop(1.00, 'rgba(12,12,11,0.34)');
   x.fillStyle = gut;
   x.fillRect(0, 0, W, H);
 

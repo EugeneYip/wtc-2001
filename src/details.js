@@ -9,7 +9,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'BufferGeometryUtils';
-import { norm, bounds, rasterise } from './geo.js';
+import { norm, bounds, rasterise, GROUND } from './geo.js';
 import { flagTexture } from './textures.js';
 
 function rng(seed) {
@@ -851,7 +851,7 @@ export function streetLamps(roads, limit = 700, avoid, extra = [], reach = 1150)
     q.setFromAxisAngle(up, rot);
     // A little variation in height, or a long street reads as a picket fence.
     scl.set(1, 0.92 + rand() * 0.16, 1);
-    pos.set(x, y === undefined ? -0.26 : y, z);
+    pos.set(x, y === undefined ? GROUND.walk : y, z);
     m.compose(pos, q, scl);
     posts.setMatrixAt(i, m);
     heads.setMatrixAt(i, m);
@@ -938,11 +938,11 @@ export function trafficSignals(junctionList, avoid) {
 
   sites.forEach(([x, z, rot, green], i) => {
     q.setFromAxisAngle(up, rot);
-    pos.set(x, -0.26, z);
+    pos.set(x, GROUND.walk, z);
     m.compose(pos, q, scl);
     posts.setMatrixAt(i, m);
     heads.setMatrixAt(i, m);
-    pos.set(x, -0.26 + (green ? -0.30 : 0.30), z);
+    pos.set(x, GROUND.walk + (green ? -0.30 : 0.30), z);
     m.compose(pos, q, scl);
     lenses.setMatrixAt(i, m);
     col.setHex(green ? 0x35c257 : 0xd8362a);
@@ -1028,7 +1028,7 @@ export function kerbFurniture(roads, limit = 260, avoid, reach = 900) {
     const up = new THREE.Vector3(0, 1, 0);
     list.forEach(([x, z], i) => {
       q.setFromAxisAngle(up, rand() * Math.PI * 2);
-      pos.set(x, -0.26, z);
+      pos.set(x, GROUND.walk, z);
       m.compose(pos, q, scl);
       im.setMatrixAt(i, m);
     });

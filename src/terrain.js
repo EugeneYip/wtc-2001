@@ -21,7 +21,7 @@
  */
 
 import * as THREE from 'three';
-import { rasterise } from './geo.js';
+import { rasterise, GROUND } from './geo.js';
 
 const STEP = 170;             // metres between grid points
 // Far enough out to cover everything the haze does not swallow. At 9.6 km the
@@ -195,8 +195,8 @@ export function buildRelief(relief, landPolys, material) {
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.computeVertexNormals();
   const m = new THREE.Mesh(g, material);
-  // Two centimetres over the flat land, which is at -0.30.
-  m.position.y = -0.28;
+  // Two centimetres over the flat land.
+  m.position.y = GROUND.land + 0.02;
   m.receiveShadow = true;
   m.name = 'relief';
   return m;

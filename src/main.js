@@ -31,6 +31,7 @@ import { roofClutter, trees, traffic, parkedCars, manholes, vessels,
 import { makeNightSky } from './nightsky.js';
 import { buildBridge, BRIDGE_MATS } from './bridge.js';
 import { buildRelief } from './terrain.js';
+import { GROUND } from './geo.js';
 
 const DEG = Math.PI / 180;
 // A second layer the two sky domes are also on, so the water's probe can be
@@ -906,16 +907,16 @@ async function init() {
     detail.add(m);
   }
   // Sit them on the carriageway, not on the pavement level.
-  const roadFleet = traffic(data.roads, tier.cars, footprints, -0.20);
+  const roadFleet = traffic(data.roads, tier.cars, footprints, GROUND.asphalt);
   for (const m of roadFleet) detail.add(m);
   cityTraffic = roadFleet[0] || null;
   // The rank is only worth having if it is continuous, so it is dense inside a
   // radius and simply absent outside it rather than thin everywhere.
-  for (const m of parkedCars(data.roads, tier.parked, footprints, -0.20,
+  for (const m of parkedCars(data.roads, tier.parked, footprints, GROUND.asphalt,
                              tier.parkReach)) detail.add(m);
   // Flags on the roofs. Where they are is invented; the size is not.
   for (const m of flags(data.buildings.concat(data.complex), tier.flags)) detail.add(m);
-  const lids = manholes(data.roads, tier.props, footprints, -0.20);
+  const lids = manholes(data.roads, tier.props, footprints, GROUND.asphalt);
   if (lids) detail.add(lids);
   const lamps = streetLamps(data.roads, tier.lamps, footprints,
                             PLAZA_LAMP_SITES(data));

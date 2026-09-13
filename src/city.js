@@ -14,7 +14,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'BufferGeometryUtils';
-import { norm, shapeFrom, flat, extrude, bounds } from './geo.js';
+import { norm, shapeFrom, flat, extrude, bounds, GROUND } from './geo.js';
 import { facadeMaps, roofTexture, roadTexture, sidewalkTexture, waterNormal,
          landTexture, LAND_TILE_M, storefront, STOREFRONT_H,
          grassTexture } from './textures.js';
@@ -66,6 +66,11 @@ export const CITY_MATS = {
     map: roadTexture(false), color: 0xd0ccc1, roughness: 0.92, metalness: 0.0 }),
   sidewalk: new THREE.MeshStandardMaterial({
     map: sidewalkTexture(), roughness: 0.94, metalness: 0.0 }),
+  // The kerb face. Granite rather than the concrete above it — that is what
+  // these were, and it is why a New York kerb reads as a dark line and not as
+  // the edge of the pavement.
+  kerb: new THREE.MeshStandardMaterial({
+    color: 0x6e6d69, roughness: 0.82, metalness: 0.02, side: THREE.DoubleSide }),
   park: new THREE.MeshStandardMaterial({
     map: grassTexture(), roughness: 0.95, metalness: 0.0,
     emissiveMap: grassTexture(), emissive: new THREE.Color(0x5a6a4a),
@@ -1100,7 +1105,7 @@ export function buildCity(data) {
   }
   const sea = new THREE.Mesh(seaGeo, CITY_MATS.water);
   sea.rotation.x = -Math.PI / 2;
-  sea.position.y = -0.55;
+  sea.position.y = GROUND.sea;
   sea.receiveShadow = true;
   sea.name = 'water';
   g.add(sea);
@@ -1125,7 +1130,7 @@ export function buildCity(data) {
   const shelf = shallows(data.land || []);
   if (shelf) {
     const m = new THREE.Mesh(shelf, CITY_MATS.shallows);
-    m.position.y = -0.44;
+    m.position.y = GROUND.shelf;
     m.receiveShadow = true;
     m.name = 'shallows';
     g.add(m);
@@ -1133,38 +1138,92 @@ export function buildCity(data) {
   // Ground stack, lowest first. Parks have to sit under the carriageway:
   // above it they paint over the roads that run through them, and the traffic
   // ends up apparently driving across a lawn.
-  //   land -0.30  <  pavement -0.26  <  parks -0.24
-  //              <  inland water -0.22  <  asphalt -0.20
-  layer(data.land || [], -0.30, CITY_MATS.ground, 'land');
-  layer(data.parks, -0.24, CITY_MATS.park, 'parks');
+  // The stack, lowest first, and now with a real step in it: see GROUND.
+  //   land  <  asphalt  <  paint  <  parks  <  pavement
+  layer(data.land || [], GROUND.land, CITY_MATS.ground, 'land');
+  layer(data.parks, GROUND.park, CITY_MATS.park, 'parks');
   const walks2 = parkPaths(data.parks || []);
   if (walks2) {
     const m = new THREE.Mesh(walks2, CITY_MATS.parkPath);
-    m.position.y = -0.228;
+    m.position.y = GROUND.park + 0.012;
     m.receiveShadow = true;
     m.name = 'park-paths';
     g.add(m);
   }
-  layer(data.water, -0.22, CITY_MATS.water, 'inland-water');
+  layer(data.water, GROUND.water, CITY_MATS.water, 'inland-water');
 
   // Streets. The OSM width is the whole right of way, so the carriageway is
-  // narrowed and the remainder becomes sidewalk either side, with a kerb face
-  // between them. Without that, asphalt runs straight into the building line
-  // and the street reads as a painted strip from any low viewpoint.
-  // A wide avenue is often several parallel ways in OSM, so each way's
-  // pavement would bury its neighbour's carriageway. Asphalt is therefore
-  // laid over the pavement rather than beside it, and the kerb line lives in
-  // the road texture instead of in geometry.
-  const ASPHALT_Y = -0.20;
-  const SIDEWALK_Y = -0.26;
+  // narrowed and the remainder becomes pavement either side, with a real kerb
+  // between them — see GROUND, and the note on the carriageway index below for
+  // why it could not be one until now.
+  const ASPHALT_Y = GROUND.asphalt;
+  const SIDEWALK_Y = GROUND.walk;
   const walks = [];
+  const kerbs = [];
+
+  // Where the carriageways are, so a pavement can be told to stop at one.
+  //
+  // A pavement that is merely a shade below the asphalt can lie across a
+  // neighbouring street and nobody sees it; a pavement standing a kerb's
+  // height above one is a slab laid across the road. Twelve per cent of the
+  // pavement in this extract sits over another road's carriageway — every
+  // junction, and every avenue that OpenStreetMap maps as two parallel ways —
+  // so the step could not go in until they could be told apart.
+  const CELL = 40;
+  const lanes = new Map();
+  const cellKey = (a, b) => a + ',' + b;
+  const halfOf = (r) => {
+    const walk = Math.min(4.0, Math.max(2.0, r.w * 0.22));
+    return { walk, half: Math.max(4.0, r.w - 2 * walk) / 2 };
+  };
+  data.roads.forEach((r, ri) => {
+    const { half } = halfOf(r);
+    for (let i = 0; i < r.p.length - 1; i++) {
+      const [x0, z0] = r.p[i], [x1, z1] = r.p[i + 1];
+      const ax = Math.floor(Math.min(x0, x1) / CELL);
+      const bx = Math.floor(Math.max(x0, x1) / CELL);
+      const az = Math.floor(Math.min(z0, z1) / CELL);
+      const bz = Math.floor(Math.max(z0, z1) / CELL);
+      for (let gx = ax - 1; gx <= bx + 1; gx++) {
+        for (let gz = az - 1; gz <= bz + 1; gz++) {
+          const k = cellKey(gx, gz);
+          if (!lanes.has(k)) lanes.set(k, []);
+          lanes.get(k).push([ri, x0, z0, x1, z1, half]);
+        }
+      }
+    }
+  });
+  const onAnotherRoad = (px, pz, self) => {
+    const list = lanes.get(cellKey(Math.floor(px / CELL), Math.floor(pz / CELL)));
+    if (!list) return false;
+    for (const [ri, x0, z0, x1, z1, half] of list) {
+      if (ri === self) continue;
+      const dx = x1 - x0, dz = z1 - z0, l2 = dx * dx + dz * dz;
+      let t = l2 > 0 ? ((px - x0) * dx + (pz - z0) * dz) / l2 : 0;
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const ex = px - (x0 + dx * t), ez = pz - (z0 + dz * t);
+      if (ex * ex + ez * ez < half * half) return true;
+    }
+    return false;
+  };
 
   for (const kind of ['major', 'minor']) {
     const geos = [];
-    for (const r of data.roads) {
-      if (r.k !== kind) continue;
+    data.roads.forEach((r, ri) => {
+      if (r.k !== kind) return;
       const walk = Math.min(4.0, Math.max(2.0, r.w * 0.22));
       const lane = Math.max(4.0, r.w - 2 * walk);
+      // The pavement runs wider than the right of way the road data gives it.
+      //
+      // An OSM way carries the width of the street, and taking a fifth of that
+      // for each footway leaves 2 to 4 m — narrow for Lower Manhattan, and it
+      // left bare ground between the end of the paving and the building line
+      // over much of the grid. That did not matter while everything down there
+      // was within four centimetres of everything else. With a kerb in it, it
+      // is a trench along every block. So the paving is run out past its own
+      // edge until it either meets a building, where it disappears under one,
+      // or meets another carriageway, where it is cut.
+      const reach = walk + 4.5;
 
       for (let i = 0; i < r.p.length - 1; i++) {
         const [x0, z0] = r.p[i], [x1, z1] = r.p[i + 1];
@@ -1185,20 +1244,52 @@ export function buildCity(data) {
         q.rotateX(-Math.PI / 2); q.rotateY(ang); q.translate(cx, 0, cz);
         geos.push(norm(q));
 
-        // Sidewalk slabs either side, world-scale UVs.
+        // Pavement either side, with the kerb face standing up from the
+        // carriageway beside it — but stopping wherever another road runs
+        // through. Tested every metre and a half, along the kerb line rather
+        // than up the middle of the slab, because the kerb is the edge that
+        // shows; then the runs that survive are merged back into one quad
+        // each, so following the junction closely costs nothing in geometry.
+        const steps = Math.max(1, Math.round(len / 1.5));
         for (const side of [-1, 1]) {
-          const off = side * (lane / 2 + walk / 2);
-          const w = new THREE.PlaneGeometry(len + walk, walk);
-          const wuv = w.getAttribute('uv');
-          for (let k = 0; k < wuv.count; k++) {
-            wuv.setXY(k, wuv.getX(k) * (len + over), wuv.getY(k) * walk);
+          const off = side * (lane / 2 + reach / 2);
+          const kOff = side * (lane / 2);
+          const far = side * (lane / 2 + reach);
+          let run = -1;
+          const flush = (from, to) => {
+            if (from < 0) return;
+            const a = from / steps, b = to / steps;
+            const sl = (b - a) * len;
+            const t = (a + b) / 2;
+            const mx = x0 + dx * t, mz = z0 + dz * t;
+            const w = new THREE.PlaneGeometry(sl + 0.05, reach);
+            const wuv = w.getAttribute('uv');
+            for (let k = 0; k < wuv.count; k++) {
+              wuv.setXY(k, wuv.getX(k) * sl + a * len, wuv.getY(k) * reach);
+            }
+            w.rotateX(-Math.PI / 2); w.rotateY(ang);
+            w.translate(mx + px * off, 0, mz + pz * off);
+            walks.push(norm(w));
+            const kb = new THREE.PlaneGeometry(sl + 0.05, GROUND.kerb);
+            kb.rotateY(ang + (side > 0 ? Math.PI : 0));
+            kb.translate(mx + px * kOff, -GROUND.kerb / 2, mz + pz * kOff);
+            kerbs.push(norm(kb));
+          };
+          for (let sIdx = 0; sIdx < steps; sIdx++) {
+            const t = (sIdx + 0.5) / steps;
+            const mx = x0 + dx * t, mz = z0 + dz * t;
+            // Both edges have to be clear: the kerb, because that is what
+            // shows, and the far edge, because a wide pavement reaches across
+            // the next street if nobody stops it.
+            const clear = !onAnotherRoad(mx + px * kOff, mz + pz * kOff, ri) &&
+                          !onAnotherRoad(mx + px * far, mz + pz * far, ri);
+            if (clear) { if (run < 0) run = sIdx; }
+            else if (run >= 0) { flush(run, sIdx); run = -1; }
           }
-          w.rotateX(-Math.PI / 2); w.rotateY(ang);
-          w.translate(cx + px * off, 0, cz + pz * off);
-          walks.push(norm(w));
+          if (run >= 0) flush(run, steps);
         }
       }
-    }
+    });
     if (!geos.length) continue;
     const m = new THREE.Mesh(mergeGeometries(geos),
       kind === 'major' ? CITY_MATS.road : CITY_MATS.roadMinor);
@@ -1211,7 +1302,7 @@ export function buildCity(data) {
   const marks = streetMarkings(data.roads);
   if (marks) {
     const m = new THREE.Mesh(marks, CITY_MATS.paint);
-    m.position.y = ASPHALT_Y + 0.01;
+    m.position.y = GROUND.paint;
     m.receiveShadow = true;
     m.name = 'road-paint';
     g.add(m);
@@ -1222,6 +1313,14 @@ export function buildCity(data) {
     m.position.y = SIDEWALK_Y;
     m.receiveShadow = true;
     m.name = 'sidewalks';
+    g.add(m);
+  }
+  if (kerbs.length) {
+    const m = new THREE.Mesh(mergeGeometries(kerbs), CITY_MATS.kerb);
+    m.position.y = SIDEWALK_Y;
+    m.castShadow = true;
+    m.receiveShadow = true;
+    m.name = 'kerbs';
     g.add(m);
   }
   // Buildings: walls batched by facade family, roofs and crowns pooled.

@@ -57899,6 +57899,33 @@ __def(["./geo.js"], function () {
 const THREE = __req("three");
 
 /** Strip the index and anything beyond position/normal/uv. */
+/**
+ * Where the ground is, in metres, and in one place.
+ *
+ * These used to live as bare numbers in three files, all within ten
+ * centimetres of each other, because their only job was to decide which
+ * surface won a depth fight. That is what left the carriageway sitting six
+ * centimetres *above* the pavement beside it — backwards, and invisible from
+ * anywhere except the one place a street is actually seen from. There is a
+ * real step here and it is now the real way up.
+ */
+const GROUND = {
+  // Six centimetres under the carriageway rather than the twenty-six it would
+  // take to sit under the pavement as well. What is left uncovered by either —
+  // the pockets at a junction corner, where two carriageways cross and neither
+  // pavement can reach — then reads as part of the road surface rather than as
+  // a hole in it.
+  land: -0.46,
+  asphalt: -0.40,     // the carriageway, a kerb's height below the pavement
+  paint: -0.39,       // lane markings
+  park: -0.24,
+  water: -0.22,       // basins and slips inside the shoreline
+  walk: -0.26,        // the pavement, and what street furniture stands on
+  shelf: -0.66,       // the paler band off every shoreline
+  sea: -0.77,         // open water
+};
+GROUND.kerb = GROUND.walk - GROUND.asphalt;   // 0.14 m
+
 function norm(g) {
   const out = g.index ? g.toNonIndexed() : g;
   for (const name of Object.keys(out.attributes)) {
@@ -58015,7 +58042,7 @@ function rasterise(rings, x0, z0, step, nx, nz) {
   return mask;
 }
 
-return { norm, shapeFrom, extrude, flat, bounds, rasterise };
+return { GROUND, norm, shapeFrom, extrude, flat, bounds, rasterise };
 });
 __def(["./nightsky.js"], function () {
 /**
@@ -58550,7 +58577,7 @@ __def(["./terrain.js"], function () {
  */
 
 const THREE = __req("three");
-const { rasterise } = __req("./geo.js");
+const { rasterise, GROUND } = __req("./geo.js");
 
 const STEP = 170;             // metres between grid points
 // Far enough out to cover everything the haze does not swallow. At 9.6 km the
@@ -58724,8 +58751,8 @@ function buildRelief(relief, landPolys, material) {
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.computeVertexNormals();
   const m = new THREE.Mesh(g, material);
-  // Two centimetres over the flat land, which is at -0.30.
-  m.position.y = -0.28;
+  // Two centimetres over the flat land.
+  m.position.y = GROUND.land + 0.02;
   m.receiveShadow = true;
   m.name = 'relief';
   return m;
@@ -59438,13 +59465,15 @@ function roadTexture(marked) {
   // Darker wheel tracks either side of the crown.
   x.fillStyle = 'rgba(20,20,19,0.16)';
   for (const u of [0.28, 0.72]) x.fillRect(u * W - 7, 0, 14, H);
-  // Gutters. The kerb is not geometry, so the shadow line at the edge of the
-  // carriageway has to come from here.
+  // Gutters. This used to carry the kerb as well — a hard dark line at either
+  // edge, standing in for a shadow there was no geometry to cast. There is a
+  // kerb now, so what is left here is only what a gutter actually is: the
+  // strip the sweeper misses, dirtier than the crown and not a line at all.
   const gut = x.createLinearGradient(0, 0, W, 0);
-  gut.addColorStop(0.00, 'rgba(12,12,11,0.75)');
-  gut.addColorStop(0.05, 'rgba(12,12,11,0.12)');
-  gut.addColorStop(0.95, 'rgba(12,12,11,0.12)');
-  gut.addColorStop(1.00, 'rgba(12,12,11,0.75)');
+  gut.addColorStop(0.00, 'rgba(12,12,11,0.34)');
+  gut.addColorStop(0.09, 'rgba(12,12,11,0.12)');
+  gut.addColorStop(0.91, 'rgba(12,12,11,0.12)');
+  gut.addColorStop(1.00, 'rgba(12,12,11,0.34)');
   x.fillStyle = gut;
   x.fillRect(0, 0, W, H);
 
@@ -59738,7 +59767,7 @@ __def(["./details.js"], function () {
 
 const THREE = __req("three");
 const { mergeGeometries } = __req("BufferGeometryUtils");
-const { norm, bounds, rasterise } = __req("./geo.js");
+const { norm, bounds, rasterise, GROUND } = __req("./geo.js");
 const { flagTexture } = __req("./textures.js");
 
 function rng(seed) {
@@ -60580,7 +60609,7 @@ function streetLamps(roads, limit = 700, avoid, extra = [], reach = 1150) {
     q.setFromAxisAngle(up, rot);
     // A little variation in height, or a long street reads as a picket fence.
     scl.set(1, 0.92 + rand() * 0.16, 1);
-    pos.set(x, y === undefined ? -0.26 : y, z);
+    pos.set(x, y === undefined ? GROUND.walk : y, z);
     m.compose(pos, q, scl);
     posts.setMatrixAt(i, m);
     heads.setMatrixAt(i, m);
@@ -60667,11 +60696,11 @@ function trafficSignals(junctionList, avoid) {
 
   sites.forEach(([x, z, rot, green], i) => {
     q.setFromAxisAngle(up, rot);
-    pos.set(x, -0.26, z);
+    pos.set(x, GROUND.walk, z);
     m.compose(pos, q, scl);
     posts.setMatrixAt(i, m);
     heads.setMatrixAt(i, m);
-    pos.set(x, -0.26 + (green ? -0.30 : 0.30), z);
+    pos.set(x, GROUND.walk + (green ? -0.30 : 0.30), z);
     m.compose(pos, q, scl);
     lenses.setMatrixAt(i, m);
     col.setHex(green ? 0x35c257 : 0xd8362a);
@@ -60757,7 +60786,7 @@ function kerbFurniture(roads, limit = 260, avoid, reach = 900) {
     const up = new THREE.Vector3(0, 1, 0);
     list.forEach(([x, z], i) => {
       q.setFromAxisAngle(up, rand() * Math.PI * 2);
-      pos.set(x, -0.26, z);
+      pos.set(x, GROUND.walk, z);
       m.compose(pos, q, scl);
       im.setMatrixAt(i, m);
     });
@@ -61181,7 +61210,7 @@ __def(["./city.js"], function () {
 
 const THREE = __req("three");
 const { mergeGeometries } = __req("BufferGeometryUtils");
-const { norm, shapeFrom, flat, extrude, bounds } = __req("./geo.js");
+const { norm, shapeFrom, flat, extrude, bounds, GROUND } = __req("./geo.js");
 const { facadeMaps, roofTexture, roadTexture, sidewalkTexture, waterNormal, landTexture, LAND_TILE_M, storefront, STOREFRONT_H, grassTexture } = __req("./textures.js");
 
 const FACADE = facadeMaps();
@@ -61231,6 +61260,11 @@ const CITY_MATS = {
     map: roadTexture(false), color: 0xd0ccc1, roughness: 0.92, metalness: 0.0 }),
   sidewalk: new THREE.MeshStandardMaterial({
     map: sidewalkTexture(), roughness: 0.94, metalness: 0.0 }),
+  // The kerb face. Granite rather than the concrete above it — that is what
+  // these were, and it is why a New York kerb reads as a dark line and not as
+  // the edge of the pavement.
+  kerb: new THREE.MeshStandardMaterial({
+    color: 0x6e6d69, roughness: 0.82, metalness: 0.02, side: THREE.DoubleSide }),
   park: new THREE.MeshStandardMaterial({
     map: grassTexture(), roughness: 0.95, metalness: 0.0,
     emissiveMap: grassTexture(), emissive: new THREE.Color(0x5a6a4a),
@@ -62265,7 +62299,7 @@ function buildCity(data) {
   }
   const sea = new THREE.Mesh(seaGeo, CITY_MATS.water);
   sea.rotation.x = -Math.PI / 2;
-  sea.position.y = -0.55;
+  sea.position.y = GROUND.sea;
   sea.receiveShadow = true;
   sea.name = 'water';
   g.add(sea);
@@ -62290,7 +62324,7 @@ function buildCity(data) {
   const shelf = shallows(data.land || []);
   if (shelf) {
     const m = new THREE.Mesh(shelf, CITY_MATS.shallows);
-    m.position.y = -0.44;
+    m.position.y = GROUND.shelf;
     m.receiveShadow = true;
     m.name = 'shallows';
     g.add(m);
@@ -62298,38 +62332,92 @@ function buildCity(data) {
   // Ground stack, lowest first. Parks have to sit under the carriageway:
   // above it they paint over the roads that run through them, and the traffic
   // ends up apparently driving across a lawn.
-  //   land -0.30  <  pavement -0.26  <  parks -0.24
-  //              <  inland water -0.22  <  asphalt -0.20
-  layer(data.land || [], -0.30, CITY_MATS.ground, 'land');
-  layer(data.parks, -0.24, CITY_MATS.park, 'parks');
+  // The stack, lowest first, and now with a real step in it: see GROUND.
+  //   land  <  asphalt  <  paint  <  parks  <  pavement
+  layer(data.land || [], GROUND.land, CITY_MATS.ground, 'land');
+  layer(data.parks, GROUND.park, CITY_MATS.park, 'parks');
   const walks2 = parkPaths(data.parks || []);
   if (walks2) {
     const m = new THREE.Mesh(walks2, CITY_MATS.parkPath);
-    m.position.y = -0.228;
+    m.position.y = GROUND.park + 0.012;
     m.receiveShadow = true;
     m.name = 'park-paths';
     g.add(m);
   }
-  layer(data.water, -0.22, CITY_MATS.water, 'inland-water');
+  layer(data.water, GROUND.water, CITY_MATS.water, 'inland-water');
 
   // Streets. The OSM width is the whole right of way, so the carriageway is
-  // narrowed and the remainder becomes sidewalk either side, with a kerb face
-  // between them. Without that, asphalt runs straight into the building line
-  // and the street reads as a painted strip from any low viewpoint.
-  // A wide avenue is often several parallel ways in OSM, so each way's
-  // pavement would bury its neighbour's carriageway. Asphalt is therefore
-  // laid over the pavement rather than beside it, and the kerb line lives in
-  // the road texture instead of in geometry.
-  const ASPHALT_Y = -0.20;
-  const SIDEWALK_Y = -0.26;
+  // narrowed and the remainder becomes pavement either side, with a real kerb
+  // between them — see GROUND, and the note on the carriageway index below for
+  // why it could not be one until now.
+  const ASPHALT_Y = GROUND.asphalt;
+  const SIDEWALK_Y = GROUND.walk;
   const walks = [];
+  const kerbs = [];
+
+  // Where the carriageways are, so a pavement can be told to stop at one.
+  //
+  // A pavement that is merely a shade below the asphalt can lie across a
+  // neighbouring street and nobody sees it; a pavement standing a kerb's
+  // height above one is a slab laid across the road. Twelve per cent of the
+  // pavement in this extract sits over another road's carriageway — every
+  // junction, and every avenue that OpenStreetMap maps as two parallel ways —
+  // so the step could not go in until they could be told apart.
+  const CELL = 40;
+  const lanes = new Map();
+  const cellKey = (a, b) => a + ',' + b;
+  const halfOf = (r) => {
+    const walk = Math.min(4.0, Math.max(2.0, r.w * 0.22));
+    return { walk, half: Math.max(4.0, r.w - 2 * walk) / 2 };
+  };
+  data.roads.forEach((r, ri) => {
+    const { half } = halfOf(r);
+    for (let i = 0; i < r.p.length - 1; i++) {
+      const [x0, z0] = r.p[i], [x1, z1] = r.p[i + 1];
+      const ax = Math.floor(Math.min(x0, x1) / CELL);
+      const bx = Math.floor(Math.max(x0, x1) / CELL);
+      const az = Math.floor(Math.min(z0, z1) / CELL);
+      const bz = Math.floor(Math.max(z0, z1) / CELL);
+      for (let gx = ax - 1; gx <= bx + 1; gx++) {
+        for (let gz = az - 1; gz <= bz + 1; gz++) {
+          const k = cellKey(gx, gz);
+          if (!lanes.has(k)) lanes.set(k, []);
+          lanes.get(k).push([ri, x0, z0, x1, z1, half]);
+        }
+      }
+    }
+  });
+  const onAnotherRoad = (px, pz, self) => {
+    const list = lanes.get(cellKey(Math.floor(px / CELL), Math.floor(pz / CELL)));
+    if (!list) return false;
+    for (const [ri, x0, z0, x1, z1, half] of list) {
+      if (ri === self) continue;
+      const dx = x1 - x0, dz = z1 - z0, l2 = dx * dx + dz * dz;
+      let t = l2 > 0 ? ((px - x0) * dx + (pz - z0) * dz) / l2 : 0;
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const ex = px - (x0 + dx * t), ez = pz - (z0 + dz * t);
+      if (ex * ex + ez * ez < half * half) return true;
+    }
+    return false;
+  };
 
   for (const kind of ['major', 'minor']) {
     const geos = [];
-    for (const r of data.roads) {
-      if (r.k !== kind) continue;
+    data.roads.forEach((r, ri) => {
+      if (r.k !== kind) return;
       const walk = Math.min(4.0, Math.max(2.0, r.w * 0.22));
       const lane = Math.max(4.0, r.w - 2 * walk);
+      // The pavement runs wider than the right of way the road data gives it.
+      //
+      // An OSM way carries the width of the street, and taking a fifth of that
+      // for each footway leaves 2 to 4 m — narrow for Lower Manhattan, and it
+      // left bare ground between the end of the paving and the building line
+      // over much of the grid. That did not matter while everything down there
+      // was within four centimetres of everything else. With a kerb in it, it
+      // is a trench along every block. So the paving is run out past its own
+      // edge until it either meets a building, where it disappears under one,
+      // or meets another carriageway, where it is cut.
+      const reach = walk + 4.5;
 
       for (let i = 0; i < r.p.length - 1; i++) {
         const [x0, z0] = r.p[i], [x1, z1] = r.p[i + 1];
@@ -62350,20 +62438,52 @@ function buildCity(data) {
         q.rotateX(-Math.PI / 2); q.rotateY(ang); q.translate(cx, 0, cz);
         geos.push(norm(q));
 
-        // Sidewalk slabs either side, world-scale UVs.
+        // Pavement either side, with the kerb face standing up from the
+        // carriageway beside it — but stopping wherever another road runs
+        // through. Tested every metre and a half, along the kerb line rather
+        // than up the middle of the slab, because the kerb is the edge that
+        // shows; then the runs that survive are merged back into one quad
+        // each, so following the junction closely costs nothing in geometry.
+        const steps = Math.max(1, Math.round(len / 1.5));
         for (const side of [-1, 1]) {
-          const off = side * (lane / 2 + walk / 2);
-          const w = new THREE.PlaneGeometry(len + walk, walk);
-          const wuv = w.getAttribute('uv');
-          for (let k = 0; k < wuv.count; k++) {
-            wuv.setXY(k, wuv.getX(k) * (len + over), wuv.getY(k) * walk);
+          const off = side * (lane / 2 + reach / 2);
+          const kOff = side * (lane / 2);
+          const far = side * (lane / 2 + reach);
+          let run = -1;
+          const flush = (from, to) => {
+            if (from < 0) return;
+            const a = from / steps, b = to / steps;
+            const sl = (b - a) * len;
+            const t = (a + b) / 2;
+            const mx = x0 + dx * t, mz = z0 + dz * t;
+            const w = new THREE.PlaneGeometry(sl + 0.05, reach);
+            const wuv = w.getAttribute('uv');
+            for (let k = 0; k < wuv.count; k++) {
+              wuv.setXY(k, wuv.getX(k) * sl + a * len, wuv.getY(k) * reach);
+            }
+            w.rotateX(-Math.PI / 2); w.rotateY(ang);
+            w.translate(mx + px * off, 0, mz + pz * off);
+            walks.push(norm(w));
+            const kb = new THREE.PlaneGeometry(sl + 0.05, GROUND.kerb);
+            kb.rotateY(ang + (side > 0 ? Math.PI : 0));
+            kb.translate(mx + px * kOff, -GROUND.kerb / 2, mz + pz * kOff);
+            kerbs.push(norm(kb));
+          };
+          for (let sIdx = 0; sIdx < steps; sIdx++) {
+            const t = (sIdx + 0.5) / steps;
+            const mx = x0 + dx * t, mz = z0 + dz * t;
+            // Both edges have to be clear: the kerb, because that is what
+            // shows, and the far edge, because a wide pavement reaches across
+            // the next street if nobody stops it.
+            const clear = !onAnotherRoad(mx + px * kOff, mz + pz * kOff, ri) &&
+                          !onAnotherRoad(mx + px * far, mz + pz * far, ri);
+            if (clear) { if (run < 0) run = sIdx; }
+            else if (run >= 0) { flush(run, sIdx); run = -1; }
           }
-          w.rotateX(-Math.PI / 2); w.rotateY(ang);
-          w.translate(cx + px * off, 0, cz + pz * off);
-          walks.push(norm(w));
+          if (run >= 0) flush(run, steps);
         }
       }
-    }
+    });
     if (!geos.length) continue;
     const m = new THREE.Mesh(mergeGeometries(geos),
       kind === 'major' ? CITY_MATS.road : CITY_MATS.roadMinor);
@@ -62376,7 +62496,7 @@ function buildCity(data) {
   const marks = streetMarkings(data.roads);
   if (marks) {
     const m = new THREE.Mesh(marks, CITY_MATS.paint);
-    m.position.y = ASPHALT_Y + 0.01;
+    m.position.y = GROUND.paint;
     m.receiveShadow = true;
     m.name = 'road-paint';
     g.add(m);
@@ -62387,6 +62507,14 @@ function buildCity(data) {
     m.position.y = SIDEWALK_Y;
     m.receiveShadow = true;
     m.name = 'sidewalks';
+    g.add(m);
+  }
+  if (kerbs.length) {
+    const m = new THREE.Mesh(mergeGeometries(kerbs), CITY_MATS.kerb);
+    m.position.y = SIDEWALK_Y;
+    m.castShadow = true;
+    m.receiveShadow = true;
+    m.name = 'kerbs';
     g.add(m);
   }
   // Buildings: walls batched by facade family, roofs and crowns pooled.
@@ -63369,6 +63497,7 @@ const { roofClutter, trees, traffic, parkedCars, manholes, vessels, animateVesse
 const { makeNightSky } = __req("./nightsky.js");
 const { buildBridge, BRIDGE_MATS } = __req("./bridge.js");
 const { buildRelief } = __req("./terrain.js");
+const { GROUND } = __req("./geo.js");
 
 const DEG = Math.PI / 180;
 // A second layer the two sky domes are also on, so the water's probe can be
@@ -64244,16 +64373,16 @@ async function init() {
     detail.add(m);
   }
   // Sit them on the carriageway, not on the pavement level.
-  const roadFleet = traffic(data.roads, tier.cars, footprints, -0.20);
+  const roadFleet = traffic(data.roads, tier.cars, footprints, GROUND.asphalt);
   for (const m of roadFleet) detail.add(m);
   cityTraffic = roadFleet[0] || null;
   // The rank is only worth having if it is continuous, so it is dense inside a
   // radius and simply absent outside it rather than thin everywhere.
-  for (const m of parkedCars(data.roads, tier.parked, footprints, -0.20,
+  for (const m of parkedCars(data.roads, tier.parked, footprints, GROUND.asphalt,
                              tier.parkReach)) detail.add(m);
   // Flags on the roofs. Where they are is invented; the size is not.
   for (const m of flags(data.buildings.concat(data.complex), tier.flags)) detail.add(m);
-  const lids = manholes(data.roads, tier.props, footprints, -0.20);
+  const lids = manholes(data.roads, tier.props, footprints, GROUND.asphalt);
   if (lids) detail.add(lids);
   const lamps = streetLamps(data.roads, tier.lamps, footprints,
                             PLAZA_LAMP_SITES(data));

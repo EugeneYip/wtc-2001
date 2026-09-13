@@ -9,6 +9,33 @@
 import * as THREE from 'three';
 
 /** Strip the index and anything beyond position/normal/uv. */
+/**
+ * Where the ground is, in metres, and in one place.
+ *
+ * These used to live as bare numbers in three files, all within ten
+ * centimetres of each other, because their only job was to decide which
+ * surface won a depth fight. That is what left the carriageway sitting six
+ * centimetres *above* the pavement beside it — backwards, and invisible from
+ * anywhere except the one place a street is actually seen from. There is a
+ * real step here and it is now the real way up.
+ */
+export const GROUND = {
+  // Six centimetres under the carriageway rather than the twenty-six it would
+  // take to sit under the pavement as well. What is left uncovered by either —
+  // the pockets at a junction corner, where two carriageways cross and neither
+  // pavement can reach — then reads as part of the road surface rather than as
+  // a hole in it.
+  land: -0.46,
+  asphalt: -0.40,     // the carriageway, a kerb's height below the pavement
+  paint: -0.39,       // lane markings
+  park: -0.24,
+  water: -0.22,       // basins and slips inside the shoreline
+  walk: -0.26,        // the pavement, and what street furniture stands on
+  shelf: -0.66,       // the paler band off every shoreline
+  sea: -0.77,         // open water
+};
+GROUND.kerb = GROUND.walk - GROUND.asphalt;   // 0.14 m
+
 export function norm(g) {
   const out = g.index ? g.toNonIndexed() : g;
   for (const name of Object.keys(out.attributes)) {

@@ -154,10 +154,39 @@ New Street and the rest — still there.
 
 **Streets.** The OSM width is the whole right of way, so the carriageway is
 narrowed and the remainder becomes pavement either side, with lane markings
-down the middle and a gutter line at the kerb. A wide avenue is often several
-parallel ways in the data, so asphalt is laid over pavement rather than beside
-it — otherwise each way's pavement buries its neighbour's roadway. Lamp
-standards line both sides, alternating, with a few more around the plaza deck.
+down the middle. Lamp standards line both sides, alternating, with a few more
+around the plaza deck.
+
+**The kerb, and why there wasn't one.** Everything on the ground here used to
+live inside ten centimetres of everything else — land, pavement, parks, inland
+water, asphalt — because those numbers were never heights, only an order for
+deciding which surface won a depth fight. And the order had the **carriageway
+six centimetres above the pavement beside it**: backwards, invisible from
+anywhere except the one place a street is actually looked at, and the reason
+the kerb had to be a dark line painted into the road texture.
+
+The obstacle was real and it is measurable. A wide avenue is often several
+parallel ways in the data, and every junction is two carriageways crossing, so
+a pavement laid at its full width runs over its neighbour's roadway: **12 per
+cent of the pavement in this extract sits on top of another road's
+carriageway**. At four centimetres nobody sees that. At a kerb's height it is a
+slab laid across the street.
+
+So the pavement is now told where to stop. The carriageways go into a coarse
+grid; each pavement strip is tested every metre and a half — along the kerb
+line, because that is the edge that shows, and along its far edge, because a
+wide pavement reaches across the next street if nobody stops it — and the runs
+that survive are merged back into one quad each. Cutting at a metre and a half
+and merging afterwards costs **3,366 triangles** for the whole city's pavement,
+which is less than the uncut version used.
+
+Two things fell out of it. The pavement can now be run out past the width the
+road data gives it — a fifth of the right of way was 2 to 4 m, and it left bare
+ground between the paving and the building line over much of the grid — because
+anything that overreaches is cut. And the land beneath sits six centimetres
+under the carriageway rather than under the pavement, so the pockets at a
+junction corner that neither pavement can reach read as road surface rather
+than as holes in it.
 
 **Traffic.** Which side of the centreline a vehicle sits on and which way it
 faces are one decision, not two. They used to be taken separately — the side at
