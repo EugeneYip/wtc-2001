@@ -854,6 +854,95 @@ function normalFromHeight(h, N, strength) {
 }
 
 // ---------------------------------------------------------------------------
+// Masonry
+// ---------------------------------------------------------------------------
+
+/** Metres one tile of the granite covers. Eight courses of 0.9 m. */
+export const GRANITE_TILE_M = 7.2;
+
+/**
+ * Coursed granite, for the Brooklyn Bridge.
+ *
+ * Its towers were eighty-four metres of one flat grey, which is the one thing
+ * that masonry is not: a tower that size is read entirely by its courses.
+ * Roebling's are rusticated ashlar — blocks laid in even courses with the
+ * joints raked back, so every one of them carries a line of shadow along the
+ * top and down one side, and the face of each block is slightly different
+ * stone from the one beside it.
+ *
+ * Courses at 0.9 m and blocks at about 1.8 m, which is what they measure, with
+ * the vertical joints staggered half a block course to course. The tone varies
+ * block by block rather than within a block, because that is how a quarry
+ * delivers them.
+ */
+export function graniteTexture() {
+  const N = 256;
+  const K = N / GRANITE_TILE_M;                  // pixels per metre
+  const [c, x] = canvas(N, N);
+  const [hc, hx] = canvas(N, N);                 // the joints, in depth
+  const rand = rng(5507);
+  const COURSE = 0.9 * K, BLOCK = 1.8 * K;
+  const JOINT = Math.max(1, Math.round(0.035 * K * 2));
+
+  x.fillStyle = '#6e665c';                       // the raked joint behind
+  x.fillRect(0, 0, N, N);
+  hx.fillStyle = 'rgb(96,96,96)';
+  hx.fillRect(0, 0, N, N);
+
+  const rows = Math.round(N / COURSE);
+  for (let r = 0; r < rows; r++) {
+    const y = (r * N) / rows;
+    const hgt = N / rows - JOINT;
+    // Half a block of stagger every other course.
+    const shift = (r % 2) * BLOCK * 0.5;
+    for (let b = -1; b * BLOCK + shift < N; b++) {
+      const bx = b * BLOCK + shift;
+      const w = BLOCK - JOINT;
+      // Quarried granite runs warm grey to pink-buff and back; the spread is
+      // between blocks, not inside one.
+      const t = rand();
+      const base = [138 + t * 26, 130 + t * 22, 118 + t * 18];
+      const k = 0.86 + rand() * 0.26;
+      x.fillStyle = `rgb(${clamp255(base[0] * k)},${clamp255(base[1] * k)},${clamp255(base[2] * k)})`;
+      x.fillRect(bx, y, w, hgt);
+      hx.fillStyle = 'rgb(176,176,176)';
+      hx.fillRect(bx, y, w, hgt);
+      // Rustication: the face is not flat, it is picked. A little noise so a
+      // block close up is stone rather than a painted rectangle.
+      for (let i = 0; i < 26; i++) {
+        const v = Math.round(rand() * 40) - 20;
+        x.fillStyle = `rgba(${clamp255(120 + v)},${clamp255(114 + v)},${clamp255(104 + v)},0.22)`;
+        x.fillRect(bx + rand() * w, y + rand() * hgt, 1 + rand() * 3, 1 + rand() * 2);
+      }
+    }
+  }
+  // Weathering: rain runs down a face and the courses hold it, so the streaks
+  // are vertical and the horizontal joints are dirtier than the vertical ones.
+  for (let i = 0; i < 60; i++) {
+    const sx = rand() * N, w = 2 + rand() * 9;
+    const g = x.createLinearGradient(0, 0, 0, N);
+    const a = 0.03 + rand() * 0.06;
+    g.addColorStop(0, `rgba(52,48,42,${a})`);
+    g.addColorStop(1, `rgba(52,48,42,${a * 0.3})`);
+    x.fillStyle = g;
+    x.fillRect(sx, 0, w, N);
+  }
+  hx.filter = 'blur(0.8px)';
+  hx.drawImage(hc, 0, 0);
+  hx.filter = 'none';
+
+  // Repeat of one, not 1/GRANITE_TILE_M: the UVs these are read with are
+  // already in tiles — see stoneUV in bridge.js — and scaling here as well
+  // divides by the tile size twice, which put courses three metres deep on a
+  // tower whose real ones are under a metre.
+  const m = GRANITE_TILE_M;
+  return {
+    map: finish(c, 1, 1),
+    normal: finishData(normalFromCanvas(hc, N, N, 0.42, m / N, m / N), 1, 1),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Water
 // ---------------------------------------------------------------------------
 

@@ -20,6 +20,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'BufferGeometryUtils';
 import { norm } from './geo.js';
+import { graniteTexture, GRANITE_TILE_M } from './textures.js';
 
 const TOWER_H = 84.3;
 const TOWER_W = 42.0;          // across the bridge
@@ -40,9 +41,16 @@ const MID_CABLE = 45.5;        // cable low point, a few metres over the deck
 const PROM_W = 5.6;
 const PROM_H = 1.9;
 
+const GRANITE = graniteTexture();
+
 export const BRIDGE_MATS = {
+  // Coursed granite, mapped off world position rather than off the geometry —
+  // see stoneUV. The colour is left near white because the texture carries it
+  // now; at 0x9a8d7d on top of the map the towers came out mud.
   stone: new THREE.MeshStandardMaterial({
-    color: 0x9a8d7d, roughness: 0.92, metalness: 0.03, name: 'bridge-granite',
+    color: 0xd8d2c8, roughness: 0.92, metalness: 0.03, name: 'bridge-granite',
+    map: GRANITE.map, normalMap: GRANITE.normal,
+    normalScale: new THREE.Vector2(0.7, 0.7),
   }),
   steel: new THREE.MeshStandardMaterial({
     color: 0x8f9499, roughness: 0.52, metalness: 0.55, name: 'bridge-steel',
@@ -143,7 +151,81 @@ function tower(deckY) {
   }
   const g = new THREE.ExtrudeGeometry(shape, { depth: TOWER_D, bevelEnabled: false });
   g.translate(0, 0, -TOWER_D / 2);
-  return norm(g);
+  const parts = [norm(g)];
+
+  // The courses that break the shaft up.
+  //
+  // A tower that simply stops at the top is a wall, not a tower: the real one
+  // finishes on a cornice, stands on a water table where it comes out of the
+  // river, and carries a string course at the springing of the arches. All
+  // three are a box a little wider than the shaft at the height it happens,
+  // which is the cheapest articulation there is and the only kind that shows
+  // in silhouette from a mile off.
+  const widthAt = (y) => TOWER_W * (1 - 0.14 * (y / TOWER_H));
+  const band = (y0, ht, proud) => {
+    const b = new THREE.BoxGeometry(
+      widthAt(y0 + ht / 2) + proud * 2, ht, TOWER_D + proud * 2);
+    b.translate(0, y0 + ht / 2, 0);
+    parts.push(norm(b));
+  };
+  band(0, 4.2, 1.5);                       // water table
+  band(TOWER_H - 3.4, 1.2, 0.9);           // corbel course
+  band(TOWER_H - 2.2, 2.2, 1.7);           // cornice
+
+  // The string course at the springing of the arches, in three pieces: the
+  // centre pier and the two outer legs. Run across the whole elevation as one
+  // band it bridges the arch voids, which is a lintel where there is meant to
+  // be daylight.
+  const aHalf = ARCH_W / 2, aC = ARCH_W * 0.88;
+  const piers = [
+    [0, (aC - aHalf) * 2],                                 // centre pier
+    [(aC + aHalf + half) / 2, half - (aC + aHalf)],        // outer, +x
+    [-(aC + aHalf + half) / 2, half - (aC + aHalf)],       // outer, -x
+  ];
+  for (const [cx2, w2] of piers) {
+    if (w2 <= 0.2) continue;
+    const b = new THREE.BoxGeometry(w2 + 1.0, 1.0, TOWER_D + 1.0);
+    b.translate(cx2, spring - 0.4, 0);
+    parts.push(norm(b));
+  }
+
+  // Cable saddles: the cast shoes the four cables ride over. Small, but they
+  // are why the cables clear the stonework instead of vanishing into it.
+  for (const off of CABLE_OFF) {
+    const sd = new THREE.BoxGeometry(2.6, 1.6, 3.2);
+    sd.translate(off, TOWER_H + 0.7, 0);
+    parts.push(norm(sd));
+  }
+  return mergeGeometries(parts);
+}
+
+/**
+ * Lay the courses on, from world position.
+ *
+ * None of this stonework carries a usable UV: the towers come out of an
+ * extrusion, the anchorages and piers out of boxes, and all of it is merged
+ * into one mesh. Rather than unwrap any of it, each vertex takes its texture
+ * coordinate from where it is — height up the V axis, and whichever horizontal
+ * axis the face is *least* turned towards along the U. Courses then run level
+ * and continuous round every corner of every block of masonry on the bridge,
+ * which is what a course does.
+ *
+ * Done here on the CPU, once, rather than in a shader: these pieces are
+ * already in world coordinates by the time they are merged, so it is a pass
+ * over the vertices and costs nothing to draw.
+ */
+function stoneUV(g) {
+  const p = g.getAttribute('position');
+  const n = g.getAttribute('normal');
+  const uv = g.getAttribute('uv');
+  const k = 1 / GRANITE_TILE_M;
+  for (let i = 0; i < p.count; i++) {
+    const nx = Math.abs(n.getX(i)), ny = Math.abs(n.getY(i)), nz = Math.abs(n.getZ(i));
+    if (ny > nx && ny > nz) uv.setXY(i, p.getX(i) * k, p.getZ(i) * k);
+    else uv.setXY(i, (nx > nz ? p.getZ(i) : p.getX(i)) * k, p.getY(i) * k);
+  }
+  uv.needsUpdate = true;
+  return g;
 }
 
 /** A run of thin box segments along a polyline, as a cable or a stay. */
@@ -359,7 +441,7 @@ export function buildBridge(spec) {
     m.name = name;
     g.add(m);
   };
-  add(stone, BRIDGE_MATS.stone, 'bridge-towers');
+  add(stone.map(stoneUV), BRIDGE_MATS.stone, 'bridge-towers');
   add(deck, BRIDGE_MATS.deck, 'bridge-deck');
   add(walk, BRIDGE_MATS.walk, 'bridge-promenade');
   add(steel, BRIDGE_MATS.steel, 'bridge-cables');

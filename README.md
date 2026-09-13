@@ -535,6 +535,39 @@ one about forty metres off its own bank, where they stand. The two Gothic
 openings in each tower are pierced geometry, as the arcade at the foot of the
 Twin Towers is.
 
+**The towers are masonry now, and coursed.** They were eighty-four metres of
+one flat grey apiece, which is the one thing a masonry tower is not: a mass
+that size is read entirely by its courses. Roebling's are rusticated ashlar —
+blocks laid in even courses with the joints raked back, so each one carries a
+line of shadow along its top and down one side. Courses at 0.9 m and blocks at
+about 1.8 m, which is what they measure, staggered half a block course to
+course, and the tone varies block to block rather than within a block because
+that is how a quarry delivers them.
+
+None of this stonework has a usable texture coordinate — the towers come out of
+an extrusion, the anchorages and piers out of boxes, and all of it is merged
+into one mesh. Rather than unwrap any of it, each vertex takes its coordinate
+from **where it is**: height up one axis, and whichever horizontal axis the
+face is least turned towards along the other. Courses then run level and
+unbroken round every corner of every piece of masonry on the bridge, which is
+what a course does. It is a pass over the vertices at build time and costs
+nothing to draw.
+
+Watch the scale twice, though. Projecting position into tile units *and*
+leaving the texture's own repeat at one over the tile size divides by it twice,
+and the first attempt had three-metre courses on a tower whose real ones are
+under a metre.
+
+**And it stops on something.** A tower that simply ends at the top is a wall.
+There is now a cornice and a corbel course under it, a water table where the
+shaft comes out of the river, and the cast saddles the four cables ride over —
+each of them a box a little wider than the shaft at the height it happens,
+which is the cheapest articulation there is and the only kind that shows in
+silhouette from a mile off. The string course at the springing of the arches
+runs in three pieces, across the centre pier and the two outer legs: taken
+across the whole elevation as one band it bridges the arch voids, which is a
+lintel where there is meant to be daylight.
+
 **Light and water.** The sun is placed from real solar geometry for 40.71° N
 on 11 September, so shadow directions through the day are the ones the site
 actually had. It is drawn by the Mie term of the sky model, and the asymmetry
