@@ -63172,6 +63172,16 @@ function sunVector(hour) {
   };
 }
 
+// How much of the Preetham shader's own output encoding to take out. See the
+// long note where the sky is built. 1/2.4 is what it ships with; 0.75 is what
+// a clear noon sky wants. It ramps back to the original as the sun drops,
+// because the last twenty-five degrees were tuned against the old curve and
+// the extra saturation there only brings out the green band the model puts
+// between the orange horizon and the blue above it.
+const SKY_GAMMA = 0.75;
+const SKY_GAMMA_LOW = 1 / 2.4;
+const SKY_GAIN = 0.972;
+
 const SKY_DAY = new THREE.Color(0x9dbdd8);
 const SKY_DUSK = new THREE.Color(0xd9793a);
 const NIGHT_SKY_FILL = new THREE.Color(0x222c48);
@@ -63262,6 +63272,12 @@ function applyTime(hour) {
   // half a degree the disc really subtends — but it is a sun now.
   u.mieCoefficient.value = 0.0028 + warm * 0.0018;
   u.mieDirectionalG.value = 0.9935 - warm * 0.001;
+  // Hand the sky back its own output encoding as the sun goes down; see
+  // SKY_GAMMA. Squared, so the whole of the useful daylight range keeps the
+  // full effect and only the last few degrees give it up.
+  const enc = warm * warm;
+  u.skyGamma.value = mix(SKY_GAMMA, SKY_GAMMA_LOW, enc);
+  u.skyGain.value = mix(SKY_GAIN, 1.0, enc);
 
   const n = nightSky.material.uniforms;
   n.uSunDir.value.copy(dir);
@@ -63299,16 +63315,40 @@ function applyTime(hour) {
   fill.color.copy(FILL_DAY).lerp(MOON, dusk);
 
   _fog.copy(_hz).lerp(WHITE, 0.22 * (1 - warm * 0.7));
-  // Haze approaches the radiance of the sky behind it, and at sunset that sky
-  // is dim. Taking the fog straight from the sunset colour made the far water
-  // more than twice as bright as the sky immediately above it, which put a
-  // hard-edged orange bar right along the horizon. Shaped to bite only in the
-  // last few degrees, so the daylight haze is untouched.
-  _fog.multiplyScalar(1 - 0.68 * Math.pow(warm, 4));
+  // How bright the haze is, as against what colour it is.
+  //
+  // Haze at saturation is the sky behind it — that is all airlight is — so the
+  // test is whether the far shore and the sky meet without a step. They did
+  // not: through the whole day the fog sat about fifty levels under the sky
+  // immediately above the horizon, which is a grey deck laid under a pale sky,
+  // and is most of what made this look like weather. The old curve here only
+  // bit in the last few degrees, so the daylight haze was never touched.
+  //
+  // This is measured. At each hour the fog was scaled until the far water
+  // matched the sky just over it, looking both into the sunset and away from
+  // it: the factor wanted is 5.2 at noon, 3.4 at twenty-four degrees, 1.1 at
+  // six, and 0.2 by the time the sun is on the horizon — which is a good fit
+  // to the sine of the elevation to the power of nine tenths, and ought to be,
+  // since airlight scales with the sunlight reaching the haze. A single fog
+  // colour cannot be right in every direction at once (the sunset side wants
+  // about twice the anti-sun side), so this sits between them.
+  _fog.multiplyScalar(6.6 * Math.pow(up, 0.9));
   _fog.lerp(FOG_NIGHT, dusk);
   scene.fog.color.copy(_fog);
   scene.fog.near = mix(2200, 1700, dusk);
-  scene.fog.far = mix(11500, 9500, dusk);
+  // 11.5 km used to be the point at which everything became pure haze, which
+  // is a visual range of about seven miles. The morning this is set on was
+  // reported at ten and was plainly better than that, and the far shore paid
+  // for it: Brooklyn and the Jersey hills dissolved into the horizon band
+  // instead of standing as a line under it.
+  //
+  // It cannot go much past this. The OSM extract is clipped to a square 14 km
+  // on a side from the towers, so past that the coast simply stops, and the
+  // old 11.5 was chosen to bury that edge in haze. At 30 km the land at the
+  // clip is still six tenths hazed and the open sea beyond it washes to the
+  // same tone, so the join does not read — but it is the ceiling, and it is
+  // the data that sets it rather than the weather.
+  scene.fog.far = mix(30000, 18000, dusk);
 
   renderer.toneMappingExposure = mix(0.50 + 0.16 * warm, 0.86, dusk);
 
@@ -63818,7 +63858,7 @@ async function init() {
   document.getElementById('app').appendChild(renderer.domElement);
 
   scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0x9dbdd8, 2200, 11500);
+  scene.fog = new THREE.Fog(0x9dbdd8, 2200, 30000);
 
   // A tight near plane wrecks depth precision out at the rivers; 1.2 m is
   // still closer than the camera can get to anything.
@@ -63839,6 +63879,42 @@ async function init() {
   sky = new Sky();
   sky.scale.setScalar(20000);
   sky.renderOrder = -2;
+  // The Preetham shader signs off by raising its radiance to the power 1/2.4.
+  // That is an sRGB encode in all but name, and it comes from a demo written
+  // before any of this was tone mapped; three.js then tone maps and encodes
+  // again. Two encodes flatten a colour ratio the way two gammas do, and the
+  // sky came out milky — 37% saturated at the zenith at noon and white by ten
+  // degrees above the horizon. It also made the scattering controls useless:
+  // turning rayleigh up from 0.5 to 3.0, which should deepen the blue, took
+  // the zenith from 36% saturation to 9%, because more radiance only pushed it
+  // further up a curve already near the top. So hand the renderer something
+  // closer to radiance and let it do the encoding once.
+  //
+  // Not all the way to linear. At an exponent of 1 the sky is a beautiful deep
+  // blue and the last few degrees over the horizon blow out to white, because
+  // removing the compression expands the horizon-to-zenith range from about
+  // two to one to five to one. 0.75 is where the zenith reaches the saturation
+  // a clear September noon actually has — measured at 0.65, against 0.35
+  // before — without the horizon going any brighter than it already was.
+  //
+  // The gain holds the sky at ten degrees exactly where it was, so nothing
+  // downstream that was calibrated against it has to move.
+  // The old curve stays as a ceiling. Below a radiance of one the new exponent
+  // is darker everywhere, which is the point; above it the two cross over and
+  // the new one runs away — and the radiance around a low sun is far above
+  // one. Left to run it turned the sunset into a white square the height of
+  // the sky: not a sky problem but a bloom one, since the aureole went well
+  // over the threshold across hundreds of pixels and the blur chain has no
+  // headroom for that. Taking the lower of the two curves holds the sun and
+  // its aureole exactly where they were and changes only the sky.
+  sky.material.uniforms.skyGamma = { value: SKY_GAMMA };
+  sky.material.uniforms.skyGain = { value: SKY_GAIN };
+  sky.material.fragmentShader = sky.material.fragmentShader
+    .replace('varying vec3 vWorldPosition;',
+             'varying vec3 vWorldPosition;\nuniform float skyGamma;\nuniform float skyGain;')
+    .replace('pow( texColor, vec3( 1.0 / ( 1.2 + ( 1.2 * vSunfade ) ) ) )',
+             'min( pow( texColor, vec3( skyGamma ) ) * skyGain,' +
+             ' pow( texColor, vec3( 1.0 / 2.4 ) ) )');
   scene.add(sky);
   nightSky = makeNightSky();
   scene.add(nightSky);

@@ -397,6 +397,43 @@ a less accurate one. Reflections come from a cube probe rendered over the site,
 so the towers' aluminium picks up the actual skyline rather than just the sky.
 There are two probes, because the water cannot use that one — see below.
 
+**The sky was being encoded twice.** For a long time it read as haze: 37 per
+cent saturated at the zenith at noon, and white by ten degrees above the
+horizon. The obvious explanation is the scattering, and the obvious fix is to
+turn the scattering up — which makes it *worse*. Taking rayleigh from 0.5 to
+3.0 took the zenith from 36 per cent saturation to 9.
+
+That is the signature of a tone curve, not an atmosphere, and it is: the
+Preetham shader signs off by raising its radiance to the power 1/2.4, which is
+an sRGB encode in all but name. It comes from a demo written before any of
+this was tone mapped. three.js then tone maps and encodes again, and two
+encodes flatten a colour ratio the way two gammas do — so more radiance only
+pushed the sky further up a curve that was already near the top.
+
+The exponent is now 0.75, handing the renderer something closer to radiance
+and letting it do the encoding once. At noon the zenith goes from 35 per cent
+saturation to 65, which is what a clear September sky has, and the sky at ten
+degrees is held exactly where it was so nothing calibrated against it moves.
+Two guards on it:
+
+- The old curve stays as a **ceiling**. Below a radiance of one the new
+  exponent is darker everywhere, which is the point; above it the two cross
+  over, and the radiance around a low sun is far above one. Left to run it
+  turned the sunset into a white square the height of the sky — a bloom
+  problem rather than a sky one, since the aureole went over the threshold
+  across hundreds of pixels. Taking the lower of the two curves leaves the sun
+  and its aureole exactly where they were.
+- It **ramps back to the original as the sun drops**. The last twenty-five
+  degrees were tuned against the old curve, and the extra saturation there
+  only brings out the green band Preetham puts between the orange horizon and
+  the blue above it.
+
+Two things that did *not* work, for the record. Turbidity and the Mie
+coefficient are the physical haze controls, and they are useless here: taking
+them from 2.0 and 0.0028 down to 1.0 and 0.0006 — a far clearer atmosphere on
+paper — moved the sky at ten degrees from (191, 211, 226) to (198, 215, 228).
+Very slightly *paler*. The whiteness was never aerosols.
+
 **Shadows.** For a long time nothing smaller than a street lamp had one. A
 car sat on the road like a sticker, and so did every hydrant, litter bin and
 traffic signal in the city. Two separate faults, both of them measured rather
@@ -434,6 +471,39 @@ full sun-side colour it came out more saturated than the sky it was supposed to
 be dissolving into, and drew a salmon bar along the horizon wherever the far
 shore reached the fog limit — worst of all looking *away* from the sun, where
 the sky is muted and the bar was not.
+
+**How bright the haze is, as against what colour it is.** Haze at saturation
+*is* the sky behind it — that is all airlight is — so there is a test: does the
+far shore meet the sky without a step? It did not. Through the whole day the
+fog sat about fifty levels under the sky immediately above the horizon, which
+is a grey deck laid under a pale sky and is most of what made this read as
+weather; and at twilight it sat sixty-eight levels *over* it, a bright bar
+round a horizon the sun had already left.
+
+The correction is measured, not guessed. At each hour the fog was scaled until
+the far water matched the sky just above it, looking both into the sunset and
+away from it. The factor wanted is 5.2 at noon, 3.4 at twenty-four degrees, 1.1
+at six, and 0.2 by the time the sun is on the horizon — a good fit to the sine
+of the sun's elevation to the power of nine tenths, and it ought to be, since
+airlight scales with the sunlight reaching the haze. The step through the day
+is now under thirteen levels everywhere except the half hour either side of
+sunset, where it reaches thirty.
+
+It cannot be closed entirely, and the reason is worth stating: a single fog
+colour cannot be right in every direction at once. The sunset side wants about
+twice what the anti-sun side does. This sits between them.
+
+**How far you can see.** The fog used to reach pure haze at 11.5 km, which is a
+visual range of about seven miles. The morning this is set on was reported at
+ten and was plainly better than that, and the far shore paid for it: Brooklyn
+and the Jersey hills dissolved into the horizon band instead of standing as a
+line under it. It now runs to 30 km.
+
+That is a ceiling set by the data rather than by the weather. The OSM extract
+is clipped to a square 14 km on a side, so past that the coast simply stops,
+and the old 11.5 was chosen to bury that edge in haze. At 30 km the land at the
+clip is still six tenths hazed and the open sea beyond washes to the same tone,
+so the join does not read — but going further would show it.
 
 The rivers are modelled as a dielectric rather than a metal, which is what
 gives water its behaviour: its own dark blue-green looking down, turning to a
