@@ -190,6 +190,33 @@ coastal plain seen from ninety metres up really does present an almost straight
 horizon. From the towers, where you look down on the land, it is the difference
 between terrain and a plate.
 
+**The bridge, looked at properly.** Three things were wrong with it, all of
+them the kind that only show when you go and stand next to the thing.
+
+The main cables were drawn 0.84 m across. The real ones are 15¾ inches — 0.40 m
+— and the file said so in its own header while the code used twice that, so up
+close they were plainly pipes. They are 0.54 m now, which is still half again
+life size and is written down as a drawing allowance rather than a measurement:
+at the kilometre this bridge is normally seen from, 0.40 m is about a third of
+a pixel, and a cable that thin shimmers in and out of existence instead of
+reading as a line.
+
+The necklace lamps were metre-wide spheres in near-white, which at noon made
+the cables look strung with golf balls. A globe on that necklace is about a
+foot across, and the fixtures themselves are painted metal — dark by day, and
+only the emissive should be doing any work after dark. Fixed, and at six
+segments rather than eight the lamps went from 19,520 triangles to 8,784.
+
+And the deck had no promenade — no raised timber walk down the middle, which is
+the one feature that tells this deck apart from any other bridge in profile and
+the thing everyone who has crossed it has walked on. Worth recording how that
+went: built first in the deck's own colour, it was geometrically present and
+visually absent. A horizontal surface 1.9 m above another horizontal surface,
+lit identically, reads as nothing at all. It took its own timber material to
+become a thing you can see.
+
+Net effect: 43,586 triangles down to 33,900, with a promenade added.
+
 **The shoreline.** OpenStreetMap maps tidal water as `natural=coastline`, not
 as water polygons, so the model is built the way the data is: the world is
 sea, and land is drawn on top of it, assembled from the coastline itself.

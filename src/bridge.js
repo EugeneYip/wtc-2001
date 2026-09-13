@@ -26,9 +26,19 @@ const TOWER_W = 42.0;          // across the bridge
 const TOWER_D = 15.5;          // along it
 const DECK_W = 26.0;
 const ARCH_W = 10.3;
-const CABLE_R = 0.42;
+// The real cables are 15 3/4 in — 0.40 m — across, which at the kilometre this
+// bridge is normally seen from is a third of a pixel. Drawn at their true size
+// they shimmer in and out of existence; drawn at the 0.84 m they used to be,
+// they are plainly pipes. A little over half a metre is the compromise, and it
+// is a drawing allowance rather than a measurement.
+const CABLE_R = 0.27;
 const CABLE_OFF = [-12.6, -4.2, 4.2, 12.6];
 const MID_CABLE = 45.5;        // cable low point, a few metres over the deck
+// The promenade: the raised timber walk down the middle, above and between the
+// two roadways. It is the one thing that tells this deck apart from any other
+// bridge in profile, and the deck was a bare ribbon without it.
+const PROM_W = 5.6;
+const PROM_H = 1.9;
 
 export const BRIDGE_MATS = {
   stone: new THREE.MeshStandardMaterial({
@@ -41,11 +51,22 @@ export const BRIDGE_MATS = {
     color: 0x4c4a46, roughness: 0.88, metalness: 0.06, name: 'bridge-deck',
     emissive: new THREE.Color(0xffb463), emissiveIntensity: 0,
   }),
+  // The promenade is boards, not asphalt. Built in the deck's own colour it
+  // was geometrically there and visually absent: a horizontal surface 1.9 m
+  // above another horizontal surface, lit identically, reads as nothing at
+  // all. The timber is what makes the step legible.
+  walk: new THREE.MeshStandardMaterial({
+    color: 0x7d6a52, roughness: 0.95, metalness: 0.0, name: 'bridge-promenade',
+    emissive: new THREE.Color(0xffb463), emissiveIntensity: 0,
+  }),
   // The necklace: the lamps strung from the main cables, which are what the
   // bridge is after dark. Without them it was a black cut-out across a river
   // carrying the whole city's light.
+  // Dark by day and lit by night. In white it was a string of golf balls hung
+  // along the cables at noon; the fixtures themselves are painted metal, and
+  // only the emissive should be doing the work after dark.
   lamp: new THREE.MeshStandardMaterial({
-    color: 0xfff0d2, roughness: 0.4, metalness: 0.0,
+    color: 0x3b3a36, roughness: 0.55, metalness: 0.1,
     emissive: new THREE.Color(0xffe0ad), emissiveIntensity: 0,
     name: 'bridge-lamp',
   }),
@@ -168,6 +189,7 @@ export function buildBridge(spec) {
   const stone = [];
   const steel = [];
   const deck = [];
+  const walk = [];
 
   // ---- deck -------------------------------------------------------------
   const STEP = 8;
@@ -176,7 +198,7 @@ export function buildBridge(spec) {
     const s2 = Math.min(s + STEP, s1);
     const y0 = h(s), y1 = h(s2);
     const w = DECK_W / 2;
-    const quad = (o0, o1, ya0, ya1, yb0, yb1) => {
+    const quad = (o0, o1, ya0, ya1, yb0, yb1, into = deck) => {
       const p = [at(s, o0, ya0), at(s2, o1, ya1), at(s2, o1, yb1), at(s, o0, yb0)];
       const pos = [];
       for (const [i, j, k] of [[0, 1, 2], [0, 2, 3]]) {
@@ -186,7 +208,7 @@ export function buildBridge(spec) {
       q.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
       q.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(12), 2));
       q.computeVertexNormals();
-      deck.push(q);
+      into.push(q);
     };
     // Roadway, then a fascia down each side so it is a structure end-on and
     // not a sheet of paper.
@@ -202,6 +224,23 @@ export function buildBridge(spec) {
     deck.push(road);
     quad(-w, -w, y0, y1, y0 - edge, y1 - edge);
     quad(w, w, y0 - edge, y1 - edge, y0, y1);
+
+    // The promenade, raised over the middle of the roadway: a top surface and
+    // a face down each side of it.
+    const pw = PROM_W / 2;
+    const q0 = y0 + PROM_H, q1 = y1 + PROM_H;
+    const top = new THREE.BufferGeometry();
+    const tp = [at(s, -pw, q0), at(s2, -pw, q1), at(s2, pw, q1), at(s, pw, q0)];
+    const tpos = [];
+    for (const [i, j, k] of [[0, 2, 1], [0, 3, 2]]) {
+      for (const n of [i, j, k]) tpos.push(tp[n].x, tp[n].y, tp[n].z);
+    }
+    top.setAttribute('position', new THREE.Float32BufferAttribute(tpos, 3));
+    top.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(12), 2));
+    top.computeVertexNormals();
+    walk.push(top);
+    quad(-pw, -pw, q0, q1, y0, y1, walk);
+    quad(pw, pw, y0, y1, q0, q1, walk);
   }
 
   // ---- towers -----------------------------------------------------------
@@ -292,10 +331,10 @@ export function buildBridge(spec) {
       // Hung a little below the cable, and only where there is room between
       // cable and deck for anything to hang.
       if (top - bot < 4) continue;
-      const b = new THREE.SphereGeometry(0.55, 8, 6);
-      b.translate(0, 0, 0);
-      const g2 = norm(b);
-      const p = at(s, off, top - 1.6);
+      // A globe on the necklace is about a foot across, not the metre-wide
+      // ball this was drawing, and at this distance six segments is plenty.
+      const g2 = norm(new THREE.SphereGeometry(0.34, 6, 4));
+      const p = at(s, off, top - 1.4);
       g2.translate(p.x, p.y, p.z);
       lamps.push(g2);
     }
@@ -303,7 +342,7 @@ export function buildBridge(spec) {
   // And a row down each side of the roadway itself.
   for (const off of [-DECK_W / 2 + 1.4, DECK_W / 2 - 1.4]) {
     for (let s = s0 + 20; s <= s1 - 20; s += 26) {
-      const b = norm(new THREE.SphereGeometry(0.42, 8, 6));
+      const b = norm(new THREE.SphereGeometry(0.28, 6, 4));
       const p = at(s, off, h(s) + 4.2);
       b.translate(p.x, p.y, p.z);
       lamps.push(b);
@@ -322,6 +361,7 @@ export function buildBridge(spec) {
   };
   add(stone, BRIDGE_MATS.stone, 'bridge-towers');
   add(deck, BRIDGE_MATS.deck, 'bridge-deck');
+  add(walk, BRIDGE_MATS.walk, 'bridge-promenade');
   add(steel, BRIDGE_MATS.steel, 'bridge-cables');
   if (lamps.length) {
     const m = new THREE.Mesh(mergeGeometries(lamps.map(norm)), BRIDGE_MATS.lamp);

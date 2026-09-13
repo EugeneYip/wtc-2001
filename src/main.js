@@ -251,6 +251,7 @@ function applyTime(hour) {
   BRIDGE_MATS.lamp.emissiveIntensity = lit * 2.4;
   VESSEL_MATS.navLight.emissiveIntensity = lit * 4.2;
   BRIDGE_MATS.deck.emissiveIntensity = lit * 0.10;
+  BRIDGE_MATS.walk.emissiveIntensity = lit * 0.10;
 
   CITY_MATS.water.color.copy(WATER_DAY).lerp(WATER_NIGHT, dusk);
   // The shelf has to follow the water it is part of, or it stays a daytime
