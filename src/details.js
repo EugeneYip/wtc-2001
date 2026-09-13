@@ -1472,26 +1472,77 @@ export const FLAG_MATS = {
  * so the cloth does not look like corrugated iron. Each flag takes its phase
  * from where it stands, so they are not all snapping together.
  */
+/**
+ * Poles and flags at given places, rather than found ones.
+ *
+ * The building rule below picks its own sites off the roofs. This takes them:
+ * the Brooklyn Bridge towers want one each and there is nothing in a footprint
+ * list that would find them.
+ */
+export function flagsAt(sites, opts = {}) {
+  if (!sites || !sites.length) return [];
+  makeFlagCloth();
+  const HOIST = opts.hoist ?? 1.52;
+  const FLY = opts.fly ?? 2.84;
+  const POLE = opts.pole ?? 8.2;
+  const cloth = new THREE.PlaneGeometry(1, 1, 14, 3);
+  cloth.translate(0.5, 0, 0);
+  const poleGeo = norm(new THREE.CylinderGeometry(
+    POLE * 0.0085, POLE * 0.011, POLE, 6));
+  poleGeo.translate(0, POLE / 2, 0);
+
+  const poles = new THREE.InstancedMesh(poleGeo, FLAG_MATS.pole, sites.length);
+  const sheet = new THREE.InstancedMesh(cloth, FLAG_MATS.cloth, sites.length);
+  poles.castShadow = poles.receiveShadow = true;
+  sheet.castShadow = false;
+  sheet.receiveShadow = true;
+  poles.name = opts.name ? opts.name + '-poles' : 'flagpoles';
+  sheet.name = opts.name || 'flags';
+
+  const m = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const pos = new THREE.Vector3();
+  const scl = new THREE.Vector3();
+  const up = new THREE.Vector3(0, 1, 0);
+  sites.forEach(([x, y, z, ang], i) => {
+    q.setFromAxisAngle(up, ang);
+    pos.set(x, y, z);
+    scl.set(1, 1, 1);
+    m.compose(pos, q, scl);
+    poles.setMatrixAt(i, m);
+    pos.set(x, y + POLE - HOIST * 0.62, z);
+    scl.set(FLY, HOIST, 1);
+    m.compose(pos, q, scl);
+    sheet.setMatrixAt(i, m);
+  });
+  poles.instanceMatrix.needsUpdate = true;
+  sheet.instanceMatrix.needsUpdate = true;
+  return [poles, sheet];
+}
+
+function makeFlagCloth() {
+  if (FLAG_MATS.cloth) return;
+  FLAG_MATS.cloth = new THREE.MeshStandardMaterial({
+    map: flagTexture(), side: THREE.DoubleSide, roughness: 0.82,
+    metalness: 0.0, name: 'flag-cloth',
+  });
+  FLAG_MATS.cloth.onBeforeCompile = (sh) => {
+    sh.uniforms.uTime = FLAG_MATS.time;
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', `#include <common>
+        uniform float uTime;`)
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        // x runs 0 at the hoist to 1 at the fly, so the throw grows along it.
+        float fly = transformed.x;
+        float ph = uTime * 2.7 + instanceMatrix[3][0] * 0.31 + instanceMatrix[3][2] * 0.19;
+        transformed.z += sin(fly * 8.5 - ph) * 0.26 * fly;
+        transformed.z += sin(fly * 3.1 - ph * 0.55 + transformed.y * 4.0) * 0.09 * fly;
+        transformed.y += sin(fly * 6.0 - ph * 0.9) * 0.05 * fly;`);
+  };
+}
+
 export function flags(buildings, limit = 90) {
-  if (!FLAG_MATS.cloth) {
-    FLAG_MATS.cloth = new THREE.MeshStandardMaterial({
-      map: flagTexture(), side: THREE.DoubleSide, roughness: 0.82,
-      metalness: 0.0, name: 'flag-cloth',
-    });
-    FLAG_MATS.cloth.onBeforeCompile = (sh) => {
-      sh.uniforms.uTime = FLAG_MATS.time;
-      sh.vertexShader = sh.vertexShader
-        .replace('#include <common>', `#include <common>
-          uniform float uTime;`)
-        .replace('#include <begin_vertex>', `#include <begin_vertex>
-          // x runs 0 at the hoist to 1 at the fly, so the throw grows along it.
-          float fly = transformed.x;
-          float ph = uTime * 2.7 + instanceMatrix[3][0] * 0.31 + instanceMatrix[3][2] * 0.19;
-          transformed.z += sin(fly * 8.5 - ph) * 0.26 * fly;
-          transformed.z += sin(fly * 3.1 - ph * 0.55 + transformed.y * 4.0) * 0.09 * fly;
-          transformed.y += sin(fly * 6.0 - ph * 0.9) * 0.05 * fly;`);
-    };
-  }
+  makeFlagCloth();
 
   const rand = rng(90211);
   const HOIST = 1.52;                       // 5 ft

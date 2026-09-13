@@ -595,12 +595,32 @@ A rail runs continuously, so every end cap on every length of it is buried
 inside the next length. Leaving them off saves **15,760 triangles** of handrail
 drawn inside itself, which is a third of all the steel on the bridge.
 
-**There are no flags on it**, and that is a decision rather than an oversight.
-Flags fly from the towers of this bridge on occasions, and a great many were
-flown from it in the weeks after — but on an ordinary Tuesday morning the
-towers carried granite and cables and nothing else, and this model is set at
-08:46 on such a morning. The flags that are here are on the roofs of buildings,
-where they stood every day.
+**A flag flies from each tower**, and that wants saying plainly rather than
+leaving for someone to work out. Flags are flown from the towers of this bridge
+on occasions, and a great many were flown from them in the weeks after; on an
+ordinary Tuesday morning the towers carried granite and cables and nothing
+else. These are here because they were asked for, and because a bridge with a
+flag on it is the bridge most people carry in their heads. They stand on the
+cornice in the gap between the two inner cable saddles, and they are **ten feet
+by nineteen** — a garrison flag, five times the area of the building flags,
+which is what it takes to be seen at the mile this bridge is usually looked at
+from. A five-by-nine off a roof would be two pixels.
+
+**It is asphalt now, and marked.** The deck was a flat grey with nothing on it,
+and where it came down and met a real street the two read as different
+substances meeting at a line — which was most of why the bridge looked bolted
+on to the city rather than part of it. It takes the same road texture the
+streets take, mapped **twice across** so each of the two roadways gets a whole
+road section, its own gutters and its own lane lines, with the join between
+them falling under the promenade where nothing can see it.
+
+The last 150 metres are not the bridge any more, they are a street, so they are
+built like one: the deck **narrows** from twenty-six metres to the fifteen of
+the avenue it lands on, the **promenade comes down** to the roadway and stops
+rather than running off the end 1.9 m up in the air, its railings go with it,
+and the lamp standards follow the edge in. Ending all of it square, the way it
+was, put a twenty-six metre cliff and a timber walk in mid-air at the exact
+point where the bridge is meant to become a road.
 
 **Light and water.** The sun is placed from real solar geometry for 40.71° N
 on 11 September, so shadow directions through the day are the ones the site

@@ -27,7 +27,8 @@ import { buildComplex, MATS as WTC_MATS, PLAZA_TREE_SITES,
 import { roofClutter, trees, traffic, parkedCars, manholes, vessels,
          animateVessels, animateTraffic, flags, FLAG_MATS,
          streetLamps, lampPoolTexture, trafficSignals,
-         kerbFurniture, obstacleIndex, DETAIL_MATS, VESSEL_MATS } from './details.js';
+         kerbFurniture, obstacleIndex, flagsAt,
+         DETAIL_MATS, VESSEL_MATS } from './details.js';
 import { makeNightSky } from './nightsky.js';
 import { buildBridge, BRIDGE_MATS } from './bridge.js';
 import { buildRelief } from './terrain.js';
@@ -881,7 +882,19 @@ async function init() {
   waterMesh = city.water;
 
   const bridge = buildBridge(data.bridge, data.roads);
-  if (bridge) scene.add(bridge);
+  if (bridge) {
+    scene.add(bridge);
+    // A flag on each tower. These are not there every morning — the towers
+    // carried granite and cables and nothing else on an ordinary one — but
+    // they are flown from them, and a ten by nineteen foot garrison flag is
+    // what it takes to be seen at the mile this bridge is usually looked at
+    // from. The building flags are a fifth of the size.
+    for (const m of flagsAt(bridge.userData.flagSites,
+                            { hoist: 3.05, fly: 5.79, pole: 12.0,
+                              name: 'bridge-flags' })) {
+      bridge.add(m);
+    }
+  }
 
   // Relief on the far shores, laid over the flat land rather than displacing
   // it: the coastline underneath is accurate to a few metres and a grid coarse

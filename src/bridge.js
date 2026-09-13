@@ -20,7 +20,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'BufferGeometryUtils';
 import { norm, GROUND } from './geo.js';
-import { graniteTexture, GRANITE_TILE_M } from './textures.js';
+import { graniteTexture, GRANITE_TILE_M, roadTexture } from './textures.js';
 
 const TOWER_H = 84.3;
 const TOWER_W = 42.0;          // across the bridge
@@ -60,8 +60,14 @@ export const BRIDGE_MATS = {
   steel: new THREE.MeshStandardMaterial({
     color: 0x8f9499, roughness: 0.52, metalness: 0.55, name: 'bridge-steel',
   }),
+  // The same asphalt the streets are made of, with the same lane markings on
+  // it. The deck used to be a flat grey with nothing on it, and where it came
+  // down and met a real street the two read as different substances meeting at
+  // a line — which is most of why the bridge looked bolted on to the city
+  // rather than part of it. A road is a road.
   deck: new THREE.MeshStandardMaterial({
-    color: 0x4c4a46, roughness: 0.88, metalness: 0.06, name: 'bridge-deck',
+    map: roadTexture(true), color: 0xb9b6ae,
+    roughness: 0.88, metalness: 0.06, name: 'bridge-deck',
     emissive: new THREE.Color(0xffb463), emissiveIntensity: 0,
   }),
   // The promenade is boards, not asphalt. Built in the deck's own colour it
@@ -316,12 +322,57 @@ export function buildBridge(spec, roads) {
   const walk = [];
 
   // ---- deck -------------------------------------------------------------
+  //
+  // The last stretch of the Manhattan approach is not the bridge any more: it
+  // is a street. So over the run-in it narrows from the bridge's twenty-six
+  // metres to the width of the avenue it lands on, and the promenade — which
+  // is a raised timber walk between the two roadways and has no business
+  // continuing into a junction — comes down to the deck and stops. Ending both
+  // of them square, the way it was, put a twenty-six metre cliff and a walk
+  // running off into the air at the exact point where the bridge is supposed
+  // to become a road.
+  const LAND_RUN = 150;                           // metres of run-in
+  const LAND_W = 15.0;                            // what it lands as
+  const landing = (s) => {
+    const t = Math.min(1, Math.max(0, (s - (s1 - LAND_RUN)) / LAND_RUN));
+    return t * t * (3 - 2 * t);
+  };
+  // Railings.
+  //
+  // The deck was a bare ribbon: a roadway with an edge beam under it and
+  // nothing at all standing on it, which is a thing nobody would drive on and
+  // a thing that reads, end-on, as a plank. The lacy edge a bridge has at any
+  // distance is its railing, and there are four lines of it — one down each
+  // side of the roadway and one down each side of the promenade, because the
+  // walk is raised above the traffic and fenced off from it. The pair beside
+  // the walk go with the walk when it runs out at the landing.
+  const railings = (s, s2, w, w2, y0, pw, promH) => {
+    const yb = h(s2);
+    const lines = [[-w + 0.5, -w2 + 0.5, RAIL_H], [w - 0.5, w2 - 0.5, RAIL_H]];
+    if (promH > 0.05) {
+      lines.push([-pw - 0.35, -pw - 0.35, promH + RAIL_P],
+                 [pw + 0.35, pw + 0.35, promH + RAIL_P]);
+    }
+    for (const [off, off2, ht] of lines) {
+      steel.push(...strand([at(s, off, y0 + ht), at(s2, off2, yb + ht)], 0.055, true));
+      steel.push(...strand([at(s, off, y0 + ht * 0.52),
+                            at(s2, off2, yb + ht * 0.52)], 0.04, true));
+      const post = new THREE.BoxGeometry(0.09, ht, 0.09);
+      const pp = at(s, off, y0 + ht / 2);
+      post.translate(pp.x, pp.y, pp.z);
+      steel.push(norm(post));
+    }
+  };
+
   const STEP = 8;
   const edge = 1.6;                               // depth of the edge beam
   for (let s = s0; s < s1; s += STEP) {
     const s2 = Math.min(s + STEP, s1);
     const y0 = h(s), y1 = h(s2);
-    const w = DECK_W / 2;
+    const k = landing(s), k2 = landing(s2);
+    const w = (DECK_W + (LAND_W - DECK_W) * k) / 2;
+    const w2 = (DECK_W + (LAND_W - DECK_W) * k2) / 2;
+    const promH = PROM_H * (1 - k), promH2 = PROM_H * (1 - k2);
     const quad = (o0, o1, ya0, ya1, yb0, yb1, into = deck) => {
       const p = [at(s, o0, ya0), at(s2, o1, ya1), at(s2, o1, yb1), at(s, o0, yb0)];
       const pos = [];
@@ -337,22 +388,31 @@ export function buildBridge(spec, roads) {
     // Roadway, then a fascia down each side so it is a structure end-on and
     // not a sheet of paper.
     const road = new THREE.BufferGeometry();
-    const p = [at(s, -w, y0), at(s2, -w, y1), at(s2, w, y1), at(s, w, y0)];
-    const pos = [];
-    for (const [i, j, k] of [[0, 2, 1], [0, 3, 2]]) {
-      for (const n of [i, j, k]) pos.push(p[n].x, p[n].y, p[n].z);
+    const p = [at(s, -w, y0), at(s2, -w2, y1), at(s2, w2, y1), at(s, w, y0)];
+    // Across the deck twice, so each of the two roadways gets a whole road
+    // section — its own gutters and its own lane lines — and the join between
+    // them falls under the promenade where nothing can see it. Along it in
+    // metres, which is what the tile repeats in.
+    const uvp = [[0, s], [0, s2], [2, s2], [2, s]];
+    const pos = [], uvs = [];
+    for (const [i, j, k2] of [[0, 2, 1], [0, 3, 2]]) {
+      for (const n of [i, j, k2]) {
+        pos.push(p[n].x, p[n].y, p[n].z);
+        uvs.push(uvp[n][0], uvp[n][1]);
+      }
     }
     road.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    road.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(12), 2));
+    road.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
     road.computeVertexNormals();
     deck.push(road);
-    quad(-w, -w, y0, y1, y0 - edge, y1 - edge);
-    quad(w, w, y0 - edge, y1 - edge, y0, y1);
+    quad(-w, -w2, y0, y1, y0 - edge, y1 - edge);
+    quad(w, w2, y0 - edge, y1 - edge, y0, y1);
 
     // The promenade, raised over the middle of the roadway: a top surface and
     // a face down each side of it.
     const pw = PROM_W / 2;
-    const q0 = y0 + PROM_H, q1 = y1 + PROM_H;
+    const q0 = y0 + promH, q1 = y1 + promH;
+    if (promH2 < 0.05) { railings(s, s2, w, w2, y0, pw, promH); continue; }
     const top = new THREE.BufferGeometry();
     const tp = [at(s, -pw, q0), at(s2, -pw, q1), at(s2, pw, q1), at(s, pw, q0)];
     const tpos = [];
@@ -366,26 +426,7 @@ export function buildBridge(spec, roads) {
     quad(-pw, -pw, q0, q1, y0, y1, walk);
     quad(pw, pw, y0, y1, q0, q1, walk);
 
-    // Railings.
-    //
-    // The deck was a bare ribbon: a roadway with an edge beam under it and
-    // nothing at all standing on it, which is a thing nobody would drive on
-    // and a thing that reads, end-on, as a plank. The lacy edge a bridge has
-    // at any distance is its railing, and there are four lines of it here —
-    // one down each side of the roadway and one down each side of the
-    // promenade, because the walk is raised above the traffic and fenced off
-    // from it.
-    for (const [off, y, ht] of [[-w + 0.5, y0, RAIL_H], [w - 0.5, y0, RAIL_H],
-                                [-pw - 0.35, y0, PROM_H + RAIL_P],
-                                [pw + 0.35, y0, PROM_H + RAIL_P]]) {
-      const yb = h(s2);
-      steel.push(...strand([at(s, off, y + ht), at(s2, off, yb + ht)], 0.055, true));
-      steel.push(...strand([at(s, off, y + ht * 0.52), at(s2, off, yb + ht * 0.52)], 0.04, true));
-      const post = new THREE.BoxGeometry(0.09, ht, 0.09);
-      const pp = at(s, off, y + ht / 2);
-      post.translate(pp.x, pp.y, pp.z);
-      steel.push(norm(post));
-    }
+    railings(s, s2, w, w2, y0, pw, promH);
   }
 
   // ---- towers -----------------------------------------------------------
@@ -484,9 +525,12 @@ export function buildBridge(spec, roads) {
       lamps.push(g2);
     }
   }
-  // And a row down each side of the roadway itself.
-  for (const off of [-DECK_W / 2 + 1.4, DECK_W / 2 - 1.4]) {
+  // And a row down each side of the roadway itself, following it in where the
+  // approach narrows to the street.
+  for (const side of [-1, 1]) {
     for (let s = s0 + 20; s <= s1 - 20; s += 26) {
+      const dw = (DECK_W + (LAND_W - DECK_W) * landing(s)) / 2;
+      const off = side * (dw - 1.4);
       const b = norm(new THREE.SphereGeometry(0.28, 6, 4));
       const p = at(s, off, h(s) + 4.2);
       b.translate(p.x, p.y, p.z);
@@ -504,6 +548,14 @@ export function buildBridge(spec, roads) {
     m.name = name;
     g.add(m);
   };
+  // Where a flag would go if one were flown: the top of each tower, facing
+  // along the bridge. buildBridge does not build them — see flagsAt.
+  g.userData.flagSites = [tA, tB].map((s) => {
+    // On the cornice, in the gap between the two inner cable saddles.
+    const p = at(s, 0, TOWER_H);
+    return [p.x, p.y, p.z, -Math.atan2(uz, ux)];
+  });
+
   add(stone.map(stoneUV), BRIDGE_MATS.stone, 'bridge-towers');
   add(deck, BRIDGE_MATS.deck, 'bridge-deck');
   add(walk, BRIDGE_MATS.walk, 'bridge-promenade');
