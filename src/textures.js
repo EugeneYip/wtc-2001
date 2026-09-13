@@ -687,27 +687,6 @@ export function waterNormal(seed = 7717) {
   return t;
 }
 
-/**
- * Slick and rough patches. Real water is never uniformly glassy, and varying
- * roughness is what breaks a reflection into something that reads as water
- * rather than a mirror.
- */
-export function waterRoughness() {
-  const N = 256;
-  const h = fbm(N, [2, 4, 8], 3391);
-  const [c, x] = canvas(N, N);
-  const img = x.createImageData(N, N);
-  for (let i = 0; i < N * N; i++) {
-    const v = Math.round(50 + h[i] * 150);       // roughness 0.2 .. 0.8
-    img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = v;
-    img.data[i * 4 + 3] = 255;
-  }
-  x.putImageData(img, 0, 0);
-  const t = new THREE.CanvasTexture(c);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.repeat.set(1 / 900, 1 / 900);
-  return t;
-}
 
 // ---------------------------------------------------------------------------
 // Distant land

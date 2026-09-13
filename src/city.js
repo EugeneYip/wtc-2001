@@ -16,7 +16,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'BufferGeometryUtils';
 import { norm, shapeFrom, flat, extrude, bounds } from './geo.js';
 import { facadeMaps, roofTexture, roadTexture, sidewalkTexture, waterNormal,
-         waterRoughness, landTexture, LAND_TILE_M, storefront, STOREFRONT_H,
+         landTexture, LAND_TILE_M, storefront, STOREFRONT_H,
          grassTexture } from './textures.js';
 
 const FACADE = facadeMaps();
@@ -113,8 +113,16 @@ function makeWater() {
   const m = new THREE.MeshStandardMaterial({
     color: 0x16303f,
     metalness: 0.02,
-    roughness: 0.22,
-    roughnessMap: waterRoughness(),
+    // This used to be 0.22 against a roughness map of slick and rough patches,
+    // 900 m to a tile, on the argument that water is never uniformly glassy.
+    // It is not, but the map could not be seen: flattening its contrast to its
+    // own mean and leaving everything else alone moved a sixth of one per cent
+    // of the frame, by at most nine levels out of 255. What the eye was reading
+    // as patchy water was the reflection probe, and that has been dealt with
+    // above. So the map went and its mean stayed — 0.22 times the 0.497 it
+    // averaged — which buys back one of the two texture reads the reflection
+    // costs, on a surface that is often half the screen.
+    roughness: 0.109,
     normalMap: near,
     normalScale: new THREE.Vector2(0.78, 0.78),
     envMapIntensity: 1.15,
@@ -125,7 +133,10 @@ function makeWater() {
     // How rough distant water ends up. Daylight wants it wide (see below);
     // after dark the only thing left to reflect is the shoreline, and a wide
     // lobe smears that away to nothing, leaving the river a black void.
-    shader.uniforms.farRough = { value: 0.66 };
+    // Read back out of userData like the rest: this material recompiles the
+    // first time it is given an environment, and anything held only in a
+    // uniform is back at its default afterwards.
+    shader.uniforms.farRough = { value: m.userData.farRough ?? 0.66 };
     // vNormalMapUv is world metres / 60, so this ratio puts the second layer
     // on a ~150 m swell under the ~60 m chop of the first.
     shader.uniforms.normalMap2Scale = { value: 60 / 150 };
@@ -136,6 +147,30 @@ function makeWater() {
     shader.uniforms.shoreAmt = { value: m.userData.shoreAmt || 0 };
     shader.uniforms.shoreColor = { value: new THREE.Color(0xffa955) };
     shader.uniforms.shoreScale = { value: 1 / GLOW_SPAN };
+    // The height the mirror ray is run up to before the map is read: where the
+    // light in a skyline sits, weighted by how much of it there is. Not a mean
+    // roofline — the tall towers are what reaches the far water, because from
+    // out there everything lower is below the horizon — and swept rather than
+    // guessed. At 18 m the reflection was a rim along the bulkhead and the
+    // river behind it was dead; at 170 the whole Upper Bay ran amber. Ninety
+    // odd is where the glow lies on the water the depth it does in a
+    // photograph, and it is about the twenty-fifth floor.
+    shader.uniforms.reflHeight = { value: 95 };
+    // How much of the chop tilts the mirror ray, as against the specular lobe,
+    // which gets all of it.
+    shader.uniforms.reflChop = { value: 0.22 };
+    // How much of the sky a building takes away where the ray lands on one.
+    shader.uniforms.cityShade = { value: 0.62 };
+    // The two halves of what the city does to the water after dark: what it
+    // throws back off the surface, and what it puts into the water itself.
+    shader.uniforms.reflGain = { value: 1.7 };
+    shader.uniforms.hazeGain = { value: 0.10 };
+    // The map holds bare land at a sixth and built blocks at seven tenths, and
+    // the difference between them is the whole of the structure in a night
+    // reflection. Sampled straight it comes back as one flat sheet, because a
+    // mirror ray that lands anywhere in Lower Manhattan lands on a building.
+    // A gamma pushes the ground back down and leaves the blocks where they are.
+    shader.uniforms.reflGamma = { value: 1.8 };
 
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `
@@ -158,28 +193,84 @@ function makeWater() {
         uniform float shoreAmt;
         uniform vec3 shoreColor;
         uniform float shoreScale;
+        uniform float reflHeight;
+        uniform float reflChop;
+        uniform float cityShade;
+        uniform float reflGain;
+        uniform float hazeGain;
+        uniform float reflGamma;
         varying vec3 vWorldPos;
       `)
       .replace('#include <emissivemap_fragment>', `
         #include <emissivemap_fragment>
+        // ---- what the water is looking at -------------------------------
+        //
+        // The city used to be sampled at the water's own position, which makes
+        // a pool of light and not a reflection: it sat under the eye, went
+        // nowhere when the eye moved, and had no direction in it at all. A
+        // reflection is a lookup along the mirror ray. Bounce the view off the
+        // surface, run it up to the height a lit window sits at, and read the
+        // map where it lands.
+        //
+        // The streaks come out of the geometry rather than being drawn on. Near
+        // the horizon the ray travels hundreds of metres for every metre it
+        // climbs, so a degree of chop swings the landing point a long way up
+        // and down the line of sight, and a point of light smears into a
+        // column. That is the whole reason a harbour looks like that at night.
+        vec3 nWorld = normalize( ( vec4( normal, 0.0 ) * viewMatrix ).xyz );
+        vec3 eyeDir = normalize( vWorldPos - cameraPosition );
+        // Only part of the chop goes into the lookup. All of it swings the
+        // landing point by kilometres at a graze, which is true and unusable:
+        // the map is twelve metres to a texel and the result is pepper.
+        vec3 nRefl = normalize( mix( vec3( 0.0, 1.0, 0.0 ), nWorld, reflChop ) );
+        vec3 ray = reflect( eyeDir, nRefl );
+        // Floored rather than clamped away: a ray that comes out level is
+        // looking at the horizon, and the map has faded to nothing long before
+        // the fourteen kilometres this allows.
+        float march = ( reflHeight - vWorldPos.y ) / max( ray.y, 0.004 );
+        // Three samples along the ray, not one. Water at this roughness
+        // reflects a cone a few degrees wide, and a few degrees near the
+        // horizon is hundreds of metres of river: what the surface is looking
+        // at is a long segment, not a point. Spaced by ratio rather than by
+        // distance, because the distance goes as one over the climb, so an
+        // even spread of angles comes out lopsided in metres — and that
+        // lopsidedness, dragged along the line of sight, is what pulls a
+        // window into a column instead of leaving it a spot.
+        vec2 foot = vWorldPos.xz * shoreScale + 0.5;
+        vec2 hop = ray.xz * march * shoreScale;
+        vec4 seen = texture2D( shoreMap, foot + hop * 0.45 ) * 0.33 +
+                    texture2D( shoreMap, foot + hop        ) * 0.40 +
+                    texture2D( shoreMap, foot + hop * 2.10 ) * 0.27;
+        // Water is a dielectric: two per cent of the light at normal incidence
+        // and nearly all of it at a graze. That single curve is why a river
+        // holds the far bank and not its own, and it replaces the hand-set
+        // falloff that used to stand in for it.
+        float cosI = clamp( dot( -eyeDir, nRefl ), 0.0, 1.0 );
+        float fres = 0.02 + 0.98 * pow( 1.0 - cosI, 5.0 );
+
         if ( shoreAmt > 0.0 ) {
-          vec2 suv = vWorldPos.xz * shoreScale + 0.5;
-          float raw = texture2D( shoreMap, suv ).r;
-          // A basin ringed by lit buildings really is far brighter than the
-          // middle of the Hudson, but not sixty times brighter. This rolls the
-          // top end off and leaves the bottom alone. The obvious raw/(raw+c)
-          // does the opposite — it lifts everything under c by up to sevenfold,
-          // which lit the whole harbour out to the horizon.
-          float shore = raw / ( 1.0 + raw * 3.0 );
-          // Reflections stretch towards the eye, so the glow builds up as the
-          // surface turns away; and the chop cuts it into moving bands rather
-          // than leaving a painted-on sheet.
-          vec3 V = normalize( vViewPosition );
-          float graze = pow( 1.0 - clamp( dot( V, normal ), 0.0, 1.0 ), 3.0 );
-          float band = clamp( ( normal.x + normal.z ) * 5.0 + 0.5, 0.0, 1.0 );
-          totalEmissiveRadiance += shoreColor * shore * shoreAmt *
-            mix( 0.50, 1.0, graze ) * mix( 0.35, 1.25, band );
+          float lit = pow( seen.g, reflGamma );
+          // And a little that is not a reflection at all: light scattered in
+          // the air and in the water itself, which is why the surface near a
+          // lit bank is never quite black even looking straight down at it.
+          // This one is rolled off rather than stretched. A basin ringed by lit
+          // buildings really is far brighter than the middle of the Hudson, but
+          // not sixty times brighter. The obvious raw/(raw+c) does the opposite
+          // — it lifts everything under c by up to sevenfold, which lit the
+          // whole harbour out to the horizon.
+          float haze = texture2D( shoreMap, foot ).r;
+          totalEmissiveRadiance += shoreColor * shoreAmt *
+            ( lit * fres * reflGain +
+              haze / ( 1.0 + haze * 3.0 ) * hazeGain );
         }
+      `)
+      .replace('#include <lights_fragment_maps>', `
+        #include <lights_fragment_maps>
+        // Daylight, and the same ray. Where it lands on the city it is a wall
+        // it is looking at, not sky, and a wall is a great deal darker than the
+        // sky it stands in front of. Without this the Hudson ran the same blue
+        // right up to the bulkhead line, which is the one place it never does.
+        radiance *= 1.0 - seen.g * cityShade;
       `)
       .replace('#include <roughnessmap_fragment>', `
         #include <roughnessmap_fragment>
@@ -337,6 +428,14 @@ export function lampPoolShading(mat, tex, span, rings = null) {
   mat.needsUpdate = true;
 }
 
+/** How wide the specular lobe goes out at distance. See makeWater. */
+export function setFarRough(v) {
+  const m = CITY_MATS.water;
+  m.userData.farRough = v;
+  const sh = m.userData.shader;
+  if (sh) sh.uniforms.farRough.value = v;
+}
+
 /**
  * How strongly the city lies on the water. Ramped with the window lights.
  * Kept on userData as well as the uniform: applyTime runs before the water
@@ -347,6 +446,22 @@ export function setShoreGlow(amt) {
   m.userData.shoreAmt = amt;
   const sh = m.userData.shader;
   if (sh) sh.uniforms.shoreAmt.value = amt;
+}
+
+/**
+ * Give the water its own environment, separate from the one the city gets.
+ *
+ * A material's envMap takes precedence over scene.environment, so this is all
+ * it takes to point the two surfaces at different probes. What the water wants
+ * is the sky and only the sky — see renderProbe in main.js for why.
+ */
+export function setWaterEnv(tex) {
+  for (const m of [CITY_MATS.water, CITY_MATS.shallows]) {
+    // Going from no envMap to one changes the program; swapping one cube for
+    // another of the same size does not, and happens on every probe.
+    if (!m.envMap) m.needsUpdate = true;
+    m.envMap = tex;
+  }
 }
 
 /** Drift the two wave layers. Called once a frame. */
@@ -452,35 +567,48 @@ function parkPaths(parks, inset = 7.0, width = 2.6) {
 // ---------------------------------------------------------------------------
 
 const GLOW_SPAN = 12000;      // world metres covered by the mask, centred on 0
-const GLOW_PX = 512;
+// 512 was enough while this was only a wash, where everything got blurred by
+// hundreds of metres anyway. It is not enough to reflect: at 23 m to a texel
+// the streets fell between samples and Manhattan came back as one solid block
+// of light, so the river carried a plain orange band instead of the grid. At
+// 1024 a street is a texel wide and survives, and that is what breaks the
+// reflection up into something with a city in it.
+const GLOW_PX = 1024;
 
 /**
- * How much city light falls on the water at a given point, baked into one
- * small world-space texture.
+ * The city, as the water sees it: one small world-space texture, read twice.
  *
- * A river at night is mostly the city lying on it, and none of that survives
- * the reflection probe: the probe is a 256 px cube run through a PMREM
- * convolution, and a skyline of lit windows averages down that far into
- * nothing at all. Raising the water's envMapIntensity to six only tinted it
- * faintly blue — it is the sky in that probe, not the city.
+ * None of this survives the reflection probe. That probe is a 256 px cube run
+ * through a PMREM convolution, and a skyline of lit windows averages down that
+ * far into nothing at all; raising the water's envMapIntensity to six only
+ * tinted it faintly blue, because it is the sky in there, not the city. And
+ * the probe has one position, so it could not put the city in the right place
+ * on the water even if it held it.
  *
- * So the glow is painted instead. Footprints are drawn bright and bare land
- * dim, then the whole thing is blurred, which gives the Manhattan bank a
- * strong wash and the far shore a faint one without anyone deciding that by
- * hand. The water shader reads it in world coordinates and breaks it up on
- * the chop.
+ * So the city is painted into a plan instead, and the shader reads it along
+ * the mirror ray. Two channels, because a reflection and a glow want opposite
+ * things from the same picture:
+ *
+ *   red    a wide blur. Light scattered in the air and in the water, which has
+ *          no edges in it and should not.
+ *   green  barely blurred. What the ray is actually pointed at, and the thing
+ *          that has to keep its edges: a reflection of a hard edge is a hard
+ *          edge, however far it has been stretched.
  */
 function shoreGlow(landPolys, buildings) {
-  const c = document.createElement('canvas');
-  c.width = c.height = GLOW_PX;
-  const x = c.getContext('2d');
   const k = GLOW_PX / GLOW_SPAN;
   const px = (v) => v * k + GLOW_PX / 2;
 
-  x.fillStyle = '#000';
-  x.fillRect(0, 0, GLOW_PX, GLOW_PX);
+  const sheet = () => {
+    const c = document.createElement('canvas');
+    c.width = c.height = GLOW_PX;
+    const x = c.getContext('2d');
+    x.fillStyle = '#000';
+    x.fillRect(0, 0, GLOW_PX, GLOW_PX);
+    return [c, x];
+  };
 
-  const paint = (polys, style) => {
+  const paint = (x, polys, style) => {
     x.fillStyle = style;
     for (const p of polys) {
       const poly = p.p || p;
@@ -493,11 +621,21 @@ function shoreGlow(landPolys, buildings) {
     }
   };
 
+  const [c, x] = sheet();
+
   // Bare land first, then the built-up blocks over it.
-  paint(landPolys, 'rgba(255,255,255,0.16)');
+  paint(x, landPolys, 'rgba(255,255,255,0.16)');
   x.globalCompositeOperation = 'lighter';
-  paint(buildings, 'rgba(255,255,255,0.55)');
+  paint(x, buildings, 'rgba(255,255,255,0.55)');
   x.globalCompositeOperation = 'source-over';
+
+  // The sharp copy, taken before anything is spread. One pixel of blur, which
+  // is a little under twelve metres: enough to take the stair-steps off a
+  // footprint drawn at this scale, and not enough to close a street.
+  const [sharpC, sharpX] = sheet();
+  sharpX.filter = 'blur(1px)';
+  sharpX.drawImage(c, 0, 0);
+  sharpX.filter = 'none';
 
   // Spread it out over the water. Two passes: a tight one that keeps the
   // shoreline legible, and a wide one for the general lift further out.
@@ -511,23 +649,39 @@ function shoreGlow(landPolys, buildings) {
     x.drawImage(t, 0, 0);
     x.globalAlpha = 1;
   };
-  // 4 px is about 95 m and 12 px about 280 m at this scale. The first pass
-  // tried 22 px, which spread Manhattan's light evenly over the whole harbour
-  // and left the rivers a uniform brown sheet.
-  blur(4, 1.0);
-  blur(12, 0.55);
+  // 8 px is about 95 m and 24 px about 280 m at this scale. The first pass
+  // tried 22 px against a 512 px sheet — double these — which spread
+  // Manhattan's light evenly over the whole harbour and left the rivers a
+  // uniform brown sheet.
+  blur(8, 1.0);
+  blur(24, 0.55);
 
-  // The mask must fall to nothing at its edge, or clamping smears the last
-  // row of pixels out across the whole harbour.
+  // Both channels must fall to nothing at the edge of the map, or clamping
+  // smears the last row of pixels out across the whole harbour — and the
+  // mirror ray lands out there all the time, whenever it comes out anywhere
+  // near level. A black radial drawn over the top is a multiply, which is what
+  // this wants; destination-out, which it used to be, scales the alpha and
+  // leaves the colour channels exactly where they were.
   const fade = x.createRadialGradient(
     GLOW_PX / 2, GLOW_PX / 2, GLOW_PX * 0.34,
     GLOW_PX / 2, GLOW_PX / 2, GLOW_PX * 0.5);
   fade.addColorStop(0, 'rgba(0,0,0,0)');
   fade.addColorStop(1, 'rgba(0,0,0,1)');
-  x.globalCompositeOperation = 'destination-out';
-  x.fillStyle = fade;
-  x.fillRect(0, 0, GLOW_PX, GLOW_PX);
-  x.globalCompositeOperation = 'source-over';
+  for (const cx of [x, sharpX]) {
+    cx.fillStyle = fade;
+    cx.fillRect(0, 0, GLOW_PX, GLOW_PX);
+  }
+
+  // Pack the two into one texture: the wide blur in red, the sharp copy in
+  // green. Both are greyscale, so this is just a channel each.
+  const wide = x.getImageData(0, 0, GLOW_PX, GLOW_PX);
+  const sharp = sharpX.getImageData(0, 0, GLOW_PX, GLOW_PX).data;
+  for (let i = 0; i < wide.data.length; i += 4) {
+    wide.data[i + 1] = sharp[i];
+    wide.data[i + 2] = 0;
+    wide.data[i + 3] = 255;
+  }
+  x.putImageData(wide, 0, 0);
 
   const t = new THREE.CanvasTexture(c);
   // Data, not colour. Tagged sRGB the GPU decodes it on the way in, and the

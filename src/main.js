@@ -5,9 +5,11 @@
  * shadow directions through the day are the ones the site actually had.
  *
  * Reflections come from a cube probe rendered over the site rather than from
- * the sky alone, so the towers' aluminium and the surface of the Hudson pick
- * up the actual skyline. The probe is re-rendered only when the light
- * changes, which is rare enough to be free.
+ * the sky alone, so the towers' aluminium picks up the actual skyline. There
+ * are two of them: the full one for the city, and a sky-only one for the
+ * water, which is a mile wide and cannot be lit as though it all stood on the
+ * plaza. Both are re-rendered only when the light changes, which is rare
+ * enough to be free.
  */
 
 import * as THREE from 'three';
@@ -17,8 +19,9 @@ import { EffectComposer } from 'EffectComposer';
 import { RenderPass } from 'RenderPass';
 import { UnrealBloomPass } from 'UnrealBloomPass';
 import { OutputPass } from 'OutputPass';
-import { buildCity, cityLabels, animateWater, setShoreGlow, lampPoolShading,
-         junctions, CITY_MATS, WALL_CLASSES } from './city.js';
+import { buildCity, cityLabels, animateWater, setShoreGlow, setWaterEnv,
+         setFarRough, lampPoolShading, junctions, CITY_MATS,
+         WALL_CLASSES } from './city.js';
 import { buildComplex, MATS as WTC_MATS, PLAZA_TREE_SITES,
          PLAZA_LAMP_SITES, SPHERE_AT } from './wtc.js';
 import { roofClutter, trees, traffic, parkedCars, manholes, vessels,
@@ -30,13 +33,17 @@ import { buildBridge, BRIDGE_MATS } from './bridge.js';
 import { buildRelief } from './terrain.js';
 
 const DEG = Math.PI / 180;
+// A second layer the two sky domes are also on, so the water's probe can be
+// given the sky without the city standing in it. Everything, including the
+// domes, stays on layer 0, so the ordinary camera is unaffected.
+const SKY_LAYER = 1;
 const LAMP_SPAN = 2600;   // world metres covered by the lamp-pool mask
 const GRID_ROT = 29.11 * DEG;       // Manhattan grid offset from true north
 const LAT = 40.7116 * DEG;
 const DECL = 4.5 * DEG;             // solar declination, mid-September
 
 let renderer, scene, camera, controls, sky, nightSky, sun, hemi, fill, pmrem;
-let composer, bloom, cubeCam, cubeRT;
+let composer, bloom, cubeCam, cubeRT, skyCam, skyRT;
 let shadowSpan = 1050;
 let shadowTexels = 4096;
 // How much slack the depth comparison gets, in metres. three.js wants this in
@@ -261,8 +268,7 @@ function applyTime(hour) {
   // Distant water holds a mirror after dark instead of the wide, hazy lobe
   // daylight wants: at night the only thing to reflect is the shoreline, and
   // roughening it away leaves the river a void.
-  const ws = CITY_MATS.water.userData.shader;
-  if (ws) ws.uniforms.farRough.value = mix(0.66, 0.34, dusk);
+  setFarRough(mix(0.66, 0.34, dusk));
   // The mask holds fractions of full white, so this is larger than it looks.
   // Scaled for the rolled-off linear mask: about 0.02 of radiance in the
   // channel off the Battery Park City bank, six times that in North Cove, and
@@ -319,13 +325,14 @@ function setNightGround(lit) {
 // ---------------------------------------------------------------------------
 
 let envRT = null;
+let skyEnvRT = null;
 let envTimer = 0;
 
 /**
- * Re-render the reflection probe. Dragging the time slider fires continuously,
- * and each probe is six scene renders plus a PMREM convolution, so this
- * coalesces to at most one refresh per 180 ms and one more when the slider
- * settles.
+ * Re-render the reflection probes. Dragging the time slider fires
+ * continuously, and each probe is six scene renders plus a PMREM convolution,
+ * so this coalesces to at most one refresh per 180 ms and one more when the
+ * slider settles.
  */
 function refreshEnv() {
   if (!cubeCam) return;
@@ -347,6 +354,29 @@ function renderProbe() {
   envRT = pmrem.fromCubemap(cubeRT.texture);
   scene.environment = envRT.texture;
   prev?.dispose();
+
+  // The water gets its own probe, with nothing in it but the sky.
+  //
+  // A cube probe has one position, and everything lit from it is lit as if it
+  // stood there. For a facade a few hundred metres from the plaza that is a
+  // small lie. For a square kilometre of harbour it is a large one: the city
+  // and the far shore sit in the lower half of that probe, and a surface at
+  // roughness 0.1 mirrors them sharply, so their dark mass was being painted
+  // across open water two kilometres from anything — a hard-edged grey stain
+  // over the Upper Bay that moved with the camera. Taking them out of the
+  // probe takes the stain out with them.
+  //
+  // Nothing is lost by it. The sky is the one thing in the scene genuinely far
+  // enough away for a single probe to be right everywhere, and what the city
+  // ought to be doing to the water is put back below, in the right place, by
+  // reflecting it off the plane instead.
+  if (skyCam) {
+    skyCam.update(renderer, scene);
+    const prevSky = skyEnvRT;
+    skyEnvRT = pmrem.fromCubemap(skyRT.texture);
+    setWaterEnv(skyEnvRT.texture);
+    prevSky?.dispose();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -835,6 +865,17 @@ async function init() {
   cubeCam = new THREE.CubeCamera(1, 12000, cubeRT);
   cubeCam.position.set(0, 240, 0);
   scene.add(cubeCam);
+
+  // The water's own probe. Same six faces, but restricted to a layer that only
+  // the two sky domes are on, so it holds the sky and nothing else. The six
+  // face cameras share the rig's layer mask, so setting it here sets all of
+  // them. Far is 30 km because the sky dome is scaled to 20.
+  sky.layers.enable(SKY_LAYER);
+  nightSky.layers.enable(SKY_LAYER);
+  skyRT = new THREE.WebGLCubeRenderTarget(tier.probe, { type: THREE.HalfFloatType });
+  skyCam = new THREE.CubeCamera(1, 30000, skyRT);
+  skyCam.layers.set(SKY_LAYER);
+  scene.add(skyCam);
 
   if (tier.bloom) {
     // EffectComposer's default target has no multisampling, which would throw

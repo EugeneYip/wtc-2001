@@ -393,9 +393,9 @@ The sky carries no cloud, and that is deliberate rather than unfinished. The
 morning this model is set on was exceptionally clear — the kind of visibility
 pilots call severe clear — and it is one of the things people who were there
 remember first. Putting weather in the sky would be a more elaborate model and
-a less accurate one. Reflections come from a cube probe rendered over the site, so
-the towers' aluminium and the surface of the river pick up the actual skyline
-rather than just the sky.
+a less accurate one. Reflections come from a cube probe rendered over the site,
+so the towers' aluminium picks up the actual skyline rather than just the sky.
+There are two probes, because the water cannot use that one — see below.
 
 **Shadows.** For a long time nothing smaller than a street lamp had one. A
 car sat on the road like a sticker, and so did every hydrant, litter bin and
@@ -439,8 +439,28 @@ The rivers are modelled as a dielectric rather than a metal, which is what
 gives water its behaviour: its own dark blue-green looking down, turning to a
 sky mirror at grazing angles. Two normal maps drift across each other at
 different scales and headings — one layer alone only slides, two beating
-against each other read as chop — over a varying roughness map, because real
-water is never uniformly glassy. A paler shelf runs off every shoreline.
+against each other read as chop. A paler shelf runs off every shoreline.
+
+**The water has its own sky.** A cube probe has one position, and everything
+lit from it is lit as though it stood there. For a facade a few hundred metres
+off the plaza that is a small lie. For a square kilometre of harbour it is a
+large one, and it showed: the city and the far shore sit in the lower half of
+that probe, water at this roughness mirrors them sharply, and their dark mass
+was being painted across open water two kilometres from anything. It came out
+as a hard-edged grey stain over the Upper Bay that slid about as the camera
+moved, and looking straight down at the Hudson from any height the river was
+covered in pale blotches with ragged edges, like floes. Turning the probe off
+entirely made all of it vanish; nothing else in the shading moved.
+
+So the water now has a probe of its own, six faces drawn on a layer that only
+the two sky domes are on. It holds the sky and nothing else. The extra probe
+is six draws and about a tenth of a millisecond against the full one's 390,
+and it only runs when the light changes.
+
+Nothing is lost by leaving the city out of it. The sky is the one thing in the
+scene genuinely far enough away for a single probe to be right everywhere, and
+what the city ought to be doing to the water is put back in the right place by
+reflecting it off the plane instead — see *the city on the water*, below.
 
 Tugs, ferries and barges work the harbour, and they *work* it: each one runs
 its channel on a sinusoid, so it slows, turns and gathers way again at the ends
@@ -703,14 +723,30 @@ Six things are deliberately not raw OpenStreetMap:
    gets is chosen from its height and footprint, which cannot know what it is
    clad in. Four are corrected by hand, and the Woolworth's copper pyramid is
    given copper. Everything else takes what its class gives it.
-6. **The city's light on the water is painted, not reflected.** None of it
-   survives the reflection probe: a skyline of lit windows averages away to
-   nothing in a 256 px cube run through a blur. So building footprints and
-   land are rasterised into a small world-space mask, blurred, and read by the
-   water shader, which breaks the result up on the chop. The Manhattan bank
-   comes out bright and the far shore faint because of where the buildings
-   are, not because anyone decided it — but it is an approximation of a
-   reflection, not one. It carries no image of what is above it.
+6. **The city on the water is a plan of it, bounced off the surface.** No
+   probe can carry this: a skyline of lit windows averages away to nothing in
+   a 256 px cube run through a blur, and a probe has one position anyway. So
+   building footprints and land are rasterised into a small world-space map —
+   1024 px over 12 km, about twelve metres to a texel, which is fine enough to
+   keep the streets — and the water reads it along the mirror ray: bounce the
+   view off the surface, run it up to where the light in a skyline sits, and
+   sample the map where it lands, three times along the way, because a surface
+   this rough reflects a cone rather than a ray.
+
+   That much is geometry, and the geometry is what makes it read. The
+   reflection stretches away from the eye and not towards it; it falls off by
+   Fresnel, so the river holds the far bank and not the near one; near the
+   horizon the ray travels hundreds of metres for every metre it climbs, so
+   the chop swings the landing point a long way along the line of sight and
+   the light breaks into bands. In daylight the same ray darkens the water
+   where it lands on a building, which is why the Hudson no longer runs the
+   same blue right up to the bulkhead line, and why North Cove — a basin ringed
+   by towers — is darker than the river outside it.
+
+   It is still a plan, though, and a plan has no elevation in it. What this
+   cannot do is put an image of a particular tower on the water: it knows
+   where the city is and roughly how much light is there, not what it looks
+   like. The honest description is a reflection of a map, not of a skyline.
 
 Background buildings with no height in OSM get a deterministic estimate from
 their id and footprint area, so the fabric varies instead of reading as one
@@ -732,8 +768,17 @@ the entire shadow pass — 63 draw calls and 436,032 triangles, 42% of everythin
 drawn — changed the frame by 0.3 ms. **This frame is fill-bound, not
 geometry-bound**, and counting triangles was measuring the wrong thing.
 
-Three expensive things turn out to be worth their cost, which is worth writing
-down so nobody re-litigates them:
+One cheap thing turned out not to be worth anything at all. The water carried
+a roughness map — slick and rough patches, 900 m to a tile, on the argument
+that real water is never uniformly glassy. Flattening its contrast to its own
+mean, changing nothing else, moved **a sixth of one per cent of the frame by
+at most nine levels out of 255**. It could not be seen. What the eye had been
+reading as patchy water was the reflection probe painting the city onto it.
+The map is gone and its mean stayed, which buys back one of the two texture
+reads the new reflection costs, on a surface that is often half the screen.
+
+Three expensive things do turn out to be worth their cost, which is worth
+writing down so nobody re-litigates them:
 
 - **Bloom** is about 40% of the frame. It also changes 40 to 66% of the pixels
   at every hour tested, so it is not idling through the daylight. Halving the

@@ -52,6 +52,8 @@ courses, the walks inside the parks and every ground-floor shopfront are
 procedurally placed for plausibility and are not survey data. The night sky
 and the city's light on the water are rendering models, not observations: the
 sky is a hand-written gradient with a skyglow term, and the light on the
-rivers is painted from a blurred mask of where the buildings are, not
-reflected from them. Which shops are lit, and which have an illuminated
+rivers is read off a plan of where the buildings are, bounced off the water
+along the mirror ray — so it lies in the right direction and falls off the
+right way, but it is a reflection of a map and carries no image of any
+particular building. Which shops are lit, and which have an illuminated
 fascia, is drawn from a seed rather than from any record.
