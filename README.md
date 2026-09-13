@@ -83,6 +83,47 @@ original structure left standing above ground there, moved into the memorial
 museum in 2008. It is modelled as it was, steps beside a bank of escalators,
 on the line Greenwich Street would take through the site.
 
+**Roads through buildings.** Some of the streets ran straight through the
+blocks, and once the traffic started driving there were cars inside buildings.
+Measured: 3.9% of all road centreline samples were inside a footprint, across
+58 of the 753 roads.
+
+The cause turned out to be one tag. A carriageway is a line, but OSM also uses
+`highway=pedestrian` for plazas, forecourts and the paving around a building,
+drawn as closed rings or tagged `area=yes` — and **657 of the 694 pedestrian
+ways in this extract are areas, not streets.** Drawn as roads they came out as
+nine-metre ribbons looping back on themselves through the middle of buildings,
+with kerbs, lane markings, parked cars and moving traffic on them. Nearly five
+hundred of them are the paving of the modern memorial site, which this model
+does not have anyway.
+
+So: a closed pedestrian way, or anything tagged as an area, is not a
+carriageway and is dropped. What remains is then clipped out of the building
+footprints, but only where a centreline runs more than 2.5 m inside one — that
+is wider than the usual disagreement between where OSM puts a wall and where it
+puts the kerb, and narrower than any building worth the name, so real streets
+are not chopped into pieces by a metre of mapping slop.
+
+| | before | after |
+|---|---|---|
+| centreline inside a building | 3.93% | 0.41% |
+| roads touching a building | 58 | 10 |
+| moving cars inside a building | 1.1% | 0.17% |
+| parked cars inside a building | — | 0 of 2,964 |
+
+(Those two vehicle figures are measured against the ordinary building
+footprints, like for like with the earlier one. Counting the WTC complex
+footprints as well — the plaza deck edges among them — it is 3 moving and 7
+parked out of 3,566, which is 0.28%.)
+
+The check that mattered was making sure this removed plazas and not streets.
+Road length by class, before and after: residential and unclassified 22,420 m
+to 22,325 m, tertiary 320 m to 320 m, secondary 7,024 m to 7,024 m, primary
+1,497 m to 1,497 m, trunk 2,498 m to 2,498 m. **Every classified street is
+untouched.** The whole of the 15.3 km that went was pedestrian paving, leaving
+the 1.7 km of genuinely pedestrianised street — Wall Street, Exchange Place,
+New Street and the rest — still there.
+
 **Streets.** The OSM width is the whole right of way, so the carriageway is
 narrowed and the remainder becomes pavement either side, with lane markings
 down the middle and a gutter line at the kerb. A wide avenue is often several

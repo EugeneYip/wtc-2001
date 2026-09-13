@@ -627,8 +627,92 @@ def clip_out_site(pts):
     return runs
 
 
-def build_roads():
+# How far inside a footprint a centreline has to run before it counts as going
+# through the building rather than as the usual disagreement between where OSM
+# puts a wall and where it puts the kerb. Two and a half metres is wider than
+# that slop and narrower than any building worth the name.
+BUILDING_CLEAR = 2.5
+FOOT_CELL = 60.0
+
+
+def footprint_index(buildings):
+    """Bucket footprints by grid cell, with their bounding boxes."""
+    cells = {}
+    for b in buildings:
+        poly = b["p"] if isinstance(b["p"][0], list) else b["poly"]
+        xs = [q[0] for q in poly]
+        zs = [q[1] for q in poly]
+        box = (min(xs), min(zs), max(xs), max(zs))
+        for cx in range(int(box[0] // FOOT_CELL), int(box[2] // FOOT_CELL) + 1):
+            for cz in range(int(box[1] // FOOT_CELL), int(box[3] // FOOT_CELL) + 1):
+                cells.setdefault((cx, cz), []).append((poly, box))
+    return cells
+
+
+def _in_poly(x, z, poly):
+    hit = False
+    j = len(poly) - 1
+    for i in range(len(poly)):
+        xi, zi = poly[i]
+        xj, zj = poly[j]
+        if (zi > z) != (zj > z) and x < (xj - xi) * (z - zi) / (zj - zi) + xi:
+            hit = not hit
+        j = i
+    return hit
+
+
+def _edge_dist(x, z, poly):
+    best = 1e18
+    j = len(poly) - 1
+    for i in range(len(poly)):
+        x0, z0 = poly[j]
+        x1, z1 = poly[i]
+        dx, dz = x1 - x0, z1 - z0
+        l2 = dx * dx + dz * dz
+        t = 0.0 if l2 == 0 else max(0.0, min(1.0, ((x - x0) * dx + (z - z0) * dz) / l2))
+        ex, ez = x - (x0 + dx * t), z - (z0 + dz * t)
+        best = min(best, math.hypot(ex, ez))
+        j = i
+    return best
+
+
+def buried(x, z, cells):
+    """True if this point is well inside a building, not merely near one."""
+    for poly, (bx0, bz0, bx1, bz1) in cells.get(
+            (int(x // FOOT_CELL), int(z // FOOT_CELL)), ()):
+        if bx0 <= x <= bx1 and bz0 <= z <= bz1 and _in_poly(x, z, poly):
+            if _edge_dist(x, z, poly) > BUILDING_CLEAR:
+                return True
+    return False
+
+
+def clip_out_buildings(pts, cells):
+    """Split a polyline so no part of it runs through a building."""
+    runs, cur = [], []
+    for x, z in pts:
+        if buried(x, z, cells):
+            if len(cur) > 1:
+                runs.append(cur)
+            cur = []
+        else:
+            cur.append((x, z))
+    if len(cur) > 1:
+        runs.append(cur)
+    return runs
+
+
+def build_roads(buildings):
+    # A carriageway is a line. OSM also tags plazas, forecourts and the paving
+    # around a building as highway=pedestrian, closed rings or area=yes, and
+    # 657 of the 694 pedestrian ways in this extract are exactly that. Drawn as
+    # roads they came out as nine-metre ribbons looping back on themselves
+    # through the middle of buildings, with kerbs, lane markings, parked cars
+    # and moving traffic on them. Nearly five hundred of them are the paving of
+    # the modern memorial site, which this model does not have anyway.
+    cells = footprint_index(buildings)
     out = []
+    dropped_area = 0
+    clipped = 0
     for e in load("roads.json"):
         tags = e.get("tags", {})
         hw = tags.get("highway")
@@ -639,9 +723,17 @@ def build_roads():
         if not g or len(g) < 2:
             continue
         pts = [project(p["lat"], p["lon"]) for p in g]
+        closed = (abs(pts[0][0] - pts[-1][0]) < 0.5 and abs(pts[0][1] - pts[-1][1]) < 0.5)
+        if tags.get("area") == "yes" or (closed and hw == "pedestrian"):
+            dropped_area += 1
+            continue
         runs = []
         for inside_quad in clip_to_quad(pts, ROAD_QUAD):
-            runs.extend(clip_out_site(inside_quad))
+            for off_site in clip_out_site(inside_quad):
+                kept = clip_out_buildings(off_site, cells)
+                if len(kept) != 1 or len(kept[0]) != len(off_site):
+                    clipped += 1
+                runs.extend(kept)
         for run in runs:
             run = simplify(run, 1.5)
             if len(run) < 2:
@@ -652,6 +744,8 @@ def build_roads():
                 "k": "major" if w >= 15 else "minor",
             })
     print("  road segments         : %d" % len(out))
+    print("  plaza polygons dropped: %d" % dropped_area)
+    print("  runs clipped clear of buildings: %d" % clipped)
     return out
 
 
@@ -1391,7 +1485,8 @@ def main():
         })
     print("  re-added demolished   : %d" % len(DEMOLISHED))
 
-    roads = build_roads()
+    roads = build_roads(buildings + [
+        {"p": [[x, z] for x, z in ccw(b["poly"])]} for b in WTC_COMPLEX])
     water, parks = build_areas()
     land = build_land()
     bridge = build_bridge(land)
