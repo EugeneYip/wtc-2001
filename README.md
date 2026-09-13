@@ -47,6 +47,34 @@ producing the pointed arcade at plaza level; that is pierced geometry, not a
 texture. Mechanical floors (7–8, 41–42, 75–76, 108–110) read as solid bands,
 and 1 WTC carries its 360 ft transmission mast, added in 1978.
 
+The columns are one box each running the whole shaft, and for a long time that
+meant a tower had **no horizontal scale in it anywhere**: from the plaza it was
+110 storeys of uninterrupted vertical line, and nothing in the frame said how
+tall a line that was. The glass behind them does carry a spandrel at every
+floor — but the columns stand 0.36 m proud of it and hide the lot at any angle
+off square, which is exactly the property that makes the building work.
+
+So the spandrel goes on the column face, where the real one was: an aluminium
+plate spanning between the covers, set back far enough to sit a shade darker.
+It is keyed off world height rather than off the geometry, because the shaft is
+a single box with nothing in its UVs to key from, and it is band-limited on the
+way out. A 3.66 m period on a 417 m building is under a pixel from anywhere
+useful, and left alone it beats against the pixel grid into slow horizontal
+bands crawling up the tower; `fwidth` says how much of a floor one pixel
+covers, and once that is half of one the whole thing is gone and the column is
+plain metal again — which is what it should average to.
+
+**One artefact left, and it is the geometry.** Standing close and looking along
+a face rather than at it, the columns break into a herringbone of chevrons.
+Measured rather than guessed at: hiding the column instances removes it
+entirely and the face goes smooth, removing the glass texture behind them
+changes nothing, and turning shadows off changes nothing. It is 59 columns on a
+1.016 m pitch going sub-pixel at a grazing angle, beating against the sample
+grid — and 4× multisampling cannot fix a *periodic* pattern, because the sample
+positions are periodic too. The honest fixes are temporal antialiasing or
+supersampling, neither of which is on the table here. It does not appear in any
+of the six viewpoints; you have to drive the camera to it.
+
 | | |
 |---|---|
 | Footprint | 208 × 208 ft (63.40 m) |

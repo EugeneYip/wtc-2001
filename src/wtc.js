@@ -141,12 +141,71 @@ const WTC7_SPEC = {
 const LOW_FACE = facade(LOW_SPEC);
 const WTC7_FACE = facade(WTC7_SPEC);
 
+/**
+ * The column aluminium, with the floors in it.
+ *
+ * The shaft columns are one box each running the whole height, so a tower had
+ * no horizontal scale in it anywhere: from the plaza it was 110 storeys of
+ * uninterrupted vertical line, and nothing in the frame said how tall a line
+ * that was. The glass behind them carries a spandrel at every floor, but the
+ * columns stand 0.36 m proud of it and hide the lot at any angle off square.
+ *
+ * So the spandrel goes on the column face, where the real one was: an
+ * aluminium plate spanning between the covers, set back far enough to sit a
+ * shade darker. Keyed off world height rather than off the geometry, because
+ * the shaft is a single box and there is nothing in its UVs to key from.
+ *
+ * Band-limited on the way out. A 3.66 m period on a 417 m building is under a
+ * pixel from anywhere useful, and left alone it beats against the pixel grid
+ * into slow horizontal bands crawling up the tower. fwidth says how much of a
+ * floor one pixel covers; once that is a sixth of one the ramp widens, and
+ * once it is half the whole thing is gone and the column is plain metal again,
+ * which is what it should average to.
+ */
+function shaftAluminium() {
+  const m = MATS.column.clone();
+  m.name = 'wtc-aluminium-shaft';
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.floorH = { value: FLOOR };
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', `
+        #include <common>
+        varying float vHeight;
+      `)
+      .replace('#include <project_vertex>', `
+        #include <project_vertex>
+        vHeight = ( modelMatrix * vec4( transformed, 1.0 ) ).y;
+      `);
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', `
+        #include <common>
+        uniform float floorH;
+        varying float vHeight;
+      `)
+      .replace('#include <color_fragment>', `
+        #include <color_fragment>
+        float fl = vHeight / floorH;
+        float px = max( fwidth( fl ), 1e-5 );
+        float f = fract( fl );
+        // The spandrel is the lower two fifths of a floor. Soft-edged: a hard
+        // line here is the one thing guaranteed to alias.
+        float sp = 1.0 - smoothstep( 0.0, 0.40 + px * 2.0, f );
+        float amt = 0.11 * ( 1.0 - smoothstep( 0.16, 0.50, px ) );
+        diffuseColor.rgb *= 1.0 - amt * sp;
+      `);
+  };
+  m.needsUpdate = true;
+  return m;
+}
+
 const PLAZA_MAP = plazaTexture();
 
 export const MATS = {
   column: new THREE.MeshStandardMaterial({
     color: 0xb4b8bd, metalness: 0.62, roughness: 0.38, name: 'wtc-aluminium',
   }),
+  // The same aluminium, with the floors in it. See shaftAluminium.
+  shaft: null,
   glass: new THREE.MeshStandardMaterial({
     map: facadeTexture(), metalness: 0.55, roughness: 0.34, name: 'wtc-glass',
     emissiveMap: towerLights(), emissive: new THREE.Color(0xffd49a),
@@ -213,6 +272,8 @@ export const MATS = {
   }),
 };
 
+MATS.shaft = shaftAluminium();
+
 /** The four faces, as (centre offset, direction along the face). */
 const FACES = [
   { n: [0, 1], u: [1, 0], rot: 0 },
@@ -272,7 +333,7 @@ function baseFaceGeometry(side) {
 function shaftColumns(side, y0, y1) {
   const h = y1 - y0;
   const geo = new THREE.BoxGeometry(COL_W, h, COL_D);
-  const mesh = new THREE.InstancedMesh(geo, MATS.column, N_COLS * 4);
+  const mesh = new THREE.InstancedMesh(geo, MATS.shaft, N_COLS * 4);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
 
@@ -464,7 +525,7 @@ export function buildTower({ center, roof: roofY, mast, name, side }) {
   cols.name = 'columns';
   g.add(cols);
 
-  const corners = new THREE.Mesh(cornerPanels(side, BASE_TOP, roofY), MATS.column);
+  const corners = new THREE.Mesh(cornerPanels(side, BASE_TOP, roofY), MATS.shaft);
   corners.castShadow = true; corners.receiveShadow = true;
   corners.name = 'columns';
   g.add(corners);
