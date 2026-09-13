@@ -568,6 +568,40 @@ runs in three pieces, across the centre pier and the two outer legs: taken
 across the whole elevation as one band it bridges the arch voids, which is a
 lintel where there is meant to be daylight.
 
+**It lands on a street now.** The Manhattan approach used to stop at a fixed
+210 m past the anchorage and end there — 1.5 m up in the air, **157 m short of
+the nearest carriageway**, with one pier under it and bare ground beyond. A
+viaduct finishing in the middle of a field.
+
+It is not a guessed length either. The approach runs out along its own axis
+until it comes within a lane's width of a real avenue, and lands **on** it, at
+the level of the asphalt rather than two metres over it. Measured along the
+axis, the nearest major street goes 157 m away at the old end, 75 m at 1,390
+and 26 m at 1,440, so that is where the deck stops — about 170 m further on
+than before, carried on its piers the whole way and coming down to grade at a
+junction with crosswalks and traffic on it.
+
+Brooklyn keeps the old fixed run-out, because that bank is off the edge of the
+extract and there is nothing over there to land on.
+
+**And the deck has a railing.** It was a bare ribbon — a roadway with an edge
+beam under it and nothing standing on it, which is a thing nobody would drive
+on and which reads, end-on, as a plank. There are four lines of it now: one
+down each side of the roadway, and one down each side of the promenade, which
+is raised above the traffic and fenced off from it. The lacy edge a bridge has
+at any distance is its railing.
+
+A rail runs continuously, so every end cap on every length of it is buried
+inside the next length. Leaving them off saves **15,760 triangles** of handrail
+drawn inside itself, which is a third of all the steel on the bridge.
+
+**There are no flags on it**, and that is a decision rather than an oversight.
+Flags fly from the towers of this bridge on occasions, and a great many were
+flown from it in the weeks after — but on an ordinary Tuesday morning the
+towers carried granite and cables and nothing else, and this model is set at
+08:46 on such a morning. The flags that are here are on the roofs of buildings,
+where they stood every day.
+
 **Light and water.** The sun is placed from real solar geometry for 40.71° N
 on 11 September, so shadow directions through the day are the ones the site
 actually had. It is drawn by the Mie term of the sky model, and the asymmetry

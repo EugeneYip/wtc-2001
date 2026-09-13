@@ -19,7 +19,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'BufferGeometryUtils';
-import { norm } from './geo.js';
+import { norm, GROUND } from './geo.js';
 import { graniteTexture, GRANITE_TILE_M } from './textures.js';
 
 const TOWER_H = 84.3;
@@ -40,6 +40,11 @@ const MID_CABLE = 45.5;        // cable low point, a few metres over the deck
 // bridge in profile, and the deck was a bare ribbon without it.
 const PROM_W = 5.6;
 const PROM_H = 1.9;
+// Railing heights: a metre and a bit at the kerb of the roadway, and a little
+// more than that beside the walk, where it is holding people back rather than
+// wheels.
+const RAIL_H = 1.15;
+const RAIL_P = 1.05;
 
 const GRANITE = graniteTexture();
 
@@ -90,13 +95,15 @@ export const BRIDGE_MATS = {
 function profile(stations) {
   const [s0, anchorA, tA, mid, tB, anchorB, s1] = stations;
   const key = [
-    [s0, 1.5],                              // down to grade, off the model
+    [s0, GROUND.asphalt],                   // down to grade, off the model
     [anchorA, 30.0],
     [tA, 38.0],
     [mid, 41.2],
     [tB, 38.0],
     [anchorB, 30.0],
-    [s1, 1.5],
+    // On the roadway, not 1.9 m above it. The deck's edge beam hangs below
+    // this and ends up under the ground, which is where it belongs.
+    [s1, GROUND.asphalt],
   ];
   return (s) => {
     if (s <= key[0][0]) return key[0][1];
@@ -229,14 +236,17 @@ function stoneUV(g) {
 }
 
 /** A run of thin box segments along a polyline, as a cable or a stay. */
-function strand(points, r) {
+function strand(points, r, open = false) {
   const parts = [];
   const up = new THREE.Vector3(0, 1, 0);
   for (let i = 0; i < points.length - 1; i++) {
     const a = points[i], b = points[i + 1];
     const len = a.distanceTo(b);
     if (len < 0.01) continue;
-    const g = new THREE.CylinderGeometry(r, r, len, 5);
+    // A rail runs continuously, so every one of its end caps is buried in the
+    // next length of it: half the triangles in a mile and a half of handrail,
+    // drawn inside itself.
+    const g = new THREE.CylinderGeometry(r, r, len, 5, 1, open);
     const dir = b.clone().sub(a).normalize();
     const q = new THREE.Quaternion().setFromUnitVectors(up, dir);
     g.applyQuaternion(q);
@@ -246,7 +256,36 @@ function strand(points, r) {
   return parts;
 }
 
-export function buildBridge(spec) {
+/**
+ * How far the Manhattan approach has to run before it is on a street.
+ *
+ * It used to stop at a fixed 210 m past the anchorage and end there, 1.5 m up
+ * in the air, a hundred and fifty metres short of the nearest carriageway and
+ * with nothing under it — a viaduct finishing in the middle of a bare field.
+ * The approach is not a guess: it runs out along its own axis until it is
+ * within a lane's width of a real avenue, and lands on it.
+ */
+function runOut(roads, at, from) {
+  if (!roads || !roads.length) return from + 210;
+  const REACH = 30;                 // close enough to call it a landing
+  for (let s = from + 120; s <= from + 560; s += 6) {
+    const p = at(s, 0, 0);
+    for (const r of roads) {
+      if (r.k !== 'major') continue;
+      for (let i = 0; i < r.p.length - 1; i++) {
+        const [x0, z0] = r.p[i], [x1, z1] = r.p[i + 1];
+        const dx = x1 - x0, dz = z1 - z0, l2 = dx * dx + dz * dz;
+        let t = l2 > 0 ? ((p.x - x0) * dx + (p.z - z0) * dz) / l2 : 0;
+        t = t < 0 ? 0 : t > 1 ? 1 : t;
+        const ex = p.x - (x0 + dx * t), ez = p.z - (z0 + dz * t);
+        if (ex * ex + ez * ez < REACH * REACH) return s + 26;
+      }
+    }
+  }
+  return from + 210;
+}
+
+export function buildBridge(spec, roads) {
   if (!spec) return null;
   const [ax, az] = spec.a;
   const [ux, uz] = spec.u;
@@ -260,11 +299,14 @@ export function buildBridge(spec) {
   // than one that lands and is cut off.
   const anchorA = tA - 244;
   const anchorB = tB + 249;
-  const s0 = anchorA - 210;
-  const s1 = anchorB + 210;
-  const h = profile([s0, anchorA, tA, mid, tB, anchorB, s1]);
   const at = (s, off, y) =>
     new THREE.Vector3(ax + ux * s + px * off, y, az + uz * s + pz * off);
+  // Brooklyn is off the edge of the extract, so that end keeps the old fixed
+  // run-out and comes down to grade with nothing to land on; the Manhattan end
+  // goes looking for a street.
+  const s0 = anchorA - 210;
+  const s1 = runOut(roads, at, anchorB);
+  const h = profile([s0, anchorA, tA, mid, tB, anchorB, s1]);
 
   const g = new THREE.Group();
   g.name = 'Brooklyn Bridge';
@@ -323,6 +365,27 @@ export function buildBridge(spec) {
     walk.push(top);
     quad(-pw, -pw, q0, q1, y0, y1, walk);
     quad(pw, pw, y0, y1, q0, q1, walk);
+
+    // Railings.
+    //
+    // The deck was a bare ribbon: a roadway with an edge beam under it and
+    // nothing at all standing on it, which is a thing nobody would drive on
+    // and a thing that reads, end-on, as a plank. The lacy edge a bridge has
+    // at any distance is its railing, and there are four lines of it here —
+    // one down each side of the roadway and one down each side of the
+    // promenade, because the walk is raised above the traffic and fenced off
+    // from it.
+    for (const [off, y, ht] of [[-w + 0.5, y0, RAIL_H], [w - 0.5, y0, RAIL_H],
+                                [-pw - 0.35, y0, PROM_H + RAIL_P],
+                                [pw + 0.35, y0, PROM_H + RAIL_P]]) {
+      const yb = h(s2);
+      steel.push(...strand([at(s, off, y + ht), at(s2, off, yb + ht)], 0.055, true));
+      steel.push(...strand([at(s, off, y + ht * 0.52), at(s2, off, yb + ht * 0.52)], 0.04, true));
+      const post = new THREE.BoxGeometry(0.09, ht, 0.09);
+      const pp = at(s, off, y + ht / 2);
+      post.translate(pp.x, pp.y, pp.z);
+      steel.push(norm(post));
+    }
   }
 
   // ---- towers -----------------------------------------------------------

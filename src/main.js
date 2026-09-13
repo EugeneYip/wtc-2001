@@ -880,7 +880,7 @@ async function init() {
   scene.add(city.group);
   waterMesh = city.water;
 
-  const bridge = buildBridge(data.bridge);
+  const bridge = buildBridge(data.bridge, data.roads);
   if (bridge) scene.add(bridge);
 
   // Relief on the far shores, laid over the flat land rather than displacing
