@@ -23,7 +23,7 @@ import { buildCity, farShore, cityLabels, animateWater, setShoreGlow, setWaterEn
          setFarRough, lampPoolShading, junctions, CITY_MATS,
          WALL_CLASSES } from './city.js';
 import { buildComplex, MATS as WTC_MATS, PLAZA_TREE_SITES,
-         PLAZA_LAMP_SITES, SPHERE_AT } from './wtc.js';
+         PLAZA_LAMP_SITES, SPHERE_AT, setFacadeScale } from './wtc.js';
 import { roofClutter, trees, traffic, parkedCars, manholes, vessels,
          animateVessels, animateTraffic, flags, FLAG_MATS,
          streetLamps, lampPoolTexture, trafficSignals,
@@ -1200,7 +1200,7 @@ async function init() {
   else setTimeout(warm, 1200);
 
   window.WTC = { scene, camera, controls, renderer, goTo, applyTime, VIEWS, data,
-                 quality, render,
+                 quality, render, setFacadeScale,
                  get composer() { return composer; },
                  get loaderHeldMs() { return loaderHeldMs; } };
 }
@@ -1336,6 +1336,7 @@ function applyPixelRatio() {
   renderer.setPixelRatio(ratio);
   renderer.setSize(innerWidth, innerHeight);
   sizeComposer();
+  facadeScale();
 }
 
 /**
@@ -1359,8 +1360,21 @@ function onResize() {
   applyPixelRatio();
   renderer.setSize(innerWidth, innerHeight);
   sizeComposer();
+  facadeScale();
   relabel();
   measureLabels();
+}
+
+/**
+ * Tell the towers how big a metre is.
+ *
+ * The facade band-limits its own column grid, and to do that it has to know
+ * how many pixels a 1.016 m pitch covers — which is the frame height and the
+ * field of view, neither of which a shader can ask for. Both change here and
+ * nowhere else.
+ */
+function facadeScale() {
+  setFacadeScale(renderer.getDrawingBufferSize(_size).y, camera);
 }
 
 // ---------------------------------------------------------------------------

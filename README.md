@@ -64,16 +64,185 @@ bands crawling up the tower; `fwidth` says how much of a floor one pixel
 covers, and once that is half of one the whole thing is gone and the column is
 plain metal again — which is what it should average to.
 
-**One artefact left, and it is the geometry.** Standing close and looking along
-a face rather than at it, the columns break into a herringbone of chevrons.
-Measured rather than guessed at: hiding the column instances removes it
-entirely and the face goes smooth, removing the glass texture behind them
-changes nothing, and turning shadows off changes nothing. It is 59 columns on a
-1.016 m pitch going sub-pixel at a grazing angle, beating against the sample
-grid — and 4× multisampling cannot fix a *periodic* pattern, because the sample
-positions are periodic too. The honest fixes are temporal antialiasing or
-supersampling, neither of which is on the table here. It does not appear in any
-of the six viewpoints; you have to drive the camera to it.
+**The column grid beats against the pixel grid, and that is now dealt with.**
+The facade's own pitch was for a long time the largest error left anywhere in
+the model. 59 columns at 1.016 m land on two or three pixels at a few hundred
+metres, and two pixels is the Nyquist limit: from about there down the grid
+cannot be carried by the sample grid at all, and what comes out instead is the
+difference between the two — broad curved fringes drifting across a face,
+curved because perspective makes the on-screen pitch vary smoothly across the
+face, so the contours of equal beat phase are curves rather than lines.
+
+Measured at 16:30 from 691 m out, with the pitch at 2.9 px, against an image
+converged by 128 sub-pixel-jittered renders of the same frame: **a mean
+absolute error of 14.6 levels out of 255**, a worst pixel out by 78, and 24.6
+of ribbing contrast where the converged image has 7.4. It is visible from the
+*site* and *aerial* viewpoints without going looking for it.
+
+**Three things were tried first and none of them works.** They are written up
+here so nobody runs them again.
+
+- **More multisampling is not available.** WebGL 2 on an M2 reports a
+  `MAX_SAMPLES` of 4, which is what the high tier already asks for; requesting
+  8 hands back a 4× buffer and a bit-identical frame. The ladder below it shows
+  why more would not have been the answer anyway — ribbing contrast of 42.4 at
+  0×, 29.8 at 2×, 25.4 at 4× — heading for an asymptote far above the 7.4 it
+  should be. Multisampling resolves *coverage* at an edge and shades once per
+  pixel regardless, and the fringes are made of shading, not of edges.
+- **The mipmapped facade texture underneath cannot stand in for the columns.**
+  The curtain wall already carries the same pattern as a texture, deliberately
+  on the same pitch so that what shows between the covers lines up with them —
+  which is exactly why it is no use as a fallback: its stripes go sub-pixel at
+  the same distance. Measured with the column geometry hidden so the texture
+  was all there was, it came out *worse* than the geometry it would have
+  replaced, 35.7 of ribbing contrast against 25.4, and 11.6 levels too dark
+  besides. Mipmaps do not rescue it. A mip chain filters a texture down to the
+  pixel rate and stops, and a pattern whose period is under three pixels is
+  still in the mip when it gets there. Raising the anisotropy from 8 to 16
+  changed nothing and dropping it to 1 only blurred the whole wall.
+- **No fixed stand-in colour is right.** Whatever replaces the shaft has to
+  have the face's average right, and that average is not a constant. Converged,
+  a lit face reads 110 head-on and 145 at thirty degrees off square, because
+  the covers stand 0.36 m proud and hide more of the glass the further off
+  square you are — which is the property the building is famous for. A flat
+  stripe texture comes out 12 levels dark, plain aluminium 23 levels bright,
+  and nothing in between is right at both ends.
+
+**What works is to stop drawing the pattern before it goes under Nyquist.** The
+facade band-limits itself, the same way its spandrels already do. The ramp is
+keyed on how many pixels one column pitch covers: at or above 5.5 px nothing is
+touched and the frame is bit-for-bit what it was — checked, and at 120 m and
+180 m not one channel out of 4.9 million differs — and at or below 2.3 px the
+face is a plain surface with nothing periodic left in it to beat. In between,
+the column covers are squashed into the wall in the vertex shader until their
+relief is gone, and the stripes behind them fade to their own average.
+
+*The relief has to go geometrically, not by turning the normals.* The first cut
+blended each column's shading normal towards the face normal, which sounds like
+the same thing and is not. A side return and a face are ninety degrees apart,
+so half way through that blend every column side points at forty-five degrees —
+a direction no surface on the building has, catching neither the sun nor the
+sky the way either end of the blend does. Measured along the ramp it dipped the
+face 14 levels dark in the middle and put the ribbing contrast *up*, from 25.4
+to 31.5, on its way to taking it out. Squashing the cover into the wall only
+ever makes the side returns narrower, and every normal in the frame stays one
+the building actually has.
+
+*And the ramp cannot be asked of the surface.* `fwidth` of a world coordinate
+along the face is the obvious way to measure the pitch in pixels, and it is
+right on a column's front and catastrophically wrong on its sides, which are
+edge-on: nothing moves along the face across one of those, so the derivative is
+zero, the pitch reads as perfectly resolved, and the ramp skips exactly the
+fragments that need it most. The first build did that, and the face stayed as
+ribbed as it had been. The pitch is a property of the camera and the face and
+not of the fragment's own surface, so it is computed as one — a segment of one
+pitch lying perpendicular to the view at depth *z* covers `focal × pitch / z`
+pixels, and `focal` is the only thing a shader has to be told, because it is
+half the frame height over the tangent of half the field of view.
+
+What it buys, at the same viewpoint, against the same converged reference:
+
+| at 691 m, pitch 2.9 px | before | after | converged |
+|---|---|---|---|
+| mean absolute error | 14.65 | **6.33** | 0 |
+| worst pixel | 77.6 | **21.8** | 0 |
+| ribbing contrast | 24.56 | 6.14 | 7.44 |
+| fringe, low-frequency | 1.33 | **1.28** | 0 |
+| brightness bias | 0.04 | −2.65 | 0 |
+
+and on the middle tier's frame, where the artefact was worst, 14.25 → **5.89**
+mean absolute error and 22.4 → **7.49** of excess ribbing. Across the distances
+the camera actually passes through, taking a converged reference at each:
+
+| distance | pitch | before | after |
+|---|---|---|---|
+| 150 m | 10.7 px | 6.27 | 6.27 — untouched |
+| 250 m | 6.3 px | 9.47 | 9.47 — untouched |
+| 330 m | 4.7 px | 12.14 | 10.61 |
+| 400 m | 3.9 px | 13.68 | 9.01 |
+| 500 m | 3.1 px | 13.27 | 8.19 |
+| 700 m | 2.2 px | 15.87 | **3.74** |
+| 900 m | 1.7 px | 13.81 | **4.18** |
+| 1400 m | 1.1 px | 3.57 | 3.33 |
+
+**The one number that is fitted rather than derived** is how far the faded face
+sits from the stripes' own average towards bare aluminium. What a face averages
+to is set by how much of each column's side return shows, which is a
+prefiltered BRDF over the relief and not something a fixed colour can track. It
+is calibrated instead, over seven combinations of view angle and distance
+against converged references; the bias is linear in it, and the value chosen is
+where the worst case across them is smallest. It holds the faded face to about
+three levels of the converged image on average and five at worst, and the error
+is always on the bright side at a graze, because a real facade seen along it
+shows more of the darker column sides than a flat one can. Doing better than
+that means prefiltering the relief properly, which is a larger piece of work
+than this.
+
+**The band was swept, not guessed.** Over a grid of ramps against converged
+references at six distances, the mean absolute error bottoms out in a broad
+basin — anything from 2.0 to 2.8 at the bottom and 5.0 to 6.0 at the top sits
+within one per cent of the best, 7.04 against a before of 12.82 — so the exact
+choice inside it is worth a hundredth of a level. The bottom is set at 2.3 px
+because that is just above the Nyquist limit, which is the principled place to
+say the grid is gone.
+
+**After dark it is the opposite problem.** The lit windows sit in the same
+slots and are on the same grid, so the obvious thing is to fade them with it —
+and that puts the lights out. They were faded towards the window texture's own
+average, and a texture that is mostly black averages to almost black: 3.4 of
+detail where the converged image has 15.9. They keep their pattern instead,
+because a grid produces a beat and a random scatter produces noise, and which
+windows are lit is rolled per window.
+
+What they do need is the other half of it. At any angle off square the covers
+hid most of the glass, and a cover squashed into the wall hides none of it, so
+the same windows that were behind aluminium are suddenly all facing the camera:
+left alone, the tower came out **27 levels too bright** at half past nine. The
+light loses what the relief used to take, by a second fitted factor, and the
+fit lands where the window contrast lands on the converged image's own — 15.6
+against 15.9, from 31.4 unfaded. At nine in the evening, at the same viewpoint:
+
+| at 21:00 | before | after | converged |
+|---|---|---|---|
+| mean absolute error | 9.33 | **6.03** | 0 |
+| worst pixel | 126.1 | **79.3** | 0 |
+| window contrast | 31.40 | 15.56 | 15.86 |
+| brightness bias | 0.20 | −4.96 | 0 |
+
+**Three measurement traps, all of which produced a wrong answer first.**
+
+- *The adaptive resolution governor fires during a capture loop.* The frame
+  rate watcher takes the median of ninety frame times and drops the pixel ratio
+  if it is over budget, and a loop that renders hundreds of jittered frames
+  back to back looks exactly like a machine that cannot keep up. Halfway
+  through the first convergence run it quietly went from a 2880 × 1800 buffer
+  to 2534 × 1584, and the "converged" reference came back *noisier* than the
+  frame it was meant to be the truth for. Freezing `performance.now` for the
+  duration fixes it: the watcher bails on a non-positive delta, and the water,
+  the flags and the beacons stop moving between frames as a bonus.
+- *A jitter grid aliases too.* Averaging n × n evenly spaced sub-pixel offsets
+  is still a regular pattern, and the numbers it gives do not settle — the
+  low-frequency residual went 1.30, 1.10, 1.25 at 16, 36 and 64 samples instead
+  of falling. A Halton sequence settles by 64 and does not move after it.
+- *A source edit does not always reach the browser.* `python -m http.server`
+  sends no `Cache-Control`, so a browser applies heuristic freshness — a tenth
+  of the file's age — and serves a module from cache without revalidating.
+  Editing a shader and reloading inside that window measures the *old* build,
+  and the A/B that removed the emissive fade came back bit-identical, which was
+  read as "it was doing nothing" when it was doing plenty. Everything here is
+  served with `no-store`, and the build is checked after each reload by looking
+  for the change in the compiled shader.
+
+**It costs nothing measurable.** Timed with `EXT_disjoint_timer_query_webgl2`
+over thirty-two frames with the ramp switched on and off in alternation, the
+median frame came to 107.2 ms with it and 107.6 ms without, against a
+frame-to-frame spread of eight — so the difference is inside the noise, and
+negative at that. From the plaza, where the towers fill the frame, 104.6
+against 106.2. (Those absolute figures are from a throttled context and are
+inflated several times over, as everything in the performance section is; what
+is being claimed is the proportion.) It adds no draw calls, no texture reads
+and no transparency: a handful of instructions in two shaders that were already
+being compiled for this material.
 
 | | |
 |---|---|
@@ -2119,11 +2288,12 @@ not to be broken, which is worth recording:
   about a metre on the middle tier, which is what a 2048 map over a 1.2 km
   frustum buys, and that is the tier's own trade.
 
-One artefact was found and deliberately left: the towers' one-metre column
-pitch beats against the pixel grid at some distances and draws curved moiré
-fringes across a facade. That is a sampling problem in the facade, not in the
-sky or the light, and fixing it properly means changing how the columns are
-drawn rather than adjusting anything here.
+One artefact was found and deliberately left for its own round: the towers'
+one-metre column pitch beats against the pixel grid at some distances and draws
+curved moiré fringes across a facade. That was correctly diagnosed as a
+sampling problem in the facade rather than in the sky or the light, and fixing
+it did indeed mean changing how the columns are drawn. It is dealt with above,
+under the towers.
 
 **A measurement trap worth writing down.** The reflection probes are debounced
 by 180 ms, because dragging the time slider fires continuously and each
@@ -2467,7 +2637,10 @@ writing down so nobody re-litigates them:
 - **4x multisampling** costs 18.5 ms of a 42 ms scene render, and dropping to
   2x would give 12 ms back. Against a 2x supersampled reference, though, it
   costs 41% more error on a tower facade — mean absolute error 3.25 against
-  4.58 — and that facade is the entire point of the model. Left alone.
+  4.58 — and that facade is the entire point of the model. Left alone. Going
+  the other way is not an option in any case: WebGL 2 reports a `MAX_SAMPLES`
+  of 4 here, so a request for 8 quietly hands back a 4x buffer. See the towers,
+  above, for what the facade needed instead.
 - **Half-float** is free without multisampling (23.9 ms against 23.4 for
   8-bit), and the HDR bloom needs it.
 

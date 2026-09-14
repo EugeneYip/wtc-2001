@@ -67103,7 +67103,19 @@ function facadeTexture() {
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 8;
-  return t;
+  // The pattern's own average, which is what the wall has to converge to once
+  // the stripes stop resolving. Taken off a 32-square reduction rather than
+  // read back a megapixel: the browser box-filters it on the way down.
+  const s = document.createElement('canvas');
+  s.width = s.height = 32;
+  const sx = s.getContext('2d');
+  sx.drawImage(c, 0, 0, 32, 32);
+  const d = sx.getImageData(0, 0, 32, 32).data;
+  let r = 0, g = 0, b = 0;
+  for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; }
+  const n = d.length / 4;
+  return { map: t, mean: new THREE.Color().setRGB(
+    r / n / 255, g / n / 255, b / n / 255, THREE.SRGBColorSpace) };
 }
 
 /**
@@ -67181,27 +67193,62 @@ const WTC7_FACE = facade(WTC7_SPEC);
  * floor one pixel covers; once that is a sixth of one the ramp widens, and
  * once it is half the whole thing is gone and the column is plain metal again,
  * which is what it should average to.
+ *
+ * The same material carries the column grid's own band-limit, on the instanced
+ * covers but not on the corner panels; see FADE_BAND below for that.
  */
-function shaftAluminium() {
+function shaftAluminium(bandLimit) {
   const m = MATS.column.clone();
-  m.name = 'wtc-aluminium-shaft';
+  m.name = bandLimit ? 'wtc-aluminium-shaft' : 'wtc-aluminium-corner';
   m.onBeforeCompile = (sh) => {
     sh.uniforms.floorH = { value: FLOOR };
+    if (bandLimit) { fadeUniforms(sh); m.userData.shader = sh; }
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', `
         #include <common>
         varying float vHeight;
+        ${bandLimit ? `
+        ${FADE_DECL}
+        ${FADE_GLSL}
+        varying float vFade;` : ''}
       `)
       .replace('#include <project_vertex>', `
         #include <project_vertex>
         vHeight = ( modelMatrix * vec4( transformed, 1.0 ) ).y;
       `);
+    if (bandLimit) {
+      sh.vertexShader = sh.vertexShader.replace('#include <begin_vertex>', `
+        #include <begin_vertex>
+        // The face's u axis is the instance's own +X, and the instance's +Z is
+        // the depth of the column cover. Both are wanted in view space, which
+        // is one matrix either way.
+        mat4 faceM = modelViewMatrix * instanceMatrix;
+        vec3 faceU = normalize( ( faceM * vec4( 1.0, 0.0, 0.0, 0.0 ) ).xyz );
+        vFade = fadeAmount( facePitchPx( - ( faceM * vec4( transformed, 1.0 ) ).xyz, faceU ) );
+        // Take the relief out geometrically rather than turn the normals.
+        // Blending a side normal towards the face normal passes through 45
+        // degrees, and 45 degrees catches neither the sun nor the sky the way
+        // either end of that blend does: measured along the ramp it dipped the
+        // face 14 levels dark in the middle and put the ribbing contrast *up*,
+        // 25.4 to 31.5, on its way to taking it out. Squashing the cover into
+        // the wall only ever makes the side returns narrower, and every normal
+        // in the frame stays one the building actually has.
+        transformed.z *= 1.0 - vFade;
+      `);
+    }
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `
         #include <common>
         uniform float floorH;
         varying float vHeight;
+        ${bandLimit ? `
+        uniform vec3 fadeColor;
+        uniform float fadeRough;
+        uniform float fadeMetal;
+        varying float vFade;` : ''}
       `)
+      // color_fragment runs before the roughness, metalness and normal chunks
+      // below, so the ramp is worked out once here and they all read it.
       .replace('#include <color_fragment>', `
         #include <color_fragment>
         float fl = vHeight / floorH;
@@ -67212,13 +67259,230 @@ function shaftAluminium() {
         float sp = 1.0 - smoothstep( 0.0, 0.40 + px * 2.0, f );
         float amt = 0.11 * ( 1.0 - smoothstep( 0.16, 0.50, px ) );
         diffuseColor.rgb *= 1.0 - amt * sp;
+        ${bandLimit ? `
+        diffuseColor.rgb = mix( diffuseColor.rgb, fadeColor, vFade );` : ''}
+      `);
+    if (!bandLimit) return;
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <roughnessmap_fragment>', `
+        #include <roughnessmap_fragment>
+        roughnessFactor = mix( roughnessFactor, fadeRough, vFade );
+      `)
+      .replace('#include <metalnessmap_fragment>', `
+        #include <metalnessmap_fragment>
+        metalnessFactor = mix( metalnessFactor, fadeMetal, vFade );
       `);
   };
   m.needsUpdate = true;
   return m;
 }
 
+/**
+ * Where the column grid stops being a pattern and starts being a beat.
+ *
+ * 59 columns on a 1.016 m pitch is the whole building, and at a few hundred
+ * metres that pitch lands on two or three pixels. Two is the Nyquist limit,
+ * so from about there down the grid cannot be carried by the sample grid at
+ * all, and what comes out instead is the difference between the two: broad
+ * curved fringes drifting across a face, because perspective makes the
+ * on-screen pitch vary smoothly across it and the contours of equal beat
+ * phase are therefore curves.
+ *
+ * Measured 691 m out with the pitch at 2.9 px, against an image converged by
+ * 128 sub-pixel-jittered renders: the unfaded frame carries 19.1 of ribbing
+ * contrast where the converged image has 7.4, for a mean absolute error of
+ * 14.6 levels out of 255 and a worst pixel out by 78. It was the largest
+ * single error left anywhere in the model.
+ *
+ * Three things were measured and do not work, and are written up in README.md
+ * so nobody re-runs them: more multisampling (WebGL 2 caps at 4 samples here,
+ * which the high tier already asks for), the mipmapped facade texture
+ * underneath (its stripes are on the same pitch, so they go under Nyquist at
+ * the same distance), and any fixed stand-in colour (a face converges to 110
+ * head-on and 145 at thirty degrees off square, and no constant tracks that).
+ *
+ * So the pattern is faded out instead, over the band where it stops being
+ * resolvable: the columns' relief flattens to the plane of the face, the
+ * stripes behind them flatten to their own average, and the face converges to
+ * a single surface with nothing periodic left in it to beat. At the bottom of
+ * FADE_BAND that has fully happened; at the top nothing is touched at all, so
+ * every near view is bit-for-bit what it was.
+ */
+// Pixels per column pitch: the facade is plain at or below x and untouched at
+// or above y. The bottom sits just above the Nyquist limit of two pixels, the
+// point at which the grid cannot be carried by the sample grid at all. The top
+// is measured: swept over a grid of bands against converged references at six
+// distances from 250 to 900 m, the mean absolute error bottoms out in a broad
+// basin from 5.0 to 6.0 and the exact choice inside it is worth a hundredth of
+// a level. See README.md.
+const FADE_BAND = new THREE.Vector2(2.3, 5.5);
+// How far from the stripes' own average towards bare aluminium the faded face
+// sits. Not derivable: what a face averages to is set by how much of each
+// column's side return shows, which is a prefiltered BRDF over the relief and
+// not something a fixed colour can track. Calibrated instead, over seven
+// combinations of view angle and distance against converged references; the
+// bias is linear in this number, and 0.38 is where the worst case across them
+// is smallest. It holds the faded face to about three levels of the converged
+// image on average and five at worst, always on the bright side at a graze,
+// because a real facade seen along it shows more of the darker column sides
+// than a flat one can. See README.md.
+const FADE_MIX = 0.38;
+// What is left of the lit windows once the covers are flat and no longer
+// standing in front of them. Fitted against a converged frame at half past
+// nine: the error bottoms out in a shallow basin around this, and it is also
+// where the window contrast lands on the converged image's own — 15.6 against
+// 15.9, from 31.4 unfaded. See the note on bandLimitedGlass.
+const FADE_LIT = 0.10;
+
+// Half the frame height over the tangent of half the vertical field of view:
+// the one number that turns metres at a depth into pixels, and the one thing
+// in the ramp a shader cannot work out for itself. It moves when the frame is
+// resized or the field of view is retuned for a new aspect, and nothing else,
+// so main.js sets it from there.
+const FADE_FOCAL = { value: 900 };
+
+/** See FADE_FOCAL. Call with the drawing buffer's height and the camera. */
+function setFacadeScale(bufferHeight, camera) {
+  FADE_FOCAL.value = 0.5 * bufferHeight * camera.projectionMatrix.elements[5];
+}
+
+/** The uniforms the ramp reads, and the ramp. */
+const FADE_DECL = `
+  uniform vec3 fadeColor;
+  uniform float fadeRough;
+  uniform float fadeMetal;
+  uniform vec2 fadeBand;
+  uniform float fadeFocal;
+`;
+
+function fadeUniforms(sh) {
+  sh.uniforms.fadeColor = { value: FADE_COLOR };
+  sh.uniforms.fadeRough = { value: FADE_ROUGH };
+  sh.uniforms.fadeMetal = { value: FADE_METAL };
+  sh.uniforms.fadeBand = { value: FADE_BAND };
+  sh.uniforms.fadeFocal = FADE_FOCAL;
+}
+
+/**
+ * Pixels spanned by one column pitch, on the face this fragment is part of.
+ *
+ * Asked of the surface — fwidth of a world coordinate along the face — this
+ * comes out right on a column's front and catastrophically wrong on its side
+ * returns, which are edge-on: nothing moves along the face across one of
+ * those, so the derivative is zero, the pitch reads as infinitely well
+ * resolved and the ramp leaves exactly the fragments that need it most. The
+ * first cut of this did that, and the face stayed as ribbed as it had been.
+ *
+ * It is a property of the camera and the face, not of the fragment's own
+ * surface, so it is computed as one: a segment of length PITCH lying
+ * perpendicular to the view at depth z covers focal * PITCH / z pixels, and
+ * only the part of the segment perpendicular to the view counts.
+ */
+const FADE_GLSL = `
+  #define PITCH ${((SIDE - 2 * CORNER) / N_COLS).toFixed(6)}
+  float facePitchPx( vec3 vvp, vec3 u ) {
+    float z = max( vvp.z, 0.001 );          // vViewPosition is -mvPosition
+    vec3 dir = normalize( vvp );
+    vec3 perp = u - dir * dot( u, dir );
+    return fadeFocal * PITCH * length( perp ) / z;
+  }
+  float fadeAmount( float pitchPx ) {
+    return 1.0 - smoothstep( fadeBand.x, fadeBand.y, pitchPx );
+  }
+`;
+
+/**
+ * The curtain wall, with its stripes band-limited the same way.
+ *
+ * The stripes are drawn on the columns' own pitch on purpose, so that what
+ * shows between the covers lines up with them — which also means they go
+ * sub-pixel at exactly the same distance and alias in exactly the same place.
+ * Mipmaps do not help: a mip chain filters a texture down to the pixel rate
+ * and stops, and a pattern whose period is under three pixels is still in it
+ * when it gets there. Measured with the column geometry hidden so the wall
+ * was all there was, the texture alone came out worse than the geometry it
+ * would have stood in for -- 35.7 of ribbing contrast against 25.4, and 11.6
+ * levels too dark -- and no anisotropy setting moved it the right way.
+ *
+ * So the stripes go the same way the relief does: out, over the same ramp, to
+ * the pattern's own average.
+ *
+ * The lit windows keep their pattern, because a grid produces a beat and a
+ * random scatter produces noise, and which windows are lit is rolled per
+ * window. Fading them to the texture's own average was tried and put the
+ * lights out: a mostly-black texture averages to almost black, so the thing
+ * they were being faded towards was nothing at all — 3.4 of detail where the
+ * converged image has 15.9.
+ *
+ * They do have to come *down*, though, and that is a different thing. At any
+ * angle off square the covers hid most of the glass, and a cover squashed into
+ * the wall hides none of it: left alone, the same windows that were behind
+ * aluminium are suddenly all facing the camera and the tower reads 27 levels
+ * too bright at half past nine. So the light loses what the relief used to
+ * take, by a factor fitted against a converged night frame.
+ */
+function bandLimitedGlass() {
+  const m = new THREE.MeshStandardMaterial({
+    map: FACADE.map, metalness: 0.55, roughness: 0.34, name: 'wtc-glass',
+    emissiveMap: towerLights(), emissive: new THREE.Color(0xffd49a),
+    emissiveIntensity: 0,
+  });
+  m.onBeforeCompile = (sh) => {
+    fadeUniforms(sh);
+    sh.uniforms.fadeLit = { value: FADE_LIT };
+    m.userData.shader = sh;
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', `
+        #include <common>
+        varying vec3 vFaceU;
+      `)
+      .replace('#include <project_vertex>', `
+        #include <project_vertex>
+        // The wall is a box, so its own normal is the face normal, and the
+        // face's u axis is the horizontal perpendicular to it. Degenerate on
+        // the lid and the floor, which nothing ever sees.
+        vec3 nW = normalize( mat3( modelMatrix ) * objectNormal );
+        vec3 uW = vec3( - nW.z, 0.0, nW.x );
+        vFaceU = mat3( viewMatrix ) *
+          ( length( uW ) < 0.001 ? vec3( 1.0, 0.0, 0.0 ) : normalize( uW ) );
+      `);
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', `
+        #include <common>
+        ${FADE_DECL}
+        uniform float fadeLit;
+        varying vec3 vFaceU;
+        ${FADE_GLSL}
+      `)
+      .replace('#include <color_fragment>', `
+        #include <color_fragment>
+        float fade = fadeAmount( facePitchPx( vViewPosition, vFaceU ) );
+        diffuseColor.rgb = mix( diffuseColor.rgb, fadeColor, fade );
+      `)
+      .replace('#include <roughnessmap_fragment>', `
+        #include <roughnessmap_fragment>
+        roughnessFactor = mix( roughnessFactor, fadeRough, fade );
+      `)
+      .replace('#include <metalnessmap_fragment>', `
+        #include <metalnessmap_fragment>
+        metalnessFactor = mix( metalnessFactor, fadeMetal, fade );
+      `)
+      .replace('#include <emissivemap_fragment>', `
+        #include <emissivemap_fragment>
+        totalEmissiveRadiance *= mix( 1.0, fadeLit, fade );
+      `);
+  };
+  return m;
+}
+
 const PLAZA_MAP = plazaTexture();
+const FACADE = facadeTexture();
+// What a face averages to once the grid has gone: the stripes' own mean taken
+// part of the way to the aluminium, because at any angle off square the
+// columns cover more of the face than their width alone.
+const FADE_COLOR = FACADE.mean.clone().lerp(new THREE.Color(0xb4b8bd), FADE_MIX);
+const FADE_ROUGH = 0.34 + (0.38 - 0.34) * FADE_MIX;
+const FADE_METAL = 0.55 + (0.62 - 0.55) * FADE_MIX;
 
 const MATS = {
   column: new THREE.MeshStandardMaterial({
@@ -67226,11 +67490,12 @@ const MATS = {
   }),
   // The same aluminium, with the floors in it. See shaftAluminium.
   shaft: null,
-  glass: new THREE.MeshStandardMaterial({
-    map: facadeTexture(), metalness: 0.55, roughness: 0.34, name: 'wtc-glass',
-    emissiveMap: towerLights(), emissive: new THREE.Color(0xffd49a),
-    emissiveIntensity: 0,
-  }),
+  // The solid panels at the four corners of a face. Same aluminium with the
+  // same floors in it, but two to a face rather than fifty-nine, so there is
+  // no pattern in them to go sub-pixel and nothing to band-limit: faded with
+  // the field they would leave the corners reading a shade dark.
+  corner: null,
+  glass: bandLimitedGlass(),
   baseDark: new THREE.MeshStandardMaterial({
     color: 0x2a2e33, metalness: 0.3, roughness: 0.7,
   }),
@@ -67328,7 +67593,8 @@ const MATS = {
   }),
 };
 
-MATS.shaft = shaftAluminium();
+MATS.shaft = shaftAluminium(true);
+MATS.corner = shaftAluminium(false);
 
 /** The four faces, as (centre offset, direction along the face). */
 const FACES = [
@@ -67581,7 +67847,7 @@ function buildTower({ center, roof: roofY, mast, name, side }) {
   cols.name = 'columns';
   g.add(cols);
 
-  const corners = new THREE.Mesh(cornerPanels(side, BASE_TOP, roofY), MATS.shaft);
+  const corners = new THREE.Mesh(cornerPanels(side, BASE_TOP, roofY), MATS.corner);
   corners.castShadow = true; corners.receiveShadow = true;
   corners.name = 'columns';
   g.add(corners);
@@ -68097,7 +68363,7 @@ function buildComplex(data) {
   return g;
 }
 
-return { MATS, buildTower, SPHERE_AT, PLAZA_TREE_SITES, PLAZA_LAMP_SITES, buildComplex };
+return { setFacadeScale, MATS, buildTower, SPHERE_AT, PLAZA_TREE_SITES, PLAZA_LAMP_SITES, buildComplex };
 });
 /* ---- entry ---- */
 /**
@@ -68122,7 +68388,7 @@ const { RenderPass } = __req("RenderPass");
 const { UnrealBloomPass } = __req("UnrealBloomPass");
 const { OutputPass } = __req("OutputPass");
 const { buildCity, farShore, cityLabels, animateWater, setShoreGlow, setWaterEnv, setFarRough, lampPoolShading, junctions, CITY_MATS, WALL_CLASSES } = __req("./city.js");
-const { buildComplex, MATS: WTC_MATS, PLAZA_TREE_SITES, PLAZA_LAMP_SITES, SPHERE_AT } = __req("./wtc.js");
+const { buildComplex, MATS: WTC_MATS, PLAZA_TREE_SITES, PLAZA_LAMP_SITES, SPHERE_AT, setFacadeScale } = __req("./wtc.js");
 const { roofClutter, trees, traffic, parkedCars, manholes, vessels, animateVessels, animateTraffic, flags, FLAG_MATS, streetLamps, lampPoolTexture, trafficSignals, kerbFurniture, pedestrians, obstacleIndex, flagsAt, DETAIL_MATS, VESSEL_MATS } = __req("./details.js");
 const { makeNightSky } = __req("./nightsky.js");
 const { buildBridge, BRIDGE_MATS } = __req("./bridge.js");
@@ -69295,7 +69561,7 @@ async function init() {
   else setTimeout(warm, 1200);
 
   window.WTC = { scene, camera, controls, renderer, goTo, applyTime, VIEWS, data,
-                 quality, render,
+                 quality, render, setFacadeScale,
                  get composer() { return composer; },
                  get loaderHeldMs() { return loaderHeldMs; } };
 }
@@ -69431,6 +69697,7 @@ function applyPixelRatio() {
   renderer.setPixelRatio(ratio);
   renderer.setSize(innerWidth, innerHeight);
   sizeComposer();
+  facadeScale();
 }
 
 /**
@@ -69454,8 +69721,21 @@ function onResize() {
   applyPixelRatio();
   renderer.setSize(innerWidth, innerHeight);
   sizeComposer();
+  facadeScale();
   relabel();
   measureLabels();
+}
+
+/**
+ * Tell the towers how big a metre is.
+ *
+ * The facade band-limits its own column grid, and to do that it has to know
+ * how many pixels a 1.016 m pitch covers — which is the frame height and the
+ * field of view, neither of which a shader can ask for. Both change here and
+ * nowhere else.
+ */
+function facadeScale() {
+  setFacadeScale(renderer.getDrawingBufferSize(_size).y, camera);
 }
 
 // ---------------------------------------------------------------------------

@@ -89,7 +89,13 @@ The following are not from any dataset. They are modelled from published
 dimensions and historic site plans, and any error in them is mine:
 
 - 1 and 2 World Trade Center, including the facade column grid, the base
-  arcade and the 1 WTC transmission mast
+  arcade and the 1 WTC transmission mast. Past a few hundred metres, where one
+  column pitch covers fewer than about five pixels, the columns' relief is
+  faded out and the face converges to a single calibrated average instead: at
+  that range the grid is below the resolution the frame can carry, and drawing
+  it produces moiré rather than columns. So what is on screen at distance is a
+  stand-in for the geometry and not the geometry itself, and how bright it is
+  is fitted rather than derived. See README.md
 - 3, 4, 5, 6 World Trade Center and Austin J. Tobin Plaza, with the Liberty
   Street and Vesey Street flights up to the deck, the concentric granite
   courses struck from the fountain, and Fritz Koenig's *Sphere* on its pool
