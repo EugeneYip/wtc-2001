@@ -109,6 +109,11 @@ dimensions and historic site plans, and any error in them is mine:
   height on the island is assigned from the storey counts the complex was
   built to, not measured, and every roof is lofted off its own footprint
   rather than surveyed
+- Fritz Koenig's *Große Kugelkaryatide N.Y.* — the Sphere — on the plaza
+  fountain: a bronze of cast plates standing off a darker body with deep
+  grooves between them, at the sculpture's own diameter. The plate layout here
+  is a regular grid and the real one is irregular; the construction is what is
+  claimed, not the pattern
 - The ground storeys of 3, 4, 5 and 6 World Trade Center: a colonnade at plaza
   level, with the cladding's own piers carried down to the paving and the
   ground floor glazed behind them. The storey height and the pier spacing are

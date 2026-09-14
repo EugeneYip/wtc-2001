@@ -98,6 +98,34 @@ computed from the distance to the centre in the shader, which also clips it to
 the deck for nothing. The Sphere stands on a plinth in a pool with a granite
 kerb round it, rather than on the dark disc it used to sit on.
 
+**And the Sphere was a sphere**, which is the one thing it is not. *Große
+Kugelkaryatide N.Y.* is built up out of cast bronze plates standing off a
+darker body with deep grooves between them, and from the plaza that grid of
+shadowed lines is the whole of what tells it from a ball bearing — which, at
+0.75 metalness and 0.35 roughness on a smooth `SphereGeometry`, is exactly what
+it was: a dark chrome ball with one hot highlight on it, a material that has
+never been rained on. It is plates now, on a dark core, in weathered bronze.
+
+The plates are laid out on a regular grid of meridians and parallels and the
+real ones are not — they are irregular and no two are the same shape. What is
+claimed here is the construction, not the pattern; the only randomness is a
+little jitter in how far each plate stands proud, which stops the grid reading
+as machined. **2 draw calls and 3,120 triangles**, against 1 and 1,344 for the
+ball.
+
+**The pool had been incandescent after dark since the day it was built.** By
+day it was a flat disc of milk — too pale to be water and too rough to reflect
+anything, so it had no gradient across it and read as a painted lid. At night
+it was the other failure of the same setting: the reflection probe carries the
+lit city, and a near-mirror twenty-six metres across turned that into a band of
+white brighter than anything else on the plaza. Nobody had looked at the
+fountain at night.
+
+The harbour gets a real reflection pass; this has only the probe. So the water
+is given the roughness of water with a fountain running in it rather than of
+plate glass, which is what it is anyway — blue and legible by day, dark at
+night instead of glowing.
+
 The towers' facade columns run on past the top floor as a parapet. That is what
 gave them their hard upper edge, and what kept the roof plant out of sight from
 below; cut off level with the deck, the roofline went soft and the mechanical
