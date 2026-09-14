@@ -57,7 +57,7 @@ let shadowTexels = 4096;
 // normalised depth, where the number means nothing without knowing the shadow
 // camera's near/far range; kept here in the unit it is actually about.
 const SHADOW_BIAS_M = 0.05;
-let labels = [], labelLayer, data, waterMesh, cityTraffic;
+let labels = [], labelLayer, data, waterMesh, cityTraffic, bridgeTraffic;
 let showLabels = true;
 let beaconLevel = 0;
 let harbour = null;
@@ -70,9 +70,9 @@ const clock = new THREE.Clock();
 // ---------------------------------------------------------------------------
 
 const TIERS = {
-  low:    { dpr: 1.5,  maxPx: 2.3e6, shadow: 1024, bloom: false, probe: 128, flags: 22, cars: 190, parked: 900,  parkReach: 450, boats: 14, lamps: 260, props: 110, pool: 512,  shadowSpan: 800, people: 1200, peopleReach: 380 },
-  medium: { dpr: 1.75, maxPx: 4.5e6, shadow: 2048, bloom: true,  probe: 192, flags: 50, cars: 420, parked: 2100, parkReach: 650, boats: 26, lamps: 480, props: 200, pool: 1024, shadowSpan: 950, people: 3000, peopleReach: 520 },
-  high:   { dpr: 2.0,  maxPx: 8.3e6, shadow: 4096, bloom: true,  probe: 256, flags: 90, cars: 620, parked: 4100, parkReach: 900, boats: 38, lamps: 700, props: 300, pool: 1024, shadowSpan: 1050, people: 5200, peopleReach: 640 },
+  low:    { dpr: 1.5,  maxPx: 2.3e6, shadow: 1024, bloom: false, probe: 128, flags: 22, cars: 190, bridgeCars: 58,  parked: 900,  parkReach: 450, boats: 14, lamps: 260, props: 110, pool: 512,  shadowSpan: 800, people: 1200, peopleReach: 380 },
+  medium: { dpr: 1.75, maxPx: 4.5e6, shadow: 2048, bloom: true,  probe: 192, flags: 50, cars: 420, bridgeCars: 130, parked: 2100, parkReach: 650, boats: 26, lamps: 480, props: 200, pool: 1024, shadowSpan: 950, people: 3000, peopleReach: 520 },
+  high:   { dpr: 2.0,  maxPx: 8.3e6, shadow: 4096, bloom: true,  probe: 256, flags: 90, cars: 620, bridgeCars: 192, parked: 4100, parkReach: 900, boats: 38, lamps: 700, props: 300, pool: 1024, shadowSpan: 1050, people: 5200, peopleReach: 640 },
 };
 
 function detectQuality() {
@@ -1036,6 +1036,35 @@ async function init() {
   const roadFleet = traffic(data.roads, tier.cars, footprints, GROUND.asphalt);
   for (const m of roadFleet) detail.add(m);
   cityTraffic = roadFleet[0] || null;
+  // And the bridges, which had a roadway with lane markings painted on it and
+  // nothing driving on any of it.
+  //
+  // Its own call rather than six more roads appended to the city's, for two
+  // reasons. The pick loop stops collecting once it has three times the fleet
+  // it is going to place, and the bridges come last in the list, so appended
+  // they would often have been reached after the cap and got nothing at all.
+  // And the share wants deciding rather than falling out of a length: eight
+  // kilometres of roadway against thirty-seven of street would have taken a
+  // fifth of the city's traffic up into the air.
+  //
+  // The size of it is set to put the bridges at the same density as the
+  // streets, measured: 36,701 m of city road carries 572 vehicles, one every
+  // 64 m, and 7,974 m of bridge roadway wants 124 for the same spacing. A
+  // real East River crossing is busier per metre than a side street in the
+  // Financial District — but this city's streets are already an order of
+  // magnitude quieter than the real ones, and matching them is the one figure
+  // here that is not invented.
+  const lanes = [bridge, mbridge, wbridge]
+    .flatMap((b) => (b && b.userData.carriageways) || []);
+  bridgeTraffic = null;
+  if (lanes.length) {
+    const air = traffic(lanes, tier.bridgeCars, null, 0);
+    for (const m of air) {
+      m.name = m.name.replace('traffic', 'bridge-traffic');
+      detail.add(m);
+    }
+    bridgeTraffic = air[0] || null;
+  }
   // The rank is only worth having if it is continuous, so it is dense inside a
   // radius and simply absent outside it rather than thin everywhere.
   for (const m of parkedCars(data.roads, tier.parked, footprints, GROUND.asphalt,
@@ -1481,6 +1510,7 @@ function render() {
   animateWater(t);
   animateVessels(harbour, t);
   animateTraffic(cityTraffic, t);
+  animateTraffic(bridgeTraffic, t);
   FLAG_MATS.time.value = t;
   // The mast tip flashed; the roof corner lights did not.
   const on = (t % 2.0) < 0.55;

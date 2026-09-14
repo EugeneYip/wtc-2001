@@ -502,14 +502,34 @@ function shells() {
 const MOVE_MIN_ROAD = 90;
 const MOVE_FADE = 4.5;         // metres of shrink either end of the run
 
-/** Cumulative lengths along a road, so a vehicle can be put at a distance. */
+/**
+ * Cumulative lengths along a road, so a vehicle can be put at a distance.
+ *
+ * A point is [x, z] on a street and [x, z, y] on a bridge. Streets are all at
+ * one height and always were; the bridges are not, and the deck of the
+ * Brooklyn Bridge climbs from grade to forty-one metres and back down again
+ * over its length. Carrying the height in the path is what lets one traffic
+ * system drive both.
+ */
 function pathOf(r) {
   const pts = r.p;
   const cum = [0];
   for (let i = 1; i < pts.length; i++) {
     cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
   }
-  return { pts, cum, total: cum[cum.length - 1] };
+  return { pts, cum, total: cum[cum.length - 1], air: !!r.air };
+}
+
+/** Deck height a given distance along a path that carries one. */
+function heightAt(path, s) {
+  const { pts, cum, total } = path;
+  let d = s % total;
+  if (d < 0) d += total;
+  let i = 0;
+  while (i < cum.length - 2 && cum[i + 1] <= d) i++;
+  const span = cum[i + 1] - cum[i];
+  const f = span > 1e-6 ? (d - cum[i]) / span : 0;
+  return pts[i][2] + (pts[i + 1][2] - pts[i][2]) * f;
 }
 
 export function traffic(roads, limit = 420, avoid, deck = 0) {
@@ -531,24 +551,53 @@ export function traffic(roads, limit = 420, avoid, deck = 0) {
 
   // Candidate slots. Traffic bunches at the lights rather than spacing itself
   // evenly, so a slot may carry a second vehicle close behind the first.
-  const picks = [];
+  //
+  // Gathered a slot at a time from each road in turn rather than filling one
+  // road before starting the next. The cap below is a bound on the work of
+  // collecting, and filling in order means that if it ever bites, whichever
+  // roads come last in the array get no traffic at all. On the city network it
+  // does not bite — 1,139 slots against a cap of 1,260 — but it bit at once
+  // the first time the bridges were given a fleet of their own: six roadways
+  // offering 660 slots, a cap of 285, and the Williamsburg Bridge reached
+  // after it and left empty.
   const paths = new Map();
+  const perRoad = [];
   for (const r of roads) {
-    for (let i = 0; i < r.p.length - 1 && picks.length < limit * 3; i++) {
+    const slots = [];
+    for (let i = 0; i < r.p.length - 1; i++) {
       const [x0, z0] = r.p[i], [x1, z1] = r.p[i + 1];
       const len = Math.hypot(x1 - x0, z1 - z0);
       if (len < 14) continue;
-      if (!paths.has(r)) paths.set(r, pathOf(r));
       const n = Math.max(1, Math.floor(len / 26));
-      for (let k = 0; k < n; k++) picks.push([x0, z0, x1, z1, r.w, len, r, i]);
+      for (let k = 0; k < n; k++) slots.push([x0, z0, x1, z1, r.w, len, r, i]);
+    }
+    if (slots.length) { paths.set(r, pathOf(r)); perRoad.push(slots); }
+  }
+  const picks = [];
+  for (let k = 0, live = perRoad.length; live && picks.length < limit * 3; k++) {
+    live = 0;
+    for (const slots of perRoad) {
+      if (k >= slots.length) continue;
+      live++;
+      picks.push(slots[k]);
+      if (picks.length >= limit * 3) break;
     }
   }
   if (!picks.length) return [];
-  const step = Math.max(1, picks.length / limit);
-  const chosen = [];
-  for (let i = 0; i < picks.length && chosen.length < limit; i += step) {
-    chosen.push(picks[Math.floor(i)]);
+  // Shuffled, then taken from the front, rather than strided.
+  //
+  // An even stride through a round-robin list aliases against it. Six bridge
+  // roadways gathered one slot at a time makes a list whose period is six;
+  // 285 slots for a fleet of 95 makes a stride of exactly three; and three
+  // divides six, so two of the six roadways took every vehicle and the other
+  // four got none — which is how the Williamsburg Bridge came out empty a
+  // second time. A stride is only safe on a list with no period in it, and
+  // the way to guarantee that is not to depend on it.
+  for (let i = picks.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    const tmp = picks[i]; picks[i] = picks[j]; picks[j] = tmp;
   }
+  const chosen = picks.slice(0, limit);
 
   const cap = chosen.length;
   const cars = new THREE.InstancedMesh(G.car, DETAIL_MATS.car, cap);
@@ -579,10 +628,13 @@ export function traffic(roads, limit = 420, avoid, deck = 0) {
   let nCar = 0, nVan = 0, nBus = 0;
 
   const moving = [];
-  const place = (x, z, ang, kind, run) => {
-    if (avoid && avoid.blocked(x, z)) return;
+  const place = (x, z, ang, kind, run, y) => {
+    // A footprint index is a plan, and a bridge deck forty metres up passes
+    // over plenty of buildings on its way in off the water. Only the traffic
+    // that is actually on the ground has to keep out of them.
+    if (avoid && y === undefined && avoid.blocked(x, z)) return;
     q.setFromAxisAngle(up, -ang);
-    pos.set(x, deck, z);
+    pos.set(x, y === undefined ? deck : y, z);
     m.compose(pos, q, scl);
     let which = null, slot = -1;
     if (kind === 'bus') {
@@ -618,9 +670,18 @@ export function traffic(roads, limit = 420, avoid, deck = 0) {
     // Rotating a vehicle by -ang sends its nose along u and its own right
     // hand towards (-uz, ux). Keeping right means sitting on that side.
     const rx = -uz, rz = ux;
-    const half = carriageway(w) / 2;
-    const back = rand() < 0.5 ? -1 : 1;            // which way this one drives
-    const off = (half - 1.9) * (0.28 + rand() * 0.42) * back;
+    // A street's carriageway is what is left of its right of way once the
+    // pavements are off it; a bridge roadway is the whole of what it is given,
+    // because there is nothing either side of it but a railing.
+    const half = (road.cw || carriageway(w)) / 2;
+    // On a street, which way you drive decides which side of the line you sit.
+    // A bridge roadway is one way, so the side is already decided and the
+    // spread runs across the whole of it.
+    const oneWay = road.oneWay || 0;
+    const back = oneWay || (rand() < 0.5 ? -1 : 1);
+    const off = oneWay
+      ? (half - 1.9) * (rand() * 1.5 - 0.75)
+      : (half - 1.9) * (0.28 + rand() * 0.42) * back;
     const t = 0.12 + rand() * 0.74;
     const cx = x0 + (x1 - x0) * t + rx * off;
     const cz = z0 + (z1 - z0) * t + rz * off;
@@ -630,17 +691,28 @@ export function traffic(roads, limit = 420, avoid, deck = 0) {
     // segment, so it can drive on round the bends.
     const s0 = path.cum[segIndex] + len * t;
     const runs = path.total >= MOVE_MIN_ROAD;
-    const run = runs ? { path, s0, dir: back, off: off * back, speed: 4.6 + rand() * 4.2 }
+    const y = path.air ? heightAt(path, s0) : undefined;
+    const run = runs ? { path, s0, dir: back, off: off * back,
+                         speed: (road.speed || 4.6) + rand() * 4.2 }
                      : null;
     const roll = rand();
-    place(cx, cz, heading, roll < 0.08 ? 'bus' : roll < 0.30 ? 'van' : 'car', run);
+    // No buses or trucks on the Brooklyn Bridge. Its clearances and its load
+    // rating have kept commercial traffic off it since long before 2001, and
+    // a rank of city buses on it would be the one thing in the frame that
+    // could not have been there.
+    const kind = road.carsOnly ? 'car'
+      : roll < 0.08 ? 'bus' : roll < 0.30 ? 'van' : 'car';
+    place(cx, cz, heading, kind, run, y);
     // A second vehicle close behind, so the street is not evenly spaced dots.
     if (rand() < 0.45 && len > 40) {
       const gap = (9 + rand() * 9) * (back > 0 ? -1 : 1);
+      const s2 = s0 + gap * back;
       const run2 = runs
-        ? { path, s0: s0 + gap * back, dir: back, off: off * back, speed: run.speed }
+        ? { path, s0: s2, dir: back, off: off * back, speed: run.speed }
         : null;
-      place(cx + ux * gap, cz + uz * gap, heading, rand() < 0.2 ? 'van' : 'car', run2);
+      place(cx + ux * gap, cz + uz * gap, heading,
+            road.carsOnly ? 'car' : rand() < 0.2 ? 'van' : 'car', run2,
+            path.air ? heightAt(path, s2) : undefined);
     }
   });
 
@@ -711,7 +783,9 @@ export function animateTraffic(cars, t) {
     const edge = Math.min(d, total - d);
     const grow = Math.min(1, edge / MOVE_FADE);
     _tq.setFromAxisAngle(_tup, -heading);
-    _tp.set(x, deck, z);
+    // On a bridge the height comes up the path with the plan; on a street it
+    // is the one figure the whole fleet shares.
+    _tp.set(x, k.path.air ? pts[i][2] + (pts[i + 1][2] - pts[i][2]) * f : deck, z);
     _ts.set(grow, grow, grow);
     _tm.compose(_tp, _tq, _ts);
     if (k.which === 'bus') buses.setMatrixAt(k.slot, _tm);

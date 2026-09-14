@@ -33,7 +33,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'BufferGeometryUtils';
-import { norm, strand, rampProfile, stiffeningTruss, GROUND } from './geo.js';
+import { norm, strand, rampProfile, stiffeningTruss, deckLane, GROUND } from './geo.js';
 import { roadTexture } from './textures.js';
 
 const TOWER_H = 102.1;         // 335 ft above the water
@@ -291,6 +291,14 @@ export function buildWBridge(spec) {
     m.castShadow = m.receiveShadow = true;
     g.add(m);
   };
+  // Traffic. Eight lanes, and unlike its neighbours they are not in the middle
+  // of the deck: the subway tracks run down the centre and the roadways are
+  // the two outer strips either side of them, four lanes apiece.
+  g.userData.carriageways = [1, -1].map((side) => deckLane({
+    at, h, s0: s0 + 40, s1: s1 - 40, dir: side, off: side * 11.0,
+    lift: dep, cw: 8.0, speed: 10.5,
+  }));
+
   add(road, WBRIDGE_MATS.deck, 'wbridge-deck');
   add(steel, WBRIDGE_MATS.steel, 'wbridge-steel');
   add(stone, WBRIDGE_MATS.stone, 'wbridge-anchorages');

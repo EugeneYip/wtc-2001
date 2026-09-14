@@ -31,7 +31,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'BufferGeometryUtils';
-import { norm, strand, rampProfile, stiffeningTruss, GROUND } from './geo.js';
+import { norm, strand, rampProfile, stiffeningTruss, deckLane, GROUND } from './geo.js';
 import { roadTexture } from './textures.js';
 
 const TOWER_H = 98.1;          // 322 ft above the water
@@ -270,6 +270,15 @@ export function buildMBridge(spec) {
     m.receiveShadow = !!shadow;
     g.add(m);
   };
+  // Traffic, on the upper roadway. The lower one carries three lanes and four
+  // subway tracks between the trusses, where almost none of it can be seen
+  // from the towers; the upper one is four lanes on top of the girder, in the
+  // open, and it is the one that reads. Two each way.
+  g.userData.carriageways = [1, -1].map((side) => deckLane({
+    at, h, s0: s0 + 30, s1: s1 - 30, dir: side, off: side * 9.0,
+    lift: dep, cw: 8.0, speed: 10.5,
+  }));
+
   add(road, MBRIDGE_MATS.deck, 'mbridge-deck', true);
   add(steel, MBRIDGE_MATS.steel, 'mbridge-steel', true);
   add(stone, MBRIDGE_MATS.stone, 'mbridge-anchorages', true);

@@ -329,6 +329,48 @@ export function rampProfile(key) {
 }
 
 /**
+ * One roadway of a bridge, as something the traffic system can drive along.
+ *
+ * All three of these bridges had asphalt on them, lane markings painted on the
+ * asphalt, and not one vehicle: measured, there were zero instances of the
+ * moving fleet anywhere above deck level on any of them. The Brooklyn Bridge
+ * alone carried about a hundred and twenty thousand vehicles a day in 2001,
+ * and from the towers a bridge is one of the few places in the frame where a
+ * whole stream of traffic is visible end to end at once.
+ *
+ * The traffic system already drives a polyline, so the only thing it was
+ * missing was height — a street is all at one level and a bridge deck climbs
+ * from grade to forty metres and back. So a roadway is handed over as a road
+ * whose points carry a third number, and `air` tells the placer not to test it
+ * against the footprint index: a deck forty metres up passes over a good deal
+ * of Manhattan on its way in off the water, and a plan cannot tell the
+ * difference.
+ *
+ *   off   distance from the bridge's centreline, constant or a function of the
+ *         station, so a roadway can converge with its pair where the deck
+ *         narrows into a street
+ *   lift  how far above the profile this roadway sits: nothing for a deck on
+ *         the bottom chord, the truss depth for one on top of it
+ *   dir   +1 or -1, the way the traffic on it runs. Each of these is one way,
+ *         which is what a bridge roadway is
+ */
+export function deckLane(o) {
+  const { at, h, s0, s1, off, dir } = o;
+  const step = o.step || 18;
+  const val = (v, s) => (typeof v === 'function' ? v(s) : (v || 0));
+  const p = [];
+  for (let s = s0; s < s1; s += step) {
+    const v = at(s, val(off, s), h(s) + val(o.lift, s));
+    p.push([v.x, v.z, v.y]);
+  }
+  const e = at(s1, val(off, s1), h(s1) + val(o.lift, s1));
+  p.push([e.x, e.z, e.y]);
+  const cw = o.cw || 8.0;
+  return { p, w: cw, cw, k: 'bridge', air: true, oneWay: dir,
+           carsOnly: !!o.carsOnly, speed: o.speed || 9.0 };
+}
+
+/**
  * A stiffening truss and the roadways it carries, run along a bridge's axis.
  *
  * This is what a twentieth-century suspension bridge is and what a

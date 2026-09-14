@@ -19,7 +19,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'BufferGeometryUtils';
-import { norm, boxUV, strand, GROUND } from './geo.js';
+import { norm, boxUV, strand, deckLane, GROUND } from './geo.js';
 import { graniteTexture, GRANITE_TILE_M, roadTexture } from './textures.js';
 
 const TOWER_H = 84.3;
@@ -522,6 +522,23 @@ export function buildBridge(spec, roads) {
     const p = at(s, 0, TOWER_H);
     return [p.x, p.y, p.z, -Math.atan2(uz, ux)];
   });
+
+  // The two roadways, one either side of the promenade, for the traffic. Three
+  // narrow lanes each — this bridge's are about nine foot eight, which is why
+  // no modern lorry fits on it — and they converge on the landing, where the
+  // promenade has come down and the deck has narrowed into an ordinary street.
+  g.userData.carriageways = [1, -1].map((side) => deckLane({
+    at, h, s0: s0 + 24, s1: s1 - 14, dir: side, cw: 8.0, speed: 9.0,
+    // No lorries and no buses. The load rating and the clearances have kept
+    // commercial traffic off this bridge since long before 2001.
+    carsOnly: true,
+    off: (s) => {
+      const k = landing(s);
+      const dw = (DECK_W + (LAND_W - DECK_W) * k) / 2;
+      const pw = (PROM_W / 2) * (1 - k);
+      return side * ((pw + 0.5 + (dw - 0.9)) / 2);
+    },
+  }));
 
   add(stone.map(stoneUV), BRIDGE_MATS.stone, 'bridge-towers');
   add(deck, BRIDGE_MATS.deck, 'bridge-deck');

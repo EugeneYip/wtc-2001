@@ -58219,6 +58219,48 @@ function rampProfile(key) {
 }
 
 /**
+ * One roadway of a bridge, as something the traffic system can drive along.
+ *
+ * All three of these bridges had asphalt on them, lane markings painted on the
+ * asphalt, and not one vehicle: measured, there were zero instances of the
+ * moving fleet anywhere above deck level on any of them. The Brooklyn Bridge
+ * alone carried about a hundred and twenty thousand vehicles a day in 2001,
+ * and from the towers a bridge is one of the few places in the frame where a
+ * whole stream of traffic is visible end to end at once.
+ *
+ * The traffic system already drives a polyline, so the only thing it was
+ * missing was height — a street is all at one level and a bridge deck climbs
+ * from grade to forty metres and back. So a roadway is handed over as a road
+ * whose points carry a third number, and `air` tells the placer not to test it
+ * against the footprint index: a deck forty metres up passes over a good deal
+ * of Manhattan on its way in off the water, and a plan cannot tell the
+ * difference.
+ *
+ *   off   distance from the bridge's centreline, constant or a function of the
+ *         station, so a roadway can converge with its pair where the deck
+ *         narrows into a street
+ *   lift  how far above the profile this roadway sits: nothing for a deck on
+ *         the bottom chord, the truss depth for one on top of it
+ *   dir   +1 or -1, the way the traffic on it runs. Each of these is one way,
+ *         which is what a bridge roadway is
+ */
+function deckLane(o) {
+  const { at, h, s0, s1, off, dir } = o;
+  const step = o.step || 18;
+  const val = (v, s) => (typeof v === 'function' ? v(s) : (v || 0));
+  const p = [];
+  for (let s = s0; s < s1; s += step) {
+    const v = at(s, val(off, s), h(s) + val(o.lift, s));
+    p.push([v.x, v.z, v.y]);
+  }
+  const e = at(s1, val(off, s1), h(s1) + val(o.lift, s1));
+  p.push([e.x, e.z, e.y]);
+  const cw = o.cw || 8.0;
+  return { p, w: cw, cw, k: 'bridge', air: true, oneWay: dir,
+           carsOnly: !!o.carsOnly, speed: o.speed || 9.0 };
+}
+
+/**
  * A stiffening truss and the roadways it carries, run along a bridge's axis.
  *
  * This is what a twentieth-century suspension bridge is and what a
@@ -58374,7 +58416,7 @@ function rasterise(rings, x0, z0, step, nx, nz) {
   return mask;
 }
 
-return { GROUND, norm, boxUV, inset, islandGround, poly, prism, hip, hipRing, strand, ribbon, rampProfile, stiffeningTruss, shapeFrom, extrude, flat, bounds, rasterise };
+return { GROUND, norm, boxUV, inset, islandGround, poly, prism, hip, hipRing, strand, ribbon, rampProfile, deckLane, stiffeningTruss, shapeFrom, extrude, flat, bounds, rasterise };
 });
 __def(["./nightsky.js"], function () {
 /**
@@ -58569,7 +58611,7 @@ __def(["./bridge.js"], function () {
 
 const THREE = __req("three");
 const { mergeGeometries } = __req("BufferGeometryUtils");
-const { norm, boxUV, strand, GROUND } = __req("./geo.js");
+const { norm, boxUV, strand, deckLane, GROUND } = __req("./geo.js");
 const { graniteTexture, GRANITE_TILE_M, roadTexture } = __req("./textures.js");
 
 const TOWER_H = 84.3;
@@ -59073,6 +59115,23 @@ function buildBridge(spec, roads) {
     return [p.x, p.y, p.z, -Math.atan2(uz, ux)];
   });
 
+  // The two roadways, one either side of the promenade, for the traffic. Three
+  // narrow lanes each — this bridge's are about nine foot eight, which is why
+  // no modern lorry fits on it — and they converge on the landing, where the
+  // promenade has come down and the deck has narrowed into an ordinary street.
+  g.userData.carriageways = [1, -1].map((side) => deckLane({
+    at, h, s0: s0 + 24, s1: s1 - 14, dir: side, cw: 8.0, speed: 9.0,
+    // No lorries and no buses. The load rating and the clearances have kept
+    // commercial traffic off this bridge since long before 2001.
+    carsOnly: true,
+    off: (s) => {
+      const k = landing(s);
+      const dw = (DECK_W + (LAND_W - DECK_W) * k) / 2;
+      const pw = (PROM_W / 2) * (1 - k);
+      return side * ((pw + 0.5 + (dw - 0.9)) / 2);
+    },
+  }));
+
   add(stone.map(stoneUV), BRIDGE_MATS.stone, 'bridge-towers');
   add(deck, BRIDGE_MATS.deck, 'bridge-deck');
   add(walk, BRIDGE_MATS.walk, 'bridge-promenade');
@@ -59121,7 +59180,7 @@ __def(["./mbridge.js"], function () {
 
 const THREE = __req("three");
 const { mergeGeometries } = __req("BufferGeometryUtils");
-const { norm, strand, rampProfile, stiffeningTruss, GROUND } = __req("./geo.js");
+const { norm, strand, rampProfile, stiffeningTruss, deckLane, GROUND } = __req("./geo.js");
 const { roadTexture } = __req("./textures.js");
 
 const TOWER_H = 98.1;          // 322 ft above the water
@@ -59360,6 +59419,15 @@ function buildMBridge(spec) {
     m.receiveShadow = !!shadow;
     g.add(m);
   };
+  // Traffic, on the upper roadway. The lower one carries three lanes and four
+  // subway tracks between the trusses, where almost none of it can be seen
+  // from the towers; the upper one is four lanes on top of the girder, in the
+  // open, and it is the one that reads. Two each way.
+  g.userData.carriageways = [1, -1].map((side) => deckLane({
+    at, h, s0: s0 + 30, s1: s1 - 30, dir: side, off: side * 9.0,
+    lift: dep, cw: 8.0, speed: 10.5,
+  }));
+
   add(road, MBRIDGE_MATS.deck, 'mbridge-deck', true);
   add(steel, MBRIDGE_MATS.steel, 'mbridge-steel', true);
   add(stone, MBRIDGE_MATS.stone, 'mbridge-anchorages', true);
@@ -59404,7 +59472,7 @@ __def(["./wbridge.js"], function () {
 
 const THREE = __req("three");
 const { mergeGeometries } = __req("BufferGeometryUtils");
-const { norm, strand, rampProfile, stiffeningTruss, GROUND } = __req("./geo.js");
+const { norm, strand, rampProfile, stiffeningTruss, deckLane, GROUND } = __req("./geo.js");
 const { roadTexture } = __req("./textures.js");
 
 const TOWER_H = 102.1;         // 335 ft above the water
@@ -59662,6 +59730,14 @@ function buildWBridge(spec) {
     m.castShadow = m.receiveShadow = true;
     g.add(m);
   };
+  // Traffic. Eight lanes, and unlike its neighbours they are not in the middle
+  // of the deck: the subway tracks run down the centre and the roadways are
+  // the two outer strips either side of them, four lanes apiece.
+  g.userData.carriageways = [1, -1].map((side) => deckLane({
+    at, h, s0: s0 + 40, s1: s1 - 40, dir: side, off: side * 11.0,
+    lift: dep, cw: 8.0, speed: 10.5,
+  }));
+
   add(road, WBRIDGE_MATS.deck, 'wbridge-deck');
   add(steel, WBRIDGE_MATS.steel, 'wbridge-steel');
   add(stone, WBRIDGE_MATS.stone, 'wbridge-anchorages');
@@ -63427,14 +63503,34 @@ function shells() {
 const MOVE_MIN_ROAD = 90;
 const MOVE_FADE = 4.5;         // metres of shrink either end of the run
 
-/** Cumulative lengths along a road, so a vehicle can be put at a distance. */
+/**
+ * Cumulative lengths along a road, so a vehicle can be put at a distance.
+ *
+ * A point is [x, z] on a street and [x, z, y] on a bridge. Streets are all at
+ * one height and always were; the bridges are not, and the deck of the
+ * Brooklyn Bridge climbs from grade to forty-one metres and back down again
+ * over its length. Carrying the height in the path is what lets one traffic
+ * system drive both.
+ */
 function pathOf(r) {
   const pts = r.p;
   const cum = [0];
   for (let i = 1; i < pts.length; i++) {
     cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
   }
-  return { pts, cum, total: cum[cum.length - 1] };
+  return { pts, cum, total: cum[cum.length - 1], air: !!r.air };
+}
+
+/** Deck height a given distance along a path that carries one. */
+function heightAt(path, s) {
+  const { pts, cum, total } = path;
+  let d = s % total;
+  if (d < 0) d += total;
+  let i = 0;
+  while (i < cum.length - 2 && cum[i + 1] <= d) i++;
+  const span = cum[i + 1] - cum[i];
+  const f = span > 1e-6 ? (d - cum[i]) / span : 0;
+  return pts[i][2] + (pts[i + 1][2] - pts[i][2]) * f;
 }
 
 function traffic(roads, limit = 420, avoid, deck = 0) {
@@ -63456,24 +63552,53 @@ function traffic(roads, limit = 420, avoid, deck = 0) {
 
   // Candidate slots. Traffic bunches at the lights rather than spacing itself
   // evenly, so a slot may carry a second vehicle close behind the first.
-  const picks = [];
+  //
+  // Gathered a slot at a time from each road in turn rather than filling one
+  // road before starting the next. The cap below is a bound on the work of
+  // collecting, and filling in order means that if it ever bites, whichever
+  // roads come last in the array get no traffic at all. On the city network it
+  // does not bite — 1,139 slots against a cap of 1,260 — but it bit at once
+  // the first time the bridges were given a fleet of their own: six roadways
+  // offering 660 slots, a cap of 285, and the Williamsburg Bridge reached
+  // after it and left empty.
   const paths = new Map();
+  const perRoad = [];
   for (const r of roads) {
-    for (let i = 0; i < r.p.length - 1 && picks.length < limit * 3; i++) {
+    const slots = [];
+    for (let i = 0; i < r.p.length - 1; i++) {
       const [x0, z0] = r.p[i], [x1, z1] = r.p[i + 1];
       const len = Math.hypot(x1 - x0, z1 - z0);
       if (len < 14) continue;
-      if (!paths.has(r)) paths.set(r, pathOf(r));
       const n = Math.max(1, Math.floor(len / 26));
-      for (let k = 0; k < n; k++) picks.push([x0, z0, x1, z1, r.w, len, r, i]);
+      for (let k = 0; k < n; k++) slots.push([x0, z0, x1, z1, r.w, len, r, i]);
+    }
+    if (slots.length) { paths.set(r, pathOf(r)); perRoad.push(slots); }
+  }
+  const picks = [];
+  for (let k = 0, live = perRoad.length; live && picks.length < limit * 3; k++) {
+    live = 0;
+    for (const slots of perRoad) {
+      if (k >= slots.length) continue;
+      live++;
+      picks.push(slots[k]);
+      if (picks.length >= limit * 3) break;
     }
   }
   if (!picks.length) return [];
-  const step = Math.max(1, picks.length / limit);
-  const chosen = [];
-  for (let i = 0; i < picks.length && chosen.length < limit; i += step) {
-    chosen.push(picks[Math.floor(i)]);
+  // Shuffled, then taken from the front, rather than strided.
+  //
+  // An even stride through a round-robin list aliases against it. Six bridge
+  // roadways gathered one slot at a time makes a list whose period is six;
+  // 285 slots for a fleet of 95 makes a stride of exactly three; and three
+  // divides six, so two of the six roadways took every vehicle and the other
+  // four got none — which is how the Williamsburg Bridge came out empty a
+  // second time. A stride is only safe on a list with no period in it, and
+  // the way to guarantee that is not to depend on it.
+  for (let i = picks.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    const tmp = picks[i]; picks[i] = picks[j]; picks[j] = tmp;
   }
+  const chosen = picks.slice(0, limit);
 
   const cap = chosen.length;
   const cars = new THREE.InstancedMesh(G.car, DETAIL_MATS.car, cap);
@@ -63504,10 +63629,13 @@ function traffic(roads, limit = 420, avoid, deck = 0) {
   let nCar = 0, nVan = 0, nBus = 0;
 
   const moving = [];
-  const place = (x, z, ang, kind, run) => {
-    if (avoid && avoid.blocked(x, z)) return;
+  const place = (x, z, ang, kind, run, y) => {
+    // A footprint index is a plan, and a bridge deck forty metres up passes
+    // over plenty of buildings on its way in off the water. Only the traffic
+    // that is actually on the ground has to keep out of them.
+    if (avoid && y === undefined && avoid.blocked(x, z)) return;
     q.setFromAxisAngle(up, -ang);
-    pos.set(x, deck, z);
+    pos.set(x, y === undefined ? deck : y, z);
     m.compose(pos, q, scl);
     let which = null, slot = -1;
     if (kind === 'bus') {
@@ -63543,9 +63671,18 @@ function traffic(roads, limit = 420, avoid, deck = 0) {
     // Rotating a vehicle by -ang sends its nose along u and its own right
     // hand towards (-uz, ux). Keeping right means sitting on that side.
     const rx = -uz, rz = ux;
-    const half = carriageway(w) / 2;
-    const back = rand() < 0.5 ? -1 : 1;            // which way this one drives
-    const off = (half - 1.9) * (0.28 + rand() * 0.42) * back;
+    // A street's carriageway is what is left of its right of way once the
+    // pavements are off it; a bridge roadway is the whole of what it is given,
+    // because there is nothing either side of it but a railing.
+    const half = (road.cw || carriageway(w)) / 2;
+    // On a street, which way you drive decides which side of the line you sit.
+    // A bridge roadway is one way, so the side is already decided and the
+    // spread runs across the whole of it.
+    const oneWay = road.oneWay || 0;
+    const back = oneWay || (rand() < 0.5 ? -1 : 1);
+    const off = oneWay
+      ? (half - 1.9) * (rand() * 1.5 - 0.75)
+      : (half - 1.9) * (0.28 + rand() * 0.42) * back;
     const t = 0.12 + rand() * 0.74;
     const cx = x0 + (x1 - x0) * t + rx * off;
     const cz = z0 + (z1 - z0) * t + rz * off;
@@ -63555,17 +63692,28 @@ function traffic(roads, limit = 420, avoid, deck = 0) {
     // segment, so it can drive on round the bends.
     const s0 = path.cum[segIndex] + len * t;
     const runs = path.total >= MOVE_MIN_ROAD;
-    const run = runs ? { path, s0, dir: back, off: off * back, speed: 4.6 + rand() * 4.2 }
+    const y = path.air ? heightAt(path, s0) : undefined;
+    const run = runs ? { path, s0, dir: back, off: off * back,
+                         speed: (road.speed || 4.6) + rand() * 4.2 }
                      : null;
     const roll = rand();
-    place(cx, cz, heading, roll < 0.08 ? 'bus' : roll < 0.30 ? 'van' : 'car', run);
+    // No buses or trucks on the Brooklyn Bridge. Its clearances and its load
+    // rating have kept commercial traffic off it since long before 2001, and
+    // a rank of city buses on it would be the one thing in the frame that
+    // could not have been there.
+    const kind = road.carsOnly ? 'car'
+      : roll < 0.08 ? 'bus' : roll < 0.30 ? 'van' : 'car';
+    place(cx, cz, heading, kind, run, y);
     // A second vehicle close behind, so the street is not evenly spaced dots.
     if (rand() < 0.45 && len > 40) {
       const gap = (9 + rand() * 9) * (back > 0 ? -1 : 1);
+      const s2 = s0 + gap * back;
       const run2 = runs
-        ? { path, s0: s0 + gap * back, dir: back, off: off * back, speed: run.speed }
+        ? { path, s0: s2, dir: back, off: off * back, speed: run.speed }
         : null;
-      place(cx + ux * gap, cz + uz * gap, heading, rand() < 0.2 ? 'van' : 'car', run2);
+      place(cx + ux * gap, cz + uz * gap, heading,
+            road.carsOnly ? 'car' : rand() < 0.2 ? 'van' : 'car', run2,
+            path.air ? heightAt(path, s2) : undefined);
     }
   });
 
@@ -63636,7 +63784,9 @@ function animateTraffic(cars, t) {
     const edge = Math.min(d, total - d);
     const grow = Math.min(1, edge / MOVE_FADE);
     _tq.setFromAxisAngle(_tup, -heading);
-    _tp.set(x, deck, z);
+    // On a bridge the height comes up the path with the plan; on a street it
+    // is the one figure the whole fleet shares.
+    _tp.set(x, k.path.air ? pts[i][2] + (pts[i + 1][2] - pts[i][2]) * f : deck, z);
     _ts.set(grow, grow, grow);
     _tm.compose(_tp, _tq, _ts);
     if (k.which === 'bus') buses.setMatrixAt(k.slot, _tm);
@@ -68002,7 +68152,7 @@ let shadowTexels = 4096;
 // normalised depth, where the number means nothing without knowing the shadow
 // camera's near/far range; kept here in the unit it is actually about.
 const SHADOW_BIAS_M = 0.05;
-let labels = [], labelLayer, data, waterMesh, cityTraffic;
+let labels = [], labelLayer, data, waterMesh, cityTraffic, bridgeTraffic;
 let showLabels = true;
 let beaconLevel = 0;
 let harbour = null;
@@ -68015,9 +68165,9 @@ const clock = new THREE.Clock();
 // ---------------------------------------------------------------------------
 
 const TIERS = {
-  low:    { dpr: 1.5,  maxPx: 2.3e6, shadow: 1024, bloom: false, probe: 128, flags: 22, cars: 190, parked: 900,  parkReach: 450, boats: 14, lamps: 260, props: 110, pool: 512,  shadowSpan: 800, people: 1200, peopleReach: 380 },
-  medium: { dpr: 1.75, maxPx: 4.5e6, shadow: 2048, bloom: true,  probe: 192, flags: 50, cars: 420, parked: 2100, parkReach: 650, boats: 26, lamps: 480, props: 200, pool: 1024, shadowSpan: 950, people: 3000, peopleReach: 520 },
-  high:   { dpr: 2.0,  maxPx: 8.3e6, shadow: 4096, bloom: true,  probe: 256, flags: 90, cars: 620, parked: 4100, parkReach: 900, boats: 38, lamps: 700, props: 300, pool: 1024, shadowSpan: 1050, people: 5200, peopleReach: 640 },
+  low:    { dpr: 1.5,  maxPx: 2.3e6, shadow: 1024, bloom: false, probe: 128, flags: 22, cars: 190, bridgeCars: 58,  parked: 900,  parkReach: 450, boats: 14, lamps: 260, props: 110, pool: 512,  shadowSpan: 800, people: 1200, peopleReach: 380 },
+  medium: { dpr: 1.75, maxPx: 4.5e6, shadow: 2048, bloom: true,  probe: 192, flags: 50, cars: 420, bridgeCars: 130, parked: 2100, parkReach: 650, boats: 26, lamps: 480, props: 200, pool: 1024, shadowSpan: 950, people: 3000, peopleReach: 520 },
+  high:   { dpr: 2.0,  maxPx: 8.3e6, shadow: 4096, bloom: true,  probe: 256, flags: 90, cars: 620, bridgeCars: 192, parked: 4100, parkReach: 900, boats: 38, lamps: 700, props: 300, pool: 1024, shadowSpan: 1050, people: 5200, peopleReach: 640 },
 };
 
 function detectQuality() {
@@ -68981,6 +69131,35 @@ async function init() {
   const roadFleet = traffic(data.roads, tier.cars, footprints, GROUND.asphalt);
   for (const m of roadFleet) detail.add(m);
   cityTraffic = roadFleet[0] || null;
+  // And the bridges, which had a roadway with lane markings painted on it and
+  // nothing driving on any of it.
+  //
+  // Its own call rather than six more roads appended to the city's, for two
+  // reasons. The pick loop stops collecting once it has three times the fleet
+  // it is going to place, and the bridges come last in the list, so appended
+  // they would often have been reached after the cap and got nothing at all.
+  // And the share wants deciding rather than falling out of a length: eight
+  // kilometres of roadway against thirty-seven of street would have taken a
+  // fifth of the city's traffic up into the air.
+  //
+  // The size of it is set to put the bridges at the same density as the
+  // streets, measured: 36,701 m of city road carries 572 vehicles, one every
+  // 64 m, and 7,974 m of bridge roadway wants 124 for the same spacing. A
+  // real East River crossing is busier per metre than a side street in the
+  // Financial District — but this city's streets are already an order of
+  // magnitude quieter than the real ones, and matching them is the one figure
+  // here that is not invented.
+  const lanes = [bridge, mbridge, wbridge]
+    .flatMap((b) => (b && b.userData.carriageways) || []);
+  bridgeTraffic = null;
+  if (lanes.length) {
+    const air = traffic(lanes, tier.bridgeCars, null, 0);
+    for (const m of air) {
+      m.name = m.name.replace('traffic', 'bridge-traffic');
+      detail.add(m);
+    }
+    bridgeTraffic = air[0] || null;
+  }
   // The rank is only worth having if it is continuous, so it is dense inside a
   // radius and simply absent outside it rather than thin everywhere.
   for (const m of parkedCars(data.roads, tier.parked, footprints, GROUND.asphalt,
@@ -69426,6 +69605,7 @@ function render() {
   animateWater(t);
   animateVessels(harbour, t);
   animateTraffic(cityTraffic, t);
+  animateTraffic(bridgeTraffic, t);
   FLAG_MATS.time.value = t;
   // The mast tip flashed; the roof corner lights did not.
   const on = (t % 2.0) < 0.55;

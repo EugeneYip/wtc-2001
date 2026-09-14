@@ -404,7 +404,11 @@ back at the far end, so the moment it goes round reads as a car leaving the end
 of a street rather than blinking from one kerb to the other.
 
 Speeds are 4.6 to 8.8 m/s — 17 to 32 km/h, which is what that grid manages.
-509 of the 586 vehicles are moving, and driving them costs 0.37 ms a frame.
+509 of the 586 vehicles are moving, and driving them costs 0.37 ms a frame. The
+bridges get a fleet of their own, faster — 9 to 13 m/s on the Brooklyn Bridge
+and 10.5 to 14.7 on the other two, because a bridge deck has no junctions on
+it — and every one of those moves, since the shortest roadway here is 1.2 km.
+See *the bridges*, below.
 
 **Flags.** Where they are is invented, the same way the trees and the roof
 plant are: there is no survey of which buildings down here flew one, so they
@@ -1561,6 +1565,117 @@ Navy Yard and Red Hook, not Williamsburg, so at both ends this bridge runs out
 onto bare terrain. At three and a half kilometres that costs a silhouette
 nothing, and the silhouette is what it is here for — but the ground under it is
 empty, and the model should say so rather than hope nobody flies over.
+
+**And all three of them had nothing driving on them.**
+
+Asphalt, lane markings painted on the asphalt, and measured across the whole
+model, not one instance of the moving fleet anywhere above deck level on any
+of the three. The Brooklyn Bridge alone carried about a hundred and twenty
+thousand vehicles a day in 2001, and a bridge is one of the very few places in
+this frame where a whole stream of traffic is visible end to end at once — you
+cannot see a street that way from anywhere.
+
+The traffic system already drove a polyline, so the only thing it was missing
+was height. A street is all at one level, and always was; a bridge deck climbs
+from grade to forty-one metres and back down again over two kilometres. So a
+point in a path is now `[x, z]` on a street and `[x, z, y]` on a bridge, each
+roadway is handed over as a road whose points carry the third number, and a
+flag on it tells the placer not to test it against the footprint index — a
+deck forty metres up passes over a good deal of Manhattan on its way in off
+the water, and a plan cannot tell the difference between over and through.
+
+Each bridge hands over its roadways rather than having them guessed from
+outside, because each one is laid out differently and only the bridge knows
+how:
+
+- **The Brooklyn Bridge** has two roadways, one either side of the raised
+  timber promenade, and they converge on the landing where the promenade has
+  come down and the deck has narrowed into an ordinary street. Three lanes
+  each, and *cars only* — the load rating and the clearances have kept
+  commercial traffic off it since long before 2001, so a rank of city buses on
+  it would be the one thing in the frame that could not have been there.
+  Measured after the fact: 84 vehicles on it, none of them a van and none of
+  them a bus.
+- **The Manhattan Bridge** gets its traffic on the upper roadway. The lower
+  one carries three lanes and four subway tracks between the trusses, where
+  almost none of it can be seen from the towers; the upper is four lanes on
+  top of the girder, in the open, and it is the one that reads.
+- **The Williamsburg Bridge**'s roadways are not in the middle of its deck at
+  all. The subway runs down the centre and the eight lanes are the two outer
+  strips either side of it, which is why its traffic sits eleven metres off
+  the centreline where the other two sit nine.
+
+Each roadway is one way, which is what a bridge roadway is, and that settles
+the thing the street traffic had to be taught: which side of the line you sit
+on is the same decision as which way you are going. Measured on the finished
+model, **all 192 vehicles on the three bridges are on the right-hand side of
+their own direction of travel, and none are on the wrong one.** On the
+streets, where the roadway is two-way and the side has to be derived, the same
+test puts 185 of 187 sampled vehicles on the correct side — the two exceptions
+being cars nearest a road other than the one they are on, which is a limit of
+the test rather than of the traffic.
+
+**How much of it is the one figure here that is not invented.** 36,701 m of
+city road carries 572 vehicles at the middle tier, one every 64 m; 7,974 m of
+bridge roadway wants 124 for the same spacing, and at the top tier both come
+out at 41.5 and 43.0 m per vehicle. A real East River crossing is far busier
+per metre than a side street in the Financial District — but this city's
+streets are already an order of magnitude quieter than the real ones, and
+matching them is the only choice available that is a measurement rather than
+a preference.
+
+**It costs 10,044 triangles and six draw calls, and no time at all.** Timed on
+the frame that is worst for it, eye level on the deck with the bridge filling
+half the view, with the fleet shown and hidden: 3.60 and 3.96 ms against 3.61
+and 3.57, and 3.64 and 3.73 when it was shown again. 106 triangles a vehicle,
+which is the shell, its headlamps, its tail lamps and — on a cab — the
+medallion box on the roof. After dark those lamps are the whole point: one
+roadway is a string of white coming towards you and the other a string of red
+going away, which is what a bridge is from a mile off at night.
+
+**Two things in the traffic system had to be fixed to get there, and one of
+them was of my own making.**
+
+The first was waiting to happen. Candidate slots were gathered by walking the
+roads in order and stopping once there were three times as many as the fleet
+being placed — a bound on the work, which is reasonable, except that filling
+one road before starting the next means that if the bound is ever reached,
+whichever roads come last in the array get no traffic whatsoever. On the city
+network it is never reached: 1,139 slots against a cap of 1,260. It was
+reached immediately by the bridges, whose six roadways offer 660 slots against
+a cap of 285 — and the Williamsburg Bridge, last in the list, came out empty.
+Slots are now gathered one at a time from each road in turn, so the cap takes
+an even share from everything rather than everything from a share.
+
+The second was introduced by that fix. The chosen fleet used to be taken by
+striding through the slot list at an even interval, which is a good way to
+spread a list that has no period in it — and round-robin gathering gives a
+list whose period is exactly the number of roads. Six roadways, 285 slots for
+a fleet of 95, a stride of exactly three, and three divides six: two of the
+six roadways took every vehicle and the other four got none. The Williamsburg
+Bridge came out empty a second time, for a completely different reason. The
+list is now shuffled and taken from the front, because a stride is only safe
+on a list you can promise has no structure, and the way to keep that promise
+is not to make it.
+
+**What the bridges got measured against, and passed.** All three main spans
+are right to within a tenth of a metre of the published figures — 486.2 m
+between the Brooklyn Bridge's tower centres against 486.3, 448.0 for the
+Manhattan Bridge against 448.1, 487.8 for the Williamsburg against 487.7 —
+which is what comes of taking the axis off the survey and the stations off the
+sources rather than off a photograph. The Manhattan Bridge's cables reach
+their low point at 53.5 m, against the 53.3 that its 322-foot towers and its
+147-foot sag give. All three are lit after dark.
+
+One thing was measured and left. The Manhattan and Williamsburg anchorages are
+plain blocks: a batter, a hipped cap, and a single flat colour with no facing
+on it, where the Brooklyn Bridge's carry coursed granite mapped off world
+position. They take two per cent of a frame looking up the river and read
+about sixteen per cent brighter than what is behind them, so they are not
+glaring — but they are four large blank solids, and the reason they stay that
+way is that there is no source here for what faces them. Putting the coursed
+granite on them would be inventing a masonry bond for two concrete structures,
+which is worse than leaving them plain and saying so.
 
 **Light and water.** The sun is placed from real solar geometry for 40.71° N
 on 11 September, so shadow directions through the day are the ones the site

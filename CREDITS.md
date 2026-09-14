@@ -145,6 +145,18 @@ dimensions and historic site plans, and any error in them is mine:
   real ones. Its colour is neither surveyed nor published here and is a
   judgement: the bridge was two-thirds through a reconstruction that ran from
   1991 to 2002
+- The traffic on all three bridges is placed by rule, the same way the street
+  traffic is, and is not a count of anything. What *is* sourced is the shape of
+  it: which roadway of each bridge carries cars — the Manhattan Bridge's upper
+  level rather than its shared lower one, the Williamsburg's two outer strips
+  rather than its subway centre — and the fact that the Brooklyn Bridge carries
+  no commercial vehicles at all, which its load rating and its clearances have
+  seen to since long before 2001. How many, and how fast, are set to match the
+  density and the manner of the streets below rather than to any traffic count.
+  The anchorages of the Manhattan and Williamsburg bridges are left as plain
+  blocks: nothing here sources what faces them, and putting the Brooklyn
+  Bridge's coursed granite on two concrete structures would be inventing a
+  masonry bond rather than admitting a gap
 - The Statue of Liberty: plan from OpenStreetMap, dimensions from the National
   Park Service's published figures for the 1886 statue and pedestal — 305 ft
   1 in overall, 151 ft 1 in of copper on an 89 ft pedestal on a 65 ft
