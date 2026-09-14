@@ -899,6 +899,67 @@ of Hammock Grove went in on the south fill in 2014, where the model needs a car
 park. The south end is thinned to a quarter — enough for the street trees that
 were there, and not a wood that was not.
 
+**The harbour traffic.** There were boats here before — thirty-eight of them,
+working back and forth along the channels with wakes behind them — but they
+were one hull at four sizes with one deckhouse on top of it, and a tug, a car
+ferry and a deck barge are not that. They shared a geometry because they shared
+a draw call: the colour came from `instanceColor`, and one instanced mesh can
+only ever be one shape.
+
+Turning that round fixed it. The paint is baked into the vertices now, so each
+kind is its own geometry with its own funnel and its own deckhouse, and each
+still costs **one draw call for every boat of that kind**. There are five:
+
+- the **Staten Island ferry**, 94 m, in the city's orange, and *double-ended* —
+  a bow at each end and no turning round, which is the one thing about her
+  shape anybody would notice and the one thing a generic hull cannot say
+- a **harbour tug**, 31 m, with the house aft, a buff stack behind it, and the
+  tyres and rope round her bow that are most of what a tug is
+- a **deck barge**, 92 m, which has no deckhouse at all because nobody lives on
+  it — a coaming round the deck and hatch covers inside it
+- an **excursion boat**, 42 m, glazed the length of her with an open top deck
+  under a canopy: the boats that run people round the harbour and out to
+  Liberty Island
+- a **freighter**, 132 m, house aft in four tiers, a funnel behind it, and a
+  working deck forward with hatches and two cranes
+
+Hulls are faired through stations — half-beam at the deck, half-beam at the
+keel and the height of the sheer, at five or six points along the length —
+because that is how a hull is drawn and it costs about two hundred triangles.
+Three station tables do all five: fine forward with a transom aft, pointed at
+both ends, and a box with the forefoot raked up out of the water.
+
+**Three of them are not scattered.** The Staten Island ferries run Whitehall to
+St George, which takes them close along the west side of Governors Island, and
+they run as a pair half a trip apart so they pass each other in mid-harbour.
+The excursion boats run Battery Park to Liberty Island and Battery Park to
+Ellis. Those are the real runs, and now that there is something at both ends of
+each they may as well go there. The sinusoid that drives them was already
+right for it: a boat slows, turns and gathers way again at the end of her run,
+which is what a ferry does at a terminal.
+
+**A barge on its own is a barge adrift**, so every one of them gets a tug on
+the stern, pushing, which is how nearly everything moves in this harbour. The
+pair keep the same phase or the tug sails straight through her.
+
+**And the night comes out of the paint.** A masthead light is half a pixel at
+two kilometres — the old one was a metre across, which is a golf ball on a
+stick at noon, and shrinking it to something believable made it vanish after
+dark. What is lit on a boat at night is her windows. The window bands are the
+only dark paint on any of these, darker than the next colour by a factor of
+three, so the emissive is keyed on how dark the vertex colour is and the light
+comes out of the glass and nowhere else. It needed the black hulls moved to the
+charcoal a working hull actually is in daylight, which reads better anyway —
+true black is a hole in the water.
+
+The wake was a grey-blue at a third opacity, which put a smudge astern of every
+boat that read as her shadow. Foam is white and it is broken water, so it takes
+the light rather than sitting under it.
+
+**11 draw calls and 18,956 triangles** for the whole fleet with the shadow pass
+counted, against eight before. Two hundred triangles buys a boat that is a
+boat.
+
 **Light and water.** The sun is placed from real solar geometry for 40.71° N
 on 11 September, so shadow directions through the day are the ones the site
 actually had. It is drawn by the Mie term of the sky model, and the asymmetry

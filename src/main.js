@@ -303,6 +303,7 @@ function applyTime(hour) {
   DETAIL_MATS.signalLens.emissiveIntensity = 0.9 + lit * 1.9;
   BRIDGE_MATS.lamp.emissiveIntensity = lit * 2.4;
   VESSEL_MATS.navLight.emissiveIntensity = lit * 4.2;
+  VESSEL_MATS.paint.emissiveIntensity = lit * 1.1;
   BRIDGE_MATS.deck.emissiveIntensity = lit * 0.10;
   setLibertyNight(lit);
   setEllisNight(lit);

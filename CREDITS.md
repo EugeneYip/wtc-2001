@@ -92,7 +92,14 @@ dimensions and historic site plans, and any error in them is mine:
 Roof clutter, street trees, street lamps, traffic signals, hydrants, litter
 bins, manhole covers, moving and parked traffic, the harbour vessels and their
 courses, the walks inside the parks and every ground-floor shopfront are
-procedurally placed for plausibility and are not survey data. So is every
+procedurally placed for plausibility and are not survey data. The vessels are
+modelled from what the types are — a Staten Island ferry is double-ended and
+orange, a tug carries her house aft and her tyres forward, a barge has no
+deckhouse — and not from any particular boat; their dimensions are typical
+rather than measured. Three of their runs are real: the Staten Island ferry
+between Whitehall and St George, and the excursion boats from Battery Park to
+Liberty Island and to Ellis. Which boats were on that water that morning is not
+recorded here and is not claimed. So is every
 facade: the window rhythm, the depth of the reveals and the weathering under
 the sills are drawn from the family a building was assigned and a seed, not
 from any photograph of that building. The night sky

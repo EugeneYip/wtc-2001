@@ -63242,47 +63242,369 @@ function lampPoolTexture(sites, span, px = 1024) {
 // Harbour traffic
 // ---------------------------------------------------------------------------
 
-const HULL = [
-  { l: 34, w: 9,  h: 3.4, house: [7, 4.5, 5], colour: 0x6d2f28 },   // tug
-  { l: 62, w: 13, h: 4.2, house: [16, 6.0, 9], colour: 0xd8842a },  // ferry
-  { l: 88, w: 16, h: 3.0, house: [12, 4.0, 9], colour: 0x3c4a55 },  // barge
-  { l: 46, w: 11, h: 3.6, house: [10, 5.0, 7], colour: 0x2f4f6b },
+/**
+ * What the boats are painted.
+ *
+ * Every vessel used to take its colour from `instanceColor`, which meant one
+ * geometry could serve the whole fleet — and that is exactly what was wrong
+ * with it. A tug, a car ferry and a deck barge are not one shape at three
+ * sizes. They are now a shape each, with the paint baked into the vertices, so
+ * each kind can have its own funnel and its own deckhouse and still cost one
+ * draw call for every boat of that kind.
+ */
+// The window bands are the darkest paint on any of these by a factor of
+// three, and nothing else comes near them — which is what lets the night be
+// keyed on it. A black hull would break that, so the black here is the
+// charcoal a working hull actually is in daylight rather than a true black,
+// which reads as a hole in the water anyway.
+const PAINT = {
+  black: 0x2e3239,
+  rust: 0x6b3128,
+  boot: 0x7c2a21,        // the boot-topping band at the waterline
+  orange: 0xd9691a,      // the city's orange, which is what a Staten Island
+  grey: 0x49525b,        //   ferry is painted and nothing else in the harbour
+  navy: 0x33495f,
+  white: 0xdcdfdb,
+  buff: 0xc6ae83,
+  deck: 0x6b6f6a,
+  glass: 0x14181d,
+};
+
+// Stations along a hull: [ x as a fraction of the length from amidships,
+// half-beam at the deck, half-beam at the keel, height of the deck ] — the
+// last three as fractions of beam, beam and depth. This is how a hull is
+// faired, so it is how these are drawn.
+const STATIONS = {
+  // A stem that rakes forward, a transom aft, widest a little abaft amidships.
+  fine: [[-0.50, 0.44, 0.30, 0.96], [-0.22, 0.50, 0.44, 0.88],
+         [0.10, 0.50, 0.42, 0.87], [0.34, 0.39, 0.22, 0.93],
+         [0.50, 0.07, 0.03, 1.00]],
+  // Double-ended, because a Staten Island ferry has a bow at each end and
+  // never turns round. It is the one thing about her shape anybody would
+  // notice, and the one thing a generic hull cannot say.
+  ends: [[-0.50, 0.08, 0.03, 1.00], [-0.36, 0.34, 0.20, 0.95],
+         [-0.14, 0.50, 0.45, 0.88], [0.14, 0.50, 0.45, 0.88],
+         [0.36, 0.34, 0.20, 0.95], [0.50, 0.08, 0.03, 1.00]],
+  // A box with the forefoot raked up out of the water. Full beam almost to
+  // both ends, because carrying capacity is the entire point of it.
+  box: [[-0.50, 0.50, 0.48, 1.00], [-0.28, 0.50, 0.49, 0.99],
+        [0.22, 0.50, 0.49, 0.99], [0.42, 0.47, 0.28, 1.00],
+        [0.50, 0.38, 0.06, 1.03]],
+};
+
+/**
+ * Bake a flat colour into a geometry so a whole vessel is one draw call.
+ *
+ * Flattened first and painted after, not the other way round: norm() strips
+ * every attribute except position, normal and uv, so a colour written before
+ * it is thrown away — and a vertex-coloured material with no colour attribute
+ * draws black.
+ */
+function paint(geo, hex) {
+  const g = norm(geo);
+  const c = new THREE.Color(hex);
+  const n = g.getAttribute('position').count;
+  const a = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b;
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(a, 3));
+  return g;
+}
+
+/** A painted box, in metres, centred on (x, y, z). */
+function sbox(hex, w, h, d, x, y, z = 0) {
+  const g = new THREE.BoxGeometry(w, h, d);
+  g.translate(x, y, z);
+  return paint(g, hex);
+}
+
+/** A painted cylinder on its end — funnels and masts. */
+function spipe(hex, r0, r1, h, x, y, z = 0, sides = 8) {
+  const g = new THREE.CylinderGeometry(r1, r0, h, sides);
+  g.translate(x, y + h / 2, z);
+  return paint(g, hex);
+}
+
+/**
+ * A hull faired through its stations, with its deck, in metres.
+ *
+ * y is measured from the keel. The two sides are mirror images, so one of them
+ * has to be wound the other way round; taken on trust, the whole starboard
+ * side faces inward and is culled, and a hull with one side missing looks
+ * exactly like a hull that is mostly underwater.
+ */
+function seaHull(l, w, h, shape, hex) {
+  const st = STATIONS[shape];
+  const pos = [], dpos = [];
+  const tri = (a, b, c) => pos.push(...a, ...b, ...c);
+  const quad = (a, b, c, d) => { tri(a, b, c); tri(a, c, d); };
+  const shell = (s, a, b, c, d) => (s > 0 ? quad(a, d, c, b) : quad(a, b, c, d));
+  const P = (x, y, z) => [x * l, y * h, z * w];
+  for (let i = 0; i < st.length - 1; i++) {
+    const [x0, d0, k0, h0] = st[i], [x1, d1, k1, h1] = st[i + 1];
+    for (const s of [1, -1]) {
+      shell(s, P(x0, h0, s * d0), P(x1, h1, s * d1),
+               P(x1, 0.22, s * k1), P(x0, 0.22, s * k0));
+      shell(s, P(x0, 0.22, s * k0), P(x1, 0.22, s * k1),
+               P(x1, 0, 0), P(x0, 0, 0));
+    }
+    // The deck, set a little below the sheer so the topsides stand proud of it
+    // as a bulwark rather than running out flush — which is what a raft does.
+    dpos.push(...P(x0, h0 - 0.04, d0 * 0.95), ...P(x1, h1 - 0.04, d1 * 0.95),
+              ...P(x1, h1 - 0.04, -d1 * 0.95),
+              ...P(x0, h0 - 0.04, d0 * 0.95), ...P(x1, h1 - 0.04, -d1 * 0.95),
+              ...P(x0, h0 - 0.04, -d0 * 0.95));
+  }
+  // Close both ends. On a fine hull the forward one is a stem and collapses to
+  // almost nothing; on a barge it is a transom at each end.
+  for (const [idx, s] of [[0, -1], [st.length - 1, 1]]) {
+    const [x, d, k, hh] = st[idx];
+    const f = [P(x, hh, d), P(x, hh, -d), P(x, 0.22, -k), P(x, 0.22, k)];
+    if (s < 0) quad(f[0], f[1], f[2], f[3]); else quad(f[3], f[2], f[1], f[0]);
+  }
+  const hull = new THREE.BufferGeometry();
+  hull.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  hull.computeVertexNormals();
+  const deck = new THREE.BufferGeometry();
+  deck.setAttribute('position', new THREE.Float32BufferAttribute(dpos, 3));
+  deck.computeVertexNormals();
+  return [paint(hull, hex), paint(deck, PAINT.deck)];
+}
+
+/** A band of paint round the hull at the waterline. */
+function bootTop(l, w, h, shape, hex) {
+  const st = STATIONS[shape];
+  const pos = [];
+  const P = (x, y, z) => [x * l, y * h, z * w];
+  const lerp = (a, b, t) => a + (b - a) * t;
+  for (let i = 0; i < st.length - 1; i++) {
+    const [x0, d0, k0] = st[i], [x1, d1, k1] = st[i + 1];
+    // Between a fifth and a third of the way up the topsides.
+    const a0 = lerp(k0, d0, 0.34), b0 = lerp(k0, d0, 0.58);
+    const a1 = lerp(k1, d1, 0.34), b1 = lerp(k1, d1, 0.58);
+    for (const s of [1, -1]) {
+      const q = [P(x0, 0.30, s * a0 * 1.005), P(x1, 0.30, s * a1 * 1.005),
+                 P(x1, 0.46, s * b1 * 1.005), P(x0, 0.46, s * b0 * 1.005)];
+      if (s > 0) pos.push(...q[0], ...q[3], ...q[2], ...q[0], ...q[2], ...q[1]);
+      else pos.push(...q[0], ...q[1], ...q[2], ...q[0], ...q[2], ...q[3]);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return paint(g, hex);
+}
+
+/**
+ * The fleet.
+ *
+ * Each of these is built once, in metres, with the keel at y = 0, and is then
+ * dropped so that she floats at her marks. `weight` is how much of the
+ * scattered harbour traffic she makes up — nought for the Staten Island ferry,
+ * which only ever appears on her run.
+ */
+const FLEET = [
+  {
+    name: 'staten-island-ferry', l: 94, w: 21, h: 6.6, mast: 19.8,
+    mastX: 0.0, weight: 0,
+    build(l, w, h) {
+      const [hull, deck] = seaHull(l, w, h, 'ends', PAINT.orange);
+      const g = [hull, deck, bootTop(l, w, h, 'ends', PAINT.boot)];
+      const D = h;
+      // Two decks of saloon running most of her length, an open deck over
+      // them, a wheelhouse at each end because she has a bow at each end, and
+      // one funnel amidships.
+      g.push(sbox(PAINT.orange, l * 0.88, 4.4, w * 0.92, 0, D + 2.2));
+      g.push(sbox(PAINT.glass, l * 0.885, 1.5, w * 0.935, 0, D + 3.1));
+      g.push(sbox(PAINT.orange, l * 0.80, 3.8, w * 0.84, 0, D + 6.3));
+      g.push(sbox(PAINT.glass, l * 0.805, 1.4, w * 0.855, 0, D + 6.9));
+      g.push(sbox(PAINT.white, l * 0.74, 0.7, w * 0.78, 0, D + 8.55));
+      // A wheelhouse at each end, up where it can see over the bow it is
+      // working to — whichever of the two that happens to be this trip.
+      for (const s of [-1, 1]) {
+        g.push(sbox(PAINT.white, 7.2, 3.0, 9.4, s * l * 0.38, D + 10.4));
+        g.push(sbox(PAINT.glass, 6.4, 1.4, 9.6, s * l * 0.38, D + 10.9));
+      }
+      g.push(spipe(PAINT.orange, 2.3, 2.1, 6.2, 0, D + 8.9));
+      g.push(spipe(PAINT.black, 2.15, 2.15, 0.9, 0, D + 14.7));
+      g.push(spipe(PAINT.white, 0.16, 0.10, 5.0, 0, D + 15.6));
+      return g;
+    },
+  },
+  {
+    name: 'tug', l: 31, w: 9.6, h: 4.4, mast: 9.8, mastX: -0.5, weight: 0.30,
+    build(l, w, h) {
+      const [hull, deck] = seaHull(l, w, h, 'fine', PAINT.black);
+      const g = [hull, deck, bootTop(l, w, h, 'fine', PAINT.boot)];
+      const D = h;
+      // A push tug: the house well aft, the wheelhouse high enough to see over
+      // whatever she has on the bow, and a stack behind it.
+      g.push(sbox(PAINT.white, 12.0, 3.0, 7.6, -2.5, D + 1.5));
+      g.push(sbox(PAINT.glass, 11.0, 1.1, 7.8, -2.5, D + 2.2));
+      g.push(sbox(PAINT.white, 5.6, 2.6, 5.6, -0.5, D + 4.3));
+      g.push(sbox(PAINT.glass, 5.0, 1.4, 5.8, -0.5, D + 4.7));
+      g.push(spipe(PAINT.buff, 1.15, 1.05, 4.4, -8.5, D + 1.0));
+      g.push(spipe(PAINT.black, 1.1, 1.1, 0.7, -8.5, D + 5.4));
+      g.push(spipe(PAINT.white, 0.12, 0.08, 4.2, -0.5, D + 5.6));
+      // The fendering, which is most of what a tug is: old tyres and rope all
+      // round the bow, and a great rubber bolster across the stem.
+      g.push(sbox(PAINT.black, 2.4, 1.3, w * 0.86, l * 0.40, D - 0.3));
+      for (const s of [-1, 1]) {
+        g.push(sbox(PAINT.black, l * 0.70, 0.9, 0.7, -1.0, D - 0.5, s * w * 0.49));
+      }
+      return g;
+    },
+  },
+  {
+    name: 'deck-barge', l: 92, w: 18.5, h: 4.6, mast: 6.5, mastX: -40.5, weight: 0.26,
+    build(l, w, h) {
+      const [hull, deck] = seaHull(l, w, h, 'box', PAINT.rust);
+      const g = [hull, deck, bootTop(l, w, h, 'box', PAINT.black)];
+      const D = h;
+      // No deckhouse: a barge is towed or pushed and nobody lives on it. What
+      // it has is a coaming round the deck and whatever is stacked inside.
+      for (const s of [-1, 1]) {
+        g.push(sbox(PAINT.rust, l * 0.94, 1.1, 0.6, 0, D + 0.5, s * w * 0.47));
+      }
+      g.push(sbox(PAINT.rust, 0.6, 1.1, w * 0.94, l * 0.46, D + 0.5));
+      g.push(sbox(PAINT.rust, 0.6, 1.1, w * 0.94, -l * 0.48, D + 0.5));
+      for (let i = -1; i <= 1; i++) {
+        g.push(sbox(PAINT.grey, l * 0.24, 2.6, w * 0.76, i * l * 0.27, D + 2.3));
+      }
+      g.push(spipe(PAINT.white, 0.16, 0.10, 5.5, -l * 0.44, D + 1.0));
+      return g;
+    },
+  },
+  {
+    name: 'excursion-boat', l: 42, w: 10.6, h: 3.5, mast: 9.2,
+    mastX: -7.6, weight: 0.22,
+    build(l, w, h) {
+      const [hull, deck] = seaHull(l, w, h, 'fine', PAINT.white);
+      const g = [hull, deck, bootTop(l, w, h, 'fine', PAINT.navy)];
+      const D = h;
+      // The boats that run people to Liberty Island and round the harbour: a
+      // glazed saloon the length of her, an open deck on top under a canopy,
+      // and a wheelhouse forward of it.
+      g.push(sbox(PAINT.white, l * 0.74, 2.7, w * 0.88, -1.5, D + 1.35));
+      g.push(sbox(PAINT.glass, l * 0.745, 1.3, w * 0.90, -1.5, D + 1.8));
+      g.push(sbox(PAINT.white, l * 0.70, 0.35, w * 0.86, -1.5, D + 2.9));
+      g.push(sbox(PAINT.white, 5.0, 2.2, 6.2, l * 0.24, D + 3.8));
+      g.push(sbox(PAINT.glass, 4.4, 1.2, 6.4, l * 0.24, D + 4.1));
+      // The canopy over the after part of the top deck, on its posts.
+      g.push(sbox(PAINT.white, l * 0.36, 0.16, w * 0.66, -l * 0.18, D + 5.1));
+      for (const sx of [-1, 1]) {
+        for (const sz of [-1, 1]) {
+          g.push(sbox(PAINT.white, 0.14, 2.1, 0.14,
+                      -l * 0.18 + sx * l * 0.16, D + 4.0, sz * w * 0.31));
+        }
+      }
+      g.push(spipe(PAINT.white, 0.11, 0.07, 3.4, -l * 0.18, D + 5.2));
+      return g;
+    },
+  },
+  {
+    name: 'freighter', l: 132, w: 20.5, h: 10.6, mast: 24.4, mastX: -44.9, weight: 0.10,
+    build(l, w, h) {
+      const [hull, deck] = seaHull(l, w, h, 'fine', PAINT.navy);
+      const g = [hull, deck, bootTop(l, w, h, 'fine', PAINT.boot)];
+      const D = h;
+      // House right aft in four tiers, a funnel behind it, and a working deck
+      // forward with hatches and two cranes on it.
+      for (let i = 0; i < 4; i++) {
+        g.push(sbox(PAINT.white, 15.0 - i * 1.4, 3.0, w * (0.86 - i * 0.05),
+                    -l * 0.34, D + 1.5 + i * 3.0));
+        g.push(sbox(PAINT.glass, 15.4 - i * 1.4, 1.2, w * (0.875 - i * 0.05),
+                    -l * 0.34, D + 2.0 + i * 3.0));
+      }
+      g.push(sbox(PAINT.white, 7.0, 2.6, 9.0, -l * 0.34, D + 14.8));
+      g.push(spipe(PAINT.buff, 2.6, 2.4, 6.0, -l * 0.43, D + 12.0));
+      g.push(spipe(PAINT.black, 2.45, 2.45, 1.1, -l * 0.43, D + 18.0));
+      g.push(sbox(PAINT.white, 12.0, 2.2, w * 0.92, l * 0.44, D + 1.1));
+      for (let i = 0; i < 4; i++) {
+        g.push(sbox(PAINT.grey, l * 0.12, 1.5, w * 0.72,
+                    -l * 0.14 + i * l * 0.145, D + 0.75));
+      }
+      for (const s of [-1, 1]) {
+        const cx = s * l * 0.12;
+        g.push(spipe(PAINT.buff, 1.5, 1.3, 9.0, cx, D + 1.5));
+        const boom = new THREE.BoxGeometry(16.0, 0.9, 0.9);
+        boom.rotateZ(0.42);
+        boom.translate(cx + 6.4, D + 12.4, 0);
+        g.push(paint(boom, PAINT.buff));
+      }
+      g.push(spipe(PAINT.white, 0.18, 0.12, 7.0, -l * 0.34, D + 17.4));
+      return g;
+    },
+  },
 ];
 
 const VESSEL_MATS = {
-  // No vertexColors: the hulls are instanced and take their colour from
-  // instanceColor. Left on, three declares the colour attribute the unit
-  // geometry does not have, WebGL supplies its default of zero, and every
-  // vessel in the harbour renders black.
-  hull: new THREE.MeshStandardMaterial({
-    color: 0xffffff, roughness: 0.62, metalness: 0.20 }),
-  // The deck is a mesh of its own rather than part of the hull, and the reason
-  // is worth writing down: a vertex colour *multiplies* the instance colour,
-  // so greying the deck down inside the hull geometry only gives a darker
-  // version of whatever she is painted — a dark orange deck on an orange boat,
-  // which is still a raft. A deck is not the colour of the topsides at all. It
-  // costs one more instanced draw for thirty-eight boats.
-  deck: new THREE.MeshStandardMaterial({
-    color: 0x6b6f6a, roughness: 0.88, metalness: 0.04 }),
+  // One material for every boat in the harbour. The paint lives in the
+  // vertices now, which is what lets a tug and a ferry be different shapes
+  // without being different materials.
+  //
+  // It also gives the night for free. The window bands are the only dark paint
+  // on any of these — everything else is orange, white, buff or red lead — so
+  // the emissive can be keyed on how dark the vertex colour is and the light
+  // comes out of the glass and nowhere else. A masthead light is half a pixel
+  // at two kilometres and a lit ferry is not.
+  paint: new THREE.MeshStandardMaterial({
+    color: 0xffffff, roughness: 0.58, metalness: 0.16, vertexColors: true,
+    emissive: new THREE.Color(0xffe7bd), emissiveIntensity: 0,
+    name: 'vessel-paint',
+  }),
+  // Foam is white and it is broken water, so it takes the light rather than
+  // sitting under it. At 0.34 of a grey-blue it read as the boat's shadow
+  // rather than her wake — a smudge trailing astern instead of the one thing
+  // that says a hull is moving.
   wake: new THREE.MeshStandardMaterial({
-    color: 0xc7d8de, roughness: 0.4, metalness: 0.0, vertexColors: true,
-    transparent: true, opacity: 0.34, depthWrite: false }),
+    color: 0xeaf3f7, roughness: 0.62, metalness: 0.0, vertexColors: true,
+    transparent: true, opacity: 0.52, depthWrite: false, name: 'wake',
+  }),
   // A masthead light each. After dark the hulls vanish into the water and the
   // harbour empties again; this is all that is left of a working boat at a
-  // mile, and it is enough.
+  // mile, and it is enough. By day it has to be a small dark fitting and not a
+  // white ball on a stick, which is what a light bright enough to read at
+  // night looks like at noon.
   navLight: new THREE.MeshStandardMaterial({
-    color: 0xfff4dc, roughness: 0.4, metalness: 0.0,
-    emissive: new THREE.Color(0xfff0cc), emissiveIntensity: 0 }),
+    color: 0x4a4c50, roughness: 0.4, metalness: 0.2,
+    emissive: new THREE.Color(0xfff0cc), emissiveIntensity: 0,
+    name: 'vessel-light' }),
 };
+
+VESSEL_MATS.paint.onBeforeCompile = (shader) => {
+  shader.fragmentShader = shader.fragmentShader.replace(
+    '#include <emissivemap_fragment>',
+    `#include <emissivemap_fragment>
+     float lit = dot( vColor.rgb, vec3( 0.299, 0.587, 0.114 ) );
+     totalEmissiveRadiance *= smoothstep( 0.024, 0.012, lit );`);
+};
+
+// Runs that are not scattered. Both of these are the real ones: the Staten
+// Island ferry out of Whitehall, which passes close along the west side of
+// Governors Island, and the boat from Battery Park to Liberty Island. Now
+// that there is something at both ends of each, they may as well go there.
+const ROUTES = [
+  // Two of them, half a run apart, because that is how the service works and
+  // because the two passing each other in mid-harbour is the thing anybody
+  // who has watched this water for ten minutes has seen.
+  { kind: 'staten-island-ferry', a: [619.6, 1005.4], b: [-89.3, 5039.1], phase: 0 },
+  { kind: 'staten-island-ferry', a: [619.6, 1005.4], b: [-89.3, 5039.1],
+    phase: Math.PI },
+  { kind: 'excursion-boat', a: [180.8, 1004.4], b: [-1214.9, 3425.0], phase: 1.1 },
+  { kind: 'excursion-boat', a: [180.8, 1004.4], b: [-1330.8, 2296.0], phase: 4.0 },
+];
 
 /**
  * A few vessels working the rivers and the harbour, each with a wake.
  *
- * Nothing here is from data. Empty water reads as a painted surface no matter
- * how well the waves move, and the Hudson and the East River were never
+ * Almost nothing here is from data. Empty water reads as a painted surface no
+ * matter how well the waves move, and the Hudson and the East River were never
  * empty. Each one is placed in open water, clear of the shore, and headed
- * along whichever bearing has the longest clear run -- which lands them in
- * the channels without having to know anything about the channels.
+ * along whichever bearing has the longest clear run -- which lands them in the
+ * channels without having to know anything about the channels. The three
+ * ferries are the exception: they run between two real docks.
  */
 function vessels(land, count = 16, reach = 2600) {
   const rand = rng(60611);
@@ -63304,7 +63626,6 @@ function vessels(land, count = 16, reach = 2600) {
   const clear = (x, z, margin) => !(onLand(x, z) ||
     (margin > 0 && (onLand(x + margin, z) || onLand(x - margin, z) ||
                     onLand(x, z + margin) || onLand(x, z - margin))));
-
   const runLength = (x, z, ang) => {
     for (let d = 120; d <= 900; d += 120) {
       if (onLand(x + Math.cos(ang) * d, z + Math.sin(ang) * d)) return d;
@@ -63313,6 +63634,26 @@ function vessels(land, count = 16, reach = 2600) {
   };
 
   const picks = [];
+  // The scheduled runs first, so they are there however few boats the tier
+  // allows: a harbour with no ferry in it is missing the one boat everybody
+  // who has been to New York has stood on.
+  for (const r of ROUTES) {
+    const kind = FLEET.find((k) => k.name === r.kind);
+    if (!kind) continue;
+    const mid = [(r.a[0] + r.b[0]) / 2, (r.a[1] + r.b[1]) / 2];
+    const half = Math.hypot(r.b[0] - r.a[0], r.b[1] - r.a[1]) / 2;
+    picks.push({ x: mid[0], z: mid[1], kind, half: half - 40, phase: r.phase,
+                 ang: Math.atan2(r.b[1] - r.a[1], r.b[0] - r.a[0]) });
+  }
+
+  // Weighted so the harbour is mostly small craft, which is what it is.
+  const total = FLEET.reduce((s, k) => s + k.weight, 0);
+  const roll = () => {
+    let t = rand() * total;
+    for (const k of FLEET) { t -= k.weight; if (t <= 0) return k; }
+    return FLEET[0];
+  };
+
   for (let t = 0; t < count * 400 && picks.length < count; t++) {
     const x = (rand() * 2 - 1) * reach;
     const z = (rand() * 2 - 1) * reach;
@@ -63326,96 +63667,36 @@ function vessels(land, count = 16, reach = 2600) {
       if (run > bestRun) { bestRun = run; best = a; }
     }
     const fwd = runLength(x, z, best), back = runLength(x, z, best + Math.PI);
-    picks.push({ x, z, ang: best, kind: HULL[Math.floor(rand() * HULL.length)],
+    const kind = roll();
+    picks.push({ x, z, ang: best, kind,
                  half: Math.max(60, Math.min(fwd, back) - 60) });
+    // A barge on its own is a barge adrift. Put a tug on the stern of it,
+    // pushing, which is how nearly everything moves in this harbour.
+    if (kind.name === 'deck-barge' && picks.length < count) {
+      const tug = FLEET.find((k) => k.name === 'tug');
+      picks.push({ x, z, ang: best, kind: tug, pushing: kind,
+                   half: picks[picks.length - 1].half });
+    }
   }
   if (!picks.length) return [];
 
-  // Unit shapes, one metre in every direction, scaled per instance. A hull
-  // baked in place cannot move, and a wake behind a vessel that never moves is
-  // a frozen frame: the water drifts, the boats sit still, and the wake claims
-  // a speed the boat plainly does not have.
-  // A hull rather than a box with one end pinched.
-  //
-  // What was here was a single cuboid with the bow corners pulled in — twelve
-  // triangles — and from anywhere close it read as a raft, or as a piece of
-  // dock that had come adrift. A boat is not hard to suggest: it needs a stem
-  // that rakes forward, a beam that is widest amidships and gone by the bow, a
-  // flat transom at the stern, and a sheer line that lifts at both ends. Built
-  // as stations along the length, which is how a hull is faired anyway, it
-  // comes to thirty-four triangles, and there are only thirty-eight boats.
-  // The deck is built alongside the shell but kept in its own list; see
-  // VESSEL_MATS.deck for why it cannot simply be a colour on the hull.
-  const deckPos = [];
-  const hullGeo = (() => {
-    // x from -0.5 (transom) to 0.5 (stem); y 0 at the keel, about 1 at deck.
-    const st = [
-      // [ x, half-beam at deck, half-beam at keel, deck height ]
-      [-0.50, 0.44, 0.30, 0.96],
-      [-0.22, 0.50, 0.44, 0.88],
-      [ 0.10, 0.50, 0.42, 0.87],
-      [ 0.34, 0.39, 0.22, 0.93],
-      [ 0.50, 0.07, 0.03, 1.00],
-    ];
-    const pos = [];
-    const tri = (a, b, c) => { pos.push(...a, ...b, ...c); };
-    const quad = (a, b, c, d) => { tri(a, b, c); tri(a, c, d); };
-    const deck = (a, b, c, d) => {
-      deckPos.push(...a, ...b, ...c, ...a, ...c, ...d);
-    };
-    // A quad on the shell, wound so its normal points out of the boat. The two
-    // sides are mirror images, so one of them has to run the other way round;
-    // taken on trust, the whole starboard side faces inward and is culled, and
-    // a hull with one side missing looks exactly like a hull that is mostly
-    // underwater.
-    const shell = (s, a, b, c, d) => (s > 0 ? quad(a, d, c, b) : quad(a, b, c, d));
-    for (let i = 0; i < st.length - 1; i++) {
-      const [x0, d0, k0, h0] = st[i], [x1, d1, k1, h1] = st[i + 1];
-      for (const s of [1, -1]) {
-        // Topsides, then the turn of the bilge down to the keel line.
-        shell(s, [x0, h0, s * d0], [x1, h1, s * d1], [x1, 0.22, s * k1], [x0, 0.22, s * k0]);
-        shell(s, [x0, 0.22, s * k0], [x1, 0.22, s * k1], [x1, 0, 0], [x0, 0, 0]);
-        // Deck. Set a little below the sheer line, so the topsides stand
-        // proud of it as a bulwark rather than the deck running out flush to
-        // the edge — which is what a raft does. Kept aside as its own mesh.
-        if (s > 0) {
-          deck([x0, h0 - 0.05, d0 * 0.96], [x1, h1 - 0.05, d1 * 0.96],
-               [x1, h1 - 0.05, -d1 * 0.96], [x0, h0 - 0.05, -d0 * 0.96]);
-        }
-      }
-    }
-    // Transom.
-    const [, d0, k0, h0] = st[0];
-    quad([-0.5, h0, d0], [-0.5, h0, -d0], [-0.5, 0.22, -k0], [-0.5, 0.22, k0]);
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    g.setAttribute('uv', new THREE.Float32BufferAttribute(
-      new Float32Array((pos.length / 3) * 2), 2));
-    g.computeVertexNormals();
-    return g;
-  })();
-  const deckGeo = (() => {
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(deckPos, 3));
-    g.setAttribute('uv', new THREE.Float32BufferAttribute(
-      new Float32Array((deckPos.length / 3) * 2), 2));
-    g.computeVertexNormals();
-    return g;
-  })();
-  // A deckhouse in two steps with a mast on it, rather than one blank cube.
-  const houseGeo = (() => {
-    const part = (w, h, d, x, y) => {
-      const b = new THREE.BoxGeometry(w, h, d);
-      b.translate(x, y, 0);
-      return norm(b);
-    };
-    const g = mergeGeometries([
-      part(1, 0.62, 1, 0, 0.31),               // accommodation
-      part(0.52, 0.30, 0.78, 0.12, 0.77),      // wheelhouse
-      part(0.07, 0.55, 0.07, -0.10, 1.19),     // mast
-    ]);
-    return g;
-  })();
+  // One instanced mesh per kind, built in metres and dropped to her marks, so
+  // the instance matrix only has to say where she is and which way she is
+  // pointing.
+  const meshes = [];
+  const byKind = new Map();
+  for (const k of FLEET) {
+    const n = picks.filter((p) => p.kind === k).length;
+    if (!n) continue;
+    const geo = mergeGeometries(k.build(k.l, k.w, k.h));
+    geo.translate(0, -0.26 * k.h, 0);
+    const im = new THREE.InstancedMesh(geo, VESSEL_MATS.paint, n);
+    im.castShadow = im.receiveShadow = true;
+    im.name = 'vessel-' + k.name;
+    byKind.set(k, { mesh: im, next: 0 });
+    meshes.push(im);
+  }
+
   // The wake: a wedge astern, bright where the water is broken and fading out
   // along its length. Alpha lives in the vertex colour, so the taper is in the
   // geometry rather than in a texture.
@@ -63441,56 +63722,55 @@ function vessels(land, count = 16, reach = 2600) {
   })();
 
   const n = picks.length;
-  const hulls = new THREE.InstancedMesh(hullGeo, VESSEL_MATS.hull, n);
-  const decks = new THREE.InstancedMesh(deckGeo, VESSEL_MATS.deck, n);
-  const houses = new THREE.InstancedMesh(houseGeo, VESSEL_MATS.hull, n);
   const wakes = new THREE.InstancedMesh(wakeGeo, VESSEL_MATS.wake, n);
   const lamps = new THREE.InstancedMesh(
-    norm(new THREE.SphereGeometry(0.5, 6, 5)), VESSEL_MATS.navLight, n);
-  hulls.castShadow = hulls.receiveShadow = true;
-  decks.receiveShadow = true;
-  houses.castShadow = houses.receiveShadow = true;
+    norm(new THREE.SphereGeometry(0.45, 6, 5)), VESSEL_MATS.navLight, n);
   wakes.renderOrder = 1;
-  hulls.name = 'vessels';
-  decks.name = 'vessel-decks';
-  houses.name = 'vessel-houses';
   wakes.name = 'wakes';
   lamps.name = 'vessel-lights';
 
-  const col = new THREE.Color();
-  const tracks = picks.map((p, i) => {
-    hulls.setColorAt(i, col.setHex(p.kind.colour));
-    houses.setColorAt(i, col.setHex(0xd7d9d4));
+  const tracks = picks.map((p) => {
+    const slot = byKind.get(p.kind);
     return {
       x: p.x, z: p.z, ang: p.ang, kind: p.kind, half: p.half,
+      mesh: slot.mesh, slot: slot.next++,
+      // A tug pushing a barge sits on her stern and keeps station there.
+      lead: p.pushing ? -(p.pushing.l / 2 + p.kind.l / 2 - 2.5) : 0,
       // Peak speed about five metres a second, whatever the run length.
       w: 5 / p.half,
-      phase: rand() * Math.PI * 2,
+      phase: p.phase !== undefined ? p.phase
+        : p.pushing ? 0 : rand() * Math.PI * 2,
     };
   });
-  for (const im of [hulls, houses, wakes]) {
-    if (im.instanceColor) im.instanceColor.needsUpdate = true;
+  // The tug and the barge it is pushing have to keep the same phase or the
+  // tug sails through it.
+  for (let i = 1; i < tracks.length; i++) {
+    if (tracks[i].lead) { tracks[i].phase = tracks[i - 1].phase;
+                          tracks[i].w = tracks[i - 1].w; }
   }
-  hulls.userData.tracks = tracks;
-  hulls.userData.crew = { decks, houses, wakes, lamps };
-  animateVessels(hulls, 0);
-  return [hulls, decks, houses, wakes, lamps];
+
+  const fleet = meshes.concat([wakes, lamps]);
+  fleet[0].userData.tracks = tracks;
+  fleet[0].userData.crew = { wakes, lamps, meshes };
+  animateVessels(fleet[0], 0);
+  return fleet;
 }
 
 const _vm = new THREE.Matrix4();
 const _vq = new THREE.Quaternion();
 const _vp = new THREE.Vector3();
 const _vs = new THREE.Vector3();
+const _vone = new THREE.Vector3(1, 1, 1);
 const _vup = new THREE.Vector3(0, 1, 0);
 
 /**
- * Work the harbour. Each vessel runs back and forth along its channel on a
- * sinusoid, so it slows, turns and gathers way again at each end rather than
- * snapping round, and the wake shortens as it loses speed.
+ * Work the harbour. Each vessel runs back and forth along her channel on a
+ * sinusoid, so she slows, turns and gathers way again at each end rather than
+ * snapping round, and the wake shortens as she loses speed.
  */
 function animateVessels(hulls, t) {
   if (!hulls || !hulls.userData.tracks) return;
-  const { decks, houses, wakes, lamps } = hulls.userData.crew;
+  const { wakes, lamps, meshes } = hulls.userData.crew;
   const tracks = hulls.userData.tracks;
   for (let i = 0; i < tracks.length; i++) {
     const k = tracks[i];
@@ -63500,26 +63780,17 @@ function animateVessels(hulls, t) {
     // Turn through the reversal rather than flipping in a frame.
     const heading = k.ang + Math.PI * (0.5 - 0.5 * Math.tanh(vel * 5));
     const ux = Math.cos(k.ang), uz = Math.sin(k.ang);
-    const x = k.x + ux * along, z = k.z + uz * along;
+    // A tug pushing keeps station astern of her barge, whichever way round
+    // the pair is at the time.
+    const off = k.lead * (vel >= 0 ? 1 : -1);
+    const x = k.x + ux * (along + off), z = k.z + uz * (along + off);
     _vq.setFromAxisAngle(_vup, -heading);
 
-    // Sit her at her marks. This used to be a fixed -1.1, which was three
-    // tenths of a metre of draught when the sea was at -0.55 and less than
-    // that after the ground levels were sorted out; a working boat floats a
-    // good deal deeper than that, and how deep depends on how big she is.
-    _vp.set(x, GROUND.sea - 0.26 * k.kind.h, z);
-    _vs.set(k.kind.l, k.kind.h, k.kind.w);
-    _vm.compose(_vp, _vq, _vs);
-    hulls.setMatrixAt(i, _vm);
-    decks.setMatrixAt(i, _vm);
-
-    const [hw, hh, hd] = k.kind.house;
-    const deck = GROUND.sea + 0.74 * k.kind.h;
-    _vp.set(x - Math.cos(heading) * k.kind.l * 0.18, deck,
-            z - Math.sin(heading) * k.kind.l * 0.18);
-    _vs.set(hw, hh, hd);
-    _vm.compose(_vp, _vq, _vs);
-    houses.setMatrixAt(i, _vm);
+    // She is built in metres with the keel below the waterline already, so
+    // this is only where she is and which way she is pointing.
+    _vp.set(x, GROUND.sea, z);
+    _vm.compose(_vp, _vq, _vone);
+    k.mesh.setMatrixAt(k.slot, _vm);
 
     // The wake belongs to the speed, not to the boat. Kept to a few boat
     // lengths and a couple of beams: at nine lengths and three beams it was a
@@ -63531,29 +63802,19 @@ function animateVessels(hulls, t) {
     _vm.compose(_vp, _vq, _vs);
     wakes.setMatrixAt(i, _vm);
 
-    _vp.set(x - Math.cos(heading) * k.kind.l * 0.18,
-            deck + hh * 1.2,
-            z - Math.sin(heading) * k.kind.l * 0.18);
-    _vs.set(1, 1, 1);
-    _vm.compose(_vp, _vq, _vs);
+    // On the masthead, which is not amidships on any of them. The offset is
+    // in the boat's own frame and `heading` has already turned her round at
+    // the end of a run, so it needs no sign of its own.
+    const mx = k.kind.mastX;
+    _vp.set(x + Math.cos(heading) * mx,
+            GROUND.sea + k.kind.h * 0.74 + k.kind.mast,
+            z + Math.sin(heading) * mx);
+    _vm.compose(_vp, _vq, _vone);
     lamps.setMatrixAt(i, _vm);
   }
-  hulls.instanceMatrix.needsUpdate = true;
-  decks.instanceMatrix.needsUpdate = true;
-  houses.instanceMatrix.needsUpdate = true;
+  for (const m of meshes) m.instanceMatrix.needsUpdate = true;
   wakes.instanceMatrix.needsUpdate = true;
   lamps.instanceMatrix.needsUpdate = true;
-}
-
-/** Bake a flat colour into a geometry so hulls can share one draw call. */
-function paint(geo, colour) {
-  const n = geo.getAttribute('position').count;
-  const c = new Float32Array(n * 3);
-  for (let i = 0; i < n; i++) {
-    c[i * 3] = colour.r; c[i * 3 + 1] = colour.g; c[i * 3 + 2] = colour.b;
-  }
-  geo.setAttribute('color', new THREE.BufferAttribute(c, 3));
-  return geo;
 }
 
 // ---------------------------------------------------------------------------
@@ -66297,6 +66558,7 @@ function applyTime(hour) {
   DETAIL_MATS.signalLens.emissiveIntensity = 0.9 + lit * 1.9;
   BRIDGE_MATS.lamp.emissiveIntensity = lit * 2.4;
   VESSEL_MATS.navLight.emissiveIntensity = lit * 4.2;
+  VESSEL_MATS.paint.emissiveIntensity = lit * 1.1;
   BRIDGE_MATS.deck.emissiveIntensity = lit * 0.10;
   setLibertyNight(lit);
   setEllisNight(lit);
