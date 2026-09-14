@@ -311,6 +311,36 @@ Hydrants and litter bins stand along the kerb, because without something
 knee-high there is nothing in the frame between a lamp standard and a car and
 the pavement reads as a blank apron.
 
+**And every corner had a pair of green blades on it.** The signal post carried
+the signal and nothing else, which is the one thing about an American street
+corner anybody would notice missing — not because the name can be read at that
+distance but because the green is there. Two blades at right angles near the
+top of the post, 24 triangles, one for each of the 297 posts. The lettering is
+not attempted: at the distance one of these is ever seen, the white border is
+the only part of it that resolves, so the blade carries that and nothing more.
+
+**And the kerb had a meter to every space.** In 2001 Lower Manhattan was still
+single-space post meters — the multi-space muni-meters that replaced them did
+not start going in until the middle of the decade — so a row of posts along the
+kerb is a date as much as it is a detail. They stand on the same kerb runs the
+parked cars use, just inside the kerb line, facing the car they serve.
+
+**The rhythm is the whole point of them, and it was the part that went wrong
+first.** Budgeted the obvious way — collect every meter in the extract, then
+take every *n*th one to meet the cap — they came out eleven metres apart
+everywhere, evenly spaced at a pitch no meter has ever been at. A meter serves
+one space, and an even rhythm at the wrong pitch reads worse than none. So the
+budget is met by dropping whole kerb runs at random rather than thinning all of
+them: the blocks that keep their meters have them at 6.5 to 6.9 m, one per
+space, and the blocks that do not have none. Which is also what a city looks
+like — some blocks were metered and some were No Standing, and which is which
+is not something this can source.
+
+**800 meters and 297 pairs of blades: 3 draw calls, 83,928 triangles with the
+shadow pass counted, and 0.03 ms** — inside the noise of the measurement, on a
+frame that has been fill-bound rather than geometry-bound since it was first
+taken apart.
+
 **Traffic that moves.** For a long time the cars did not. Six hundred vehicles
 were placed on the streets at build time and never touched again — a city
 photographed rather than running.

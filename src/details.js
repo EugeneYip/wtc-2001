@@ -125,6 +125,17 @@ export const DETAIL_MATS = {
     color: 0xe4c766, roughness: 0.45, metalness: 0.10,
     emissive: new THREE.Color(0xffd36a), emissiveIntensity: 0,
   }),
+  // A parking meter: dull anodised aluminium, thirty years of weather on it.
+  meter: new THREE.MeshStandardMaterial({
+    color: 0x8b8e90, roughness: 0.62, metalness: 0.45,
+  }),
+  // The street-name blade. New York's are a deep green with white lettering
+  // and a white border; at the distance one of these is ever seen the border
+  // is the only part of that which resolves, so the blade carries it and the
+  // lettering is not attempted.
+  signGreen: new THREE.MeshStandardMaterial({
+    color: 0x1a5138, roughness: 0.55, metalness: 0.10,
+  }),
   lampPost: new THREE.MeshStandardMaterial({
     color: 0x33383d, roughness: 0.58, metalness: 0.42,
   }),
@@ -999,6 +1010,16 @@ export function trafficSignals(junctionList, avoid) {
   const lensGeo = norm(new THREE.CylinderGeometry(0.11, 0.11, 0.05, 10));
   lensGeo.rotateX(Math.PI / 2);
   lensGeo.translate(0, 3.72, 2.21);
+  // The street-name blades. Every corner in the city carries a pair of them at
+  // right angles, and a signal post without them is the one thing about an
+  // American street corner that everybody would notice missing — not because
+  // anybody reads them at this distance but because the green is there.
+  const bladeGeo = mergeGeometries([
+    (() => { const g = new THREE.BoxGeometry(0.82, 0.19, 0.03);
+             g.translate(0, 3.28, 0.16); return norm(g); })(),
+    (() => { const g = new THREE.BoxGeometry(0.03, 0.19, 0.82);
+             g.translate(0.16, 3.06, 0); return norm(g); })(),
+  ]);
 
   const sites = [];
   for (const j of junctionList) {
@@ -1020,8 +1041,10 @@ export function trafficSignals(junctionList, avoid) {
   const posts = new THREE.InstancedMesh(postGeo, DETAIL_MATS.lampPost, sites.length);
   const heads = new THREE.InstancedMesh(headGeo, DETAIL_MATS.signalBody, sites.length);
   const lenses = new THREE.InstancedMesh(lensGeo, DETAIL_MATS.signalLens, sites.length);
+  const blades = new THREE.InstancedMesh(bladeGeo, DETAIL_MATS.signGreen, sites.length);
   posts.castShadow = posts.receiveShadow = true;
   heads.receiveShadow = true;
+  blades.receiveShadow = true;
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   const pos = new THREE.Vector3();
@@ -1035,18 +1058,20 @@ export function trafficSignals(junctionList, avoid) {
     m.compose(pos, q, scl);
     posts.setMatrixAt(i, m);
     heads.setMatrixAt(i, m);
+    blades.setMatrixAt(i, m);
     pos.set(x, GROUND.walk + (green ? -0.30 : 0.30), z);
     m.compose(pos, q, scl);
     lenses.setMatrixAt(i, m);
     col.setHex(green ? 0x35c257 : 0xd8362a);
     lenses.setColorAt(i, col);
   });
-  for (const im of [posts, heads, lenses]) im.instanceMatrix.needsUpdate = true;
+  for (const im of [posts, heads, lenses, blades]) im.instanceMatrix.needsUpdate = true;
   if (lenses.instanceColor) lenses.instanceColor.needsUpdate = true;
   posts.name = 'signal-posts';
   heads.name = 'signal-heads';
   lenses.name = 'signal-lenses';
-  return [posts, heads, lenses];
+  blades.name = 'street-name-signs';
+  return [posts, heads, lenses, blades];
 }
 
 /**
@@ -1077,6 +1102,19 @@ export function kerbFurniture(roads, limit = 260, avoid, reach = 900) {
   const hydGeo = mergeGeometries(hyd);
   const binGeo = norm(new THREE.CylinderGeometry(0.34, 0.30, 0.86, 10));
   binGeo.translate(0, 0.43, 0);
+  // A single-space parking meter: a post and a head, about four feet to the
+  // top of it. In 2001 there was one of these to every space down here; the
+  // multi-space muni-meters that replaced them did not start going in until
+  // the middle of the decade, so a row of posts along the kerb is a date as
+  // much as it is a detail.
+  const meterGeo = mergeGeometries([
+    (() => { const g = new THREE.CylinderGeometry(0.048, 0.058, 1.00, 6);
+             g.translate(0, 0.50, 0); return norm(g); })(),
+    (() => { const g = new THREE.BoxGeometry(0.16, 0.30, 0.13);
+             g.translate(0, 1.15, 0); return norm(g); })(),
+    (() => { const g = new THREE.BoxGeometry(0.17, 0.05, 0.15);
+             g.translate(0, 1.32, 0); return norm(g); })(),
+  ]);
 
   const picks = [];
   for (const r of roads) {
@@ -1110,6 +1148,56 @@ export function kerbFurniture(roads, limit = 260, avoid, reach = 900) {
   const hydrants = chosen.filter((c) => c[2]);
   const bins = chosen.filter((c) => !c[2]);
 
+  // Meters, on the kerb line beside the rank of parked cars — the same runs
+  // parkedCars uses, so they stand where the parking is.
+  //
+  // Kept whole run by whole run rather than thinned across all of them. Taking
+  // every third meter out of every block to meet a budget left them eleven
+  // metres apart everywhere, and a meter serves one space: the rhythm is the
+  // whole point of a row of them, and an even rhythm at the wrong pitch is
+  // worse than none. Which blocks were metered and which were No Standing is
+  // not something this can source, so whole kerb runs are dropped at random
+  // until the budget is met — which is also what a city looks like.
+  const runs = [];
+  for (const r of roads) {
+    if (r.w < 9) continue;
+    const half = carriageway(r.w) / 2;
+    if (half < 2.4) continue;
+    const sides = half >= 4.2 ? [1, -1] : [r.w > 10 ? 1 : -1];
+    for (let i = 0; i < r.p.length - 1; i++) {
+      const [x0, z0] = r.p[i], [x1, z1] = r.p[i + 1];
+      const dx = x1 - x0, dz = z1 - z0;
+      const len = Math.hypot(dx, dz);
+      if (len < 18) continue;
+      const ang = Math.atan2(dz, dx);
+      const rx = -Math.sin(ang), rz = Math.cos(ang);
+      for (const back of sides) {
+        const off = (half + 0.55) * back;            // just inside the kerb
+        const run = [];
+        for (let d = 5 + rand() * 4; d < len - 6; d += 6.5 + rand() * 0.5) {
+          const t = d / len;
+          const x = x0 + dx * t + rx * off;
+          const z = z0 + dz * t + rz * off;
+          if (Math.hypot(x, z) > reach) continue;
+          if (avoid && avoid.blocked(x, z)) continue;
+          run.push([x, z, -ang + (back > 0 ? 0 : Math.PI)]);
+        }
+        if (run.length > 1) runs.push(run);
+      }
+    }
+  }
+  // Shuffled, so the blocks that keep their meters are spread over the extract
+  // rather than being whichever ones the road list happened to reach first.
+  for (let i = runs.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [runs[i], runs[j]] = [runs[j], runs[i]];
+  }
+  const metersKept = [];
+  for (const run of runs) {
+    if (metersKept.length + run.length > limit * 4) continue;
+    for (const p of run) metersKept.push(p);
+  }
+
   const build = (geo, mat, list, name) => {
     if (!list.length) return null;
     const im = new THREE.InstancedMesh(geo, mat, list.length);
@@ -1129,8 +1217,31 @@ export function kerbFurniture(roads, limit = 260, avoid, reach = 900) {
     im.name = name;
     return im;
   };
+  // A meter faces the car it serves, so its head is square to the kerb rather
+  // than turned at random the way a hydrant or a bin is.
+  const buildFacing = (geo, mat, list, name) => {
+    if (!list.length) return null;
+    const im = new THREE.InstancedMesh(geo, mat, list.length);
+    im.castShadow = im.receiveShadow = true;
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const pos = new THREE.Vector3();
+    const scl = new THREE.Vector3(1, 1, 1);
+    const up = new THREE.Vector3(0, 1, 0);
+    list.forEach(([x, z, rot], i) => {
+      q.setFromAxisAngle(up, rot);
+      pos.set(x, GROUND.walk, z);
+      m.compose(pos, q, scl);
+      im.setMatrixAt(i, m);
+    });
+    im.instanceMatrix.needsUpdate = true;
+    im.name = name;
+    return im;
+  };
   return [build(hydGeo, DETAIL_MATS.hydrant, hydrants, 'hydrants'),
-          build(binGeo, DETAIL_MATS.bin, bins, 'litter-bins')].filter(Boolean);
+          build(binGeo, DETAIL_MATS.bin, bins, 'litter-bins'),
+          buildFacing(meterGeo, DETAIL_MATS.meter, metersKept,
+                      'parking-meters')].filter(Boolean);
 }
 
 /**

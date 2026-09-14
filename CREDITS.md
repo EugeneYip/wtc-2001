@@ -109,6 +109,11 @@ dimensions and historic site plans, and any error in them is mine:
   height on the island is assigned from the storey counts the complex was
   built to, not measured, and every roof is lofted off its own footprint
   rather than surveyed
+- Street furniture — lamp standards, traffic signals, hydrants, litter bins,
+  street-name blades and parking meters — is generic and placed by rule from
+  the street data, not surveyed. The single-space parking meters are the period
+  type: New York had not begun replacing them with multi-space muni-meters in
+  2001. Which blocks were metered and which were No Standing is not sourced
 - Fritz Koenig's *Große Kugelkaryatide N.Y.* — the Sphere — on the plaza
   fountain: a bronze of cast plates standing off a darker body with deep
   grooves between them, at the sculpture's own diameter. The plate layout here
