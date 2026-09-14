@@ -90,8 +90,33 @@ export const CITY_MATS = {
   // every island in the harbour, and the whole thing read as a map with its
   // borders highlighted rather than as water. It also sits exactly where the
   // shore reflection is strongest, so it carries a little of it after dark.
+  //
+  // And rougher again, for the same reason a third time. 0.58 fixed the view
+  // from the air and left the view from close above it plainly wrong: at a
+  // hundred and forty metres over the Battery the band covered an eighth of
+  // the frame and measured 54/67/79 against open water at 5/33/61 — red
+  // lifted tenfold, which desaturates it, so it read as a pale grey panel
+  // laid over the river with hard straight edges rather than as water.
+  //
+  // What lifts it is the sun's own specular lobe, not the sky: dropping
+  // envMapIntensity from 0.75 to 0.15 moved red from 54 to 51, while raising
+  // roughness moved it to 28 at 0.80 and 17 at 0.95. A surface this flat with
+  // a lobe that wide is one enormous soft highlight, which the open water
+  // never shows because its lobe is tight and its normals are broken up. At
+  // 0.95 the lobe is wide enough to have no peak left, the band comes out
+  // 17/40/56 — lighter in red and green, a shade darker in blue, which is a
+  // paler and greener shelf and is what shallow turbid water looks like —
+  // and the step in brightness across its edge falls from 124 per cent to
+  // 24. From the air it changes nothing measurable: 48.27 mean and 8.88
+  // standard deviation at every value tried, against 48.27 and 8.91 with the
+  // shelf hidden altogether.
+  //
+  // Three passes in the same direction is a sign this wants a different
+  // model rather than another number — proper depth-dependent extinction
+  // through the water, which is what actually makes a shelf pale — but that
+  // is a bigger change than a shoreline rim justifies.
   shallows: new THREE.MeshStandardMaterial({
-    color: 0x21414f, metalness: 0.02, roughness: 0.58,
+    color: 0x21414f, metalness: 0.02, roughness: 0.95,
     normalMap: waterNormal(4451),
     normalScale: new THREE.Vector2(0.9, 0.9),
     envMapIntensity: 0.75,
@@ -120,6 +145,7 @@ CITY_MATS.water.polygonOffsetUnits = 6;
 function makeWater() {
   const near = waterNormal(7717);
   const far = waterNormal(2213);
+  const chop = waterNormal(9341);
 
   const m = new THREE.MeshStandardMaterial({
     color: 0x16303f,
@@ -152,6 +178,32 @@ function makeWater() {
     // on a ~150 m swell under the ~60 m chop of the first.
     shader.uniforms.normalMap2Scale = { value: 60 / 150 };
     shader.uniforms.normalMap2Offset = { value: new THREE.Vector2() };
+    // A third layer, and the one this surface had no equivalent of.
+    //
+    // Both of the other two are swell. The map is three octaves over its
+    // tile, so at 60 m the shortest wave in it is five metres and most of the
+    // energy is at twenty to fifty; at 150 m the shortest is twelve. From a
+    // pier that is not a river, it is a becalmed ocean seen through a long
+    // lens — measured at eye level, the luminance of the nearest water varied
+    // by 1.8 levels on a mean of 47, a contrast of under four per cent, and
+    // the sun's path on it came out as one smooth blob instead of a field of
+    // sparkle.
+    //
+    // A finer octave cannot be added to the existing map: 256 pixels over
+    // 60 m is four to the metre, so a one-metre wave is four pixels and turns
+    // to mush the moment it is minified, which is the reason the two finest
+    // octaves were taken out in the first place. So this is the same map on a
+    // 7.5 m tile, where those octaves land at 2.5, 1.2 and 0.6 m, and it is
+    // faded out by 420 m — long before a texel could reach a pixel, and well
+    // inside the distance at which the other two are flattened.
+    shader.uniforms.normalMap3 = { value: chop };
+    shader.uniforms.normalMap3Scale = { value: 60 / 7.5 };
+    shader.uniforms.normalMap3Offset = { value: new THREE.Vector2() };
+    // How much of it. Swept on one frame from a quay at twenty-six metres,
+    // with a tug in shot for scale: at 0.55 the ripple is there but thin, at
+    // 1.1 it starts to read as a stipple laid over the water rather than as
+    // the water's own surface. 0.8 is where it is a grain and not noise.
+    shader.uniforms.chopAmt = { value: 0.8 };
     // buildCity bakes these before the first frame, which is when
     // onBeforeCompile runs.
     shader.uniforms.shoreMap = { value: m.userData.shoreMap || null };
@@ -200,6 +252,10 @@ function makeWater() {
         uniform sampler2D normalMap2;
         uniform float normalMap2Scale;
         uniform vec2 normalMap2Offset;
+        uniform sampler2D normalMap3;
+        uniform float normalMap3Scale;
+        uniform vec2 normalMap3Offset;
+        uniform float chopAmt;
         uniform sampler2D shoreMap;
         uniform float shoreAmt;
         uniform vec3 shoreColor;
@@ -299,6 +355,28 @@ function makeWater() {
                     vNormalMapUv * normalMap2Scale + normalMap2Offset ).xyz * 2.0 - 1.0;
         // Whiteout blend: add the slopes, multiply the up components.
         vec3 mapN = normalize( vec3( nA.xy + nB.xy, nA.z * nB.z ) );
+        // And the chop, which is the only one of the three layers at the scale
+        // a person standing on a pier would call a wave. See chopAmt.
+        //
+        // Sampled whether it is wanted or not, rather than behind an if. A
+        // texture read inside non-uniform control flow has undefined mip
+        // derivatives — the hardware works them out by differencing across a
+        // quad, and it cannot if half the quad skipped the read. Drivers
+        // mostly get away with it and this one is not going to rely on that.
+        //
+        // Out to a hundred and fifty metres, gone by four hundred. Pushing
+        // that further does nothing at all: measured on one frame, extending
+        // it to 900–2600 left the water's standard deviation at 9.45 against
+        // 9.44, because the mip chain has already averaged a 0.6 m wave away
+        // by then and the weight is being applied to a flat normal. Sweeping
+        // a fixed depression angle from several heights puts the crossover at
+        // between 165 and 412 metres, which is where this sits.
+        float chop = chopAmt *
+          ( 1.0 - smoothstep( 150.0, 420.0, length( vViewPosition ) ) );
+        vec3 nC = texture2D( normalMap3,
+                    vNormalMapUv * normalMap3Scale + normalMap3Offset ).xyz * 2.0 - 1.0;
+        mapN = normalize( vec3( mapN.xy + nC.xy * chop,
+                                mapN.z * mix( 1.0, nC.z, chop ) ) );
         mapN.xy *= normalScale;
         // Flatten the chop with distance. Mipmapping smooths the normal map
         // but not the specular lobe it drives, so far water otherwise breaks
@@ -475,12 +553,39 @@ export function setWaterEnv(tex) {
   }
 }
 
-/** Drift the two wave layers. Called once a frame. */
+/**
+ * Drift the three wave layers. Called once a frame.
+ *
+ * These offsets are in each layer's own UV, so a rate has to be multiplied by
+ * that layer's tile to get metres per second: the first is 60 m to a unit,
+ * the second 150, the third 7.5.
+ *
+ * What they were is 0.23 and 0.83 m/s. A deep-water wave of a given length
+ * travels at the square root of g times that length over two pi, which for
+ * the twenty-odd metres in the first layer is 5.6 m/s and for the fifty in
+ * the second is 8.8 — so the surface was creeping at a twentieth of the speed
+ * the waves on it were the size of. Measured, it did not move at all: two
+ * frames 3.1 seconds apart at eye level differed by an average of one level
+ * in 255 and cross-correlated to a displacement of zero pixels.
+ *
+ * Not taken all the way to those figures, and this is a judgement rather than
+ * a measurement. Scrolling a whole pattern is not a wave field: every feature
+ * in a layer moves at the same speed and in the same direction, so at the
+ * true phase speed the surface reads as a conveyor belt carrying the sea
+ * along rather than as water with waves going through it. What is here is
+ * about half of physical for the two swell layers — 3.1 and 4.4 m/s against
+ * 5.6 and 8.8 — and full speed for the chop, where a metre and a half a
+ * second is slow anyway and what the eye is looking for is the flicker
+ * rather than the travel.
+ */
 export function animateWater(t) {
   const m = CITY_MATS.water;
-  m.normalMap.offset.set(t * 0.0038, t * 0.0021);
+  m.normalMap.offset.set(t * 0.0455, t * 0.0250);      // 2.7, 1.5 -> 3.1 m/s
   const sh = m.userData.shader;
-  if (sh) sh.uniforms.normalMap2Offset.value.set(-t * 0.0029, t * 0.0047);
+  if (!sh) return;
+  sh.uniforms.normalMap2Offset.value.set(-t * 0.0154, t * 0.0251);  // -> 4.4
+  // Across the swell rather than with it, which is what a wind chop does.
+  sh.uniforms.normalMap3Offset.value.set(t * 0.1760, -t * 0.1020);  // -> 1.5
 }
 
 // The classes that get a textured facade and lit windows after dark.

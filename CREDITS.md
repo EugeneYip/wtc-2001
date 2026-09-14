@@ -196,3 +196,16 @@ the geometry for 40.71°N at that declination. Published clock times for that
 morning are a few minutes wider at each end, because they are defined at the
 sun's upper limb and include atmospheric refraction, neither of which this
 models.
+
+The sea state is chosen, not recorded. Three normal maps scroll across each
+other at 150, 60 and 7.5 metres to a tile, which puts waves in it from about
+fifty metres down to half a metre, and their speeds are set from the
+deep-water relation for those lengths — halved for the two long ones, because
+a scrolling pattern at the true phase speed reads as a conveyor rather than as
+a wave field. It is a plausible light-wind harbour and it is not the harbour
+of that morning; what the water was actually doing on 11 September 2001 is not
+in any source used here. The sun's path on it is a specular lobe and not
+glitter: real glitter is thousands of sub-pixel facets, which a normal map
+cannot hold. Nothing here models the tide, and the rivers are drawn flat and
+still relative to the land — the Hudson and the East River both run hard, and
+neither current is in this.

@@ -1696,9 +1696,131 @@ so the join does not read — but going further would show it.
 
 The rivers are modelled as a dielectric rather than a metal, which is what
 gives water its behaviour: its own dark blue-green looking down, turning to a
-sky mirror at grazing angles. Two normal maps drift across each other at
-different scales and headings — one layer alone only slides, two beating
-against each other read as chop. A paler shelf runs off every shoreline.
+sky mirror at grazing angles. Three normal maps drift across each other at
+different scales and headings — one layer alone only slides, and two beating
+against each other read as swell without the chop riding on it. A paler shelf
+runs off every shoreline.
+
+**Both of those normal maps are swell, and there was nothing under them.**
+
+The map is three octaves over its tile, so at the 60 m the near layer is
+stretched over, the shortest wave in it is five metres and most of the energy
+sits at twenty to fifty; the far layer, at 150 m, bottoms out at twelve. Those
+are the lengths of an ocean swell, not of a river surface, and from a pier the
+result was a becalmed sea seen through a long lens. Measured at eye level on
+the Hudson, the luminance of the nearest water varied by 1.8 levels on a mean
+of 47 — under four per cent — and all the visible structure was in the
+mid-distance band, at 12.7. The sun's path on it came out as one smooth blob
+rather than a field of sparkle.
+
+It also did not move. Two frames 3.1 seconds apart at eye level differed by an
+average of one level in 255 and cross-correlated to a displacement of exactly
+zero pixels. The two layers were drifting at 0.23 and 0.83 m/s; a deep-water
+wave travels at the square root of *gλ*/2π, which for the twenty-odd metres in
+the first layer is 5.6 m/s and for the fifty in the second is 8.8, so the
+surface was creeping at a twentieth of the speed the waves on it were the size
+of.
+
+So there is a third layer now, and it is the only one at the scale a person
+standing on a pier would call a wave. A finer octave cannot be added to the
+existing map — 256 pixels over 60 m is four to the metre, so a one-metre wave
+is four pixels and turns to mush the moment it is minified, which is why the
+two finest octaves were taken out of it in the first place. This is the same
+map on a 7.5 m tile, where those octaves land at 2.5, 1.2 and 0.6 m, drifting
+across the swell rather than with it at the 1.5 m/s a wave that long actually
+travels at. Swept from a quay at twenty-six metres with a tug in shot for
+scale: at 0.55 of the swell's slope the ripple is there but thin, at 1.1 it
+starts to read as a stipple laid over the water rather than as the water's own
+surface, and 0.8 is where it is a grain and not noise.
+
+The two swell layers were taken to about half of physical — 3.1 and 4.4 m/s —
+rather than the whole of it, and that is a judgement rather than a
+measurement. Scrolling a pattern is not a wave field: every feature in a layer
+moves at the same speed and in the same direction, so at the true phase speed
+the surface reads as a conveyor belt carrying the sea along rather than as
+water with waves going through it. At half, two frames 3.5 seconds apart no
+longer correlate at all in the middle distance, and the near water changes by
+two thirds of its own variation.
+
+Three things about it are worth recording:
+
+- **It is contained to where it can be seen.** The chop is faded out by 420 m,
+  and pushing that further does nothing at all: extending the ramp to
+  900–2600 m left the water's standard deviation at 9.45 against 9.44, because
+  the mip chain has already averaged a 0.6 m wave away by then and the weight
+  is being applied to a flat normal. Sweeping a fixed depression angle from
+  several heights puts the real crossover between 165 and 412 m. The view from
+  the air — which is what this surface was originally tuned against — is
+  untouched: mean 36.28 and standard deviation 6.09 before, 36.28 and 6.07
+  after.
+- **The extra texture read costs nothing measurable.** Timed on the frame that
+  is worst for it, eye level with water filling most of a 3.7-megapixel frame,
+  with the read in and with it replaced by a constant: 15.21 and 15.18 ms
+  against 15.29 and 15.73, which is noise. A 256-pixel map with mips stays in
+  cache, and this frame is fill-bound on other things.
+- **It does not crawl.** One animation step apart, the near water changes by
+  an average of 3.8 levels with 0.15 per cent of pixels moving by more than
+  twenty — smooth motion rather than the isolated large jumps that aliasing
+  gives.
+
+What it still does not do is glitter. Real sun glitter is a field of discrete
+sparkles, the statistical result of thousands of wave facets each smaller than
+a pixel, and a normal map cannot produce that: its normal field is
+band-limited by the texture and the mip chain, so the specular response is
+smooth in space by construction. The chop gives the sun's path structure at
+its edges instead of leaving it a featureless gradient, and the core of it
+still clips — two per cent of the water is at 250 or over and one per cent at
+254 — which a camera pointed at a sun path does too. Proper glitter needs a
+glint model this does not have.
+
+**And the shelf had to be roughened for the third time.** A paler band of
+shallow water runs 17 m off every shore, and it has twice been pushed away
+from being a sky mirror: from 0x2c4d58 at roughness 0.42, which drew a bright
+turquoise line round every coast and pier and island and made the harbour read
+as a map with its borders highlighted, to 0x21414f at 0.58.
+
+That fixed the view from the air and left the view from close above it plainly
+wrong. At a hundred and forty metres over the Battery the band covered an
+eighth of the frame and measured 54/67/79 against open water at 5/33/61 — red
+lifted tenfold, which desaturates it — so it read as a pale grey panel laid
+over the river with hard straight edges rather than as water at all.
+
+What lifts it is the sun's own specular lobe and not the sky: dropping
+envMapIntensity from 0.75 to 0.15 moved red from 54 to 51, while raising
+roughness moved it to 28 at 0.80 and 17 at 0.95. A surface this flat with a
+lobe that wide is one enormous soft highlight, which the open water never
+shows because its lobe is tight and its normals are broken up. At 0.95 there
+is no peak left in the lobe, the band comes out 17/40/56 — lighter in red and
+green, a shade darker in blue, which is a paler and greener shelf and is what
+shallow turbid water looks like — and the step in brightness across its outer
+edge falls from 124 per cent to 24. From the air it changes nothing
+measurable: mean 48.27 and standard deviation 8.88 at every roughness tried,
+against 48.27 and 8.91 with the shelf hidden altogether.
+
+Three passes in the same direction is a sign this wants a different model
+rather than another number. What actually makes a shelf pale is extinction
+through a short column of water, and a depth-dependent version of that would
+get the hue, the gradient and the soft outer edge for free, where this gets
+the hue and keeps a straight line at the edge of the ribbon. That is a bigger
+change than a shoreline rim justifies, and the straight edge is still there.
+
+**Some things about the water measured fine.** The far water meets the sky
+without a step: at noon from eye level the water immediately under the far
+shore reads 204/219/226 against a sky at 222/230/234, with the shore itself in
+between them, so the three read as three things and not as a seam. Looking
+steeply down from three hundred metres the surface is almost perfectly
+uniform, a standard deviation of 0.37 on a mean of 25.9 — which is right
+rather than wrong, because at that angle a dielectric reflects two per cent
+and what is left is the body colour, so the chop has almost nothing to
+modulate. And the ribbon geometry is sound: drawn on its own from overhead it
+is a clean continuous line following every coast, with rectangular excursions
+where the piers and slips are, not the overlapping patchwork the view from
+close above made it look like.
+
+One thing was found and left. At close range a tug meets the water in a dead
+straight line with no interaction at all — no bow wave, no disturbance at the
+waterline. That is a vessel matter rather than a water one and it would be a
+new feature rather than a correction, so it is written down here instead.
 
 **The water has its own sky.** A cube probe has one position, and everything
 lit from it is lit as though it stood there. For a facade a few hundred metres
@@ -2214,6 +2336,11 @@ at most nine levels out of 255**. It could not be seen. What the eye had been
 reading as patchy water was the reflection probe painting the city onto it.
 The map is gone and its mean stayed, which buys back one of the two texture
 reads the new reflection costs, on a surface that is often half the screen.
+(That read has since been spent again, on the third wave layer — and measured
+there too: with it in and with it replaced by a constant, on the frame that is
+worst for it, 15.21 and 15.18 ms against 15.29 and 15.73. A 256-pixel map with
+mips stays in cache. The saving was real and so is the spend; neither of them
+shows up in a frame time.)
 
 Three expensive things do turn out to be worth their cost, which is worth
 writing down so nobody re-litigates them:
