@@ -2036,6 +2036,19 @@ def brooklyn_class(h, a, oid, year, tags):
     return "masonry_old" if oid % 3 == 0 else "brick_red"
 
 
+def far_min_area(poly):
+    """How big a building has to be to be worth carrying, at its distance.
+
+    A row house four kilometres out is one pixel and about a hundred and thirty
+    bytes of payload. The near end of each strip keeps everything down to
+    ninety square metres, the way the city itself does; the far end keeps only
+    what can actually be resolved.
+    """
+    cx, cz = centroid(poly)
+    r = math.hypot(cx, cz)
+    return 90.0 + max(0.0, r - 2600.0) * 0.10
+
+
 def build_brooklyn():
     path = os.path.join(RAW, "brooklyn.json")
     if not os.path.exists(path):
@@ -2064,7 +2077,7 @@ def build_brooklyn():
         if len(poly) < 3:
             continue
         a = area_of(poly)
-        if a < 90:
+        if a < far_min_area(poly):
             continue
         h = parse_height(tags)
         if h is None:
@@ -2077,6 +2090,130 @@ def build_brooklyn():
           % (len(out), dropped))
     return out
 
+
+
+# ---------------------------------------------------------------------------
+# The Jersey City waterfront
+# ---------------------------------------------------------------------------
+
+# This one is harder than Brooklyn, in two ways.
+#
+# First, New Jersey has had no aerial height import: thirty of six thousand
+# footprints carry a height and two hundred and eighty carry a storey count.
+# Everything else has to be estimated, which is fine for a row house and
+# useless for a skyline.
+#
+# Second, and worse: Jersey City's waterfront was rebuilt after 2001 more
+# thoroughly than anywhere else this model can see. Most of what stands at
+# Exchange Place and Newport today went up between 2003 and 2019, on land that
+# in 2001 was parking. OSM carries a start date for thirteen of them.
+#
+# So the rule here is the other way round from everywhere else. Anything that
+# reads as a tower — over sixty metres — has to be shown to have been standing,
+# by a start date in the data or by being on this list. Everything under sixty
+# comes through as fabric, because the fabric here is Paulus Hook and Hoboken
+# and Van Vorst Park, which are nineteenth-century row houses and have not
+# moved. The effect is to leave the waterfront *under*-built rather than
+# over-built, and that is the right way to be wrong: a tower that was not there
+# is a lie, and a gap is only a gap.
+#
+# One check makes the cut nearly self-proving. 101 Hudson Street was the
+# tallest building in New Jersey from 1992 until Goldman Sachs topped it in
+# 2004, so nothing in this extract taller than it can belong here — which
+# disposes of the two tallest things in the data without needing a date for
+# either.
+JERSEY_2001 = {
+    "101 Hudson Street": 167.0,          # 1992, and the tallest in the state
+    "Exchange Place Center": 149.5,      # 1989 — dated in the data
+    "Newport Tower": 141.0,              # 1990, and untagged, so given its own
+    "Southhampton Apartments": 137.0,    # 1998
+    "East Hampton Apartments": 124.1,    # 2000
+    "Newport Office Center VII": 105.0,  # 1990
+    "Portofino Apartments": 90.8,        # 1998 — dated in the data
+    "One Evertrust Plaza": 80.0,         # 1986 — dated in the data
+    "Waterside Square South": 79.7,
+    "Waterside Square North": 79.7,
+    "Newport Office Center IV": 79.7,    # 1987
+    "JP Morgan Chase": 79.7,             # Newport Office Center, early 1990s
+    "Marine View Apartments": 73.0,      # 1960s, Hoboken
+    "Portside Towers West": 72.3,        # 1991
+    "Portside Towers East": 72.3,        # 1991, and untagged
+    "Mandalay on the Hudson": 67.0,      # 1999 — dated in the data
+    "Metropolis Towers I": 62.0,         # 1960s
+    "Metropolis Towers II": 62.0,
+    "Columbian Towers": 61.2,            # 1970s
+}
+# Marine View's twin, which carries no name of its own.
+JERSEY_2001_IDS = {351324272: 73.0}
+JERSEY_TOWER = 60.0            # above this, a building has to prove itself
+
+
+def jersey_class(h, a, oid, year, tags):
+    """Facade family for the west bank.
+
+    Not Brooklyn's rule and not Manhattan's. Exchange Place and Newport are
+    nineteen-eighties and nineties offices in glass and stone; behind them
+    Paulus Hook, Van Vorst and Hoboken are brownstone and brick row houses,
+    with warehouses along the water.
+    """
+    b = tags.get("building", "")
+    if year and year < 1915:
+        return "masonry_old"
+    if h >= 100:
+        return "tower_modern"
+    if h >= 55:
+        return "midrise"
+    if b in ("church", "chapel", "cathedral"):
+        return "masonry_old"
+    if a >= 1000:
+        return "brick_red"                # warehouses and the terminal sheds
+    return "brick_red" if oid % 5 == 0 else "masonry_old"
+
+
+def build_jersey():
+    path = os.path.join(RAW, "jersey.json")
+    if not os.path.exists(path):
+        print("  jersey city waterfront: no extract, skipped")
+        return []
+    out = []
+    dated = tall = 0
+    for e in json.load(open(path))["elements"]:
+        tags = e.get("tags", {})
+        if tags.get("building") in BROOKLYN_DROP:
+            continue
+        oid = e["id"]
+        year = year_of(tags)
+        if year and year > 2001:
+            dated += 1
+            continue
+        ring = ring_from(e)
+        if not ring or len(ring) < 4:
+            continue
+        poly = [project(la, lo) for la, lo in ring]
+        if poly[0] == poly[-1]:
+            poly.pop()
+        poly = simplify(poly, 1.8)
+        if len(poly) < 3:
+            continue
+        a = area_of(poly)
+        if a < far_min_area(poly):
+            continue
+
+        name = tags.get("name", "")
+        fixed = JERSEY_2001.get(name) or JERSEY_2001_IDS.get(oid)
+        h = fixed or parse_height(tags)
+        if h is None:
+            h = 11.0 + (oid % 19) * 1.15 + min(a, 2400) / 340.0
+        if h > JERSEY_TOWER and not fixed and not (year and year <= 2001):
+            tall += 1
+            continue
+        h = max(h, 5.0)
+        out.append({"p": [[round(x, 1), round(z, 1)] for x, z in ccw(poly)],
+                    "h": round(h, 1),
+                    "c": jersey_class(h, a, oid, year, tags)})
+    print("  jersey city waterfront: %d buildings, %d dropped by date, "
+          "%d dropped as unproven towers" % (len(out), dated, tall))
+    return out
 
 def build_relief():
     path = os.path.join(RAW, "relief.json")
@@ -2152,6 +2289,7 @@ def main():
     ellis = build_ellis(land)
     governors = build_governors(land)
     brooklyn = build_brooklyn()
+    jersey = build_jersey()
     relief = build_relief()
     if relief:
         print("  relief                : %d hills, %d ridge lines"
@@ -2206,6 +2344,7 @@ def main():
         "ellis": ellis,
         "governors": governors,
         "brooklyn": brooklyn,
+        "jersey": jersey,
         "relief": relief,
         "buildings": buildings,
         "roads": roads,

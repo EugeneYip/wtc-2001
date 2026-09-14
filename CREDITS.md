@@ -40,6 +40,17 @@ demolished between 2013 and 2016 and appears in no dataset, so the south end
 of the island is emptier here than it was, and the trees on that half — planted
 in 2014 — are thinned to a quarter.
 
+The Jersey City waterfront — Exchange Place, Paulus Hook, Newport, Hoboken and
+Liberty State Park — is traced footprints from OpenStreetMap, but almost none
+of them carry a height: thirty out of six thousand. Storey counts supply a few
+hundred more; the rest are estimated, which is adequate for a row house and not
+for a skyline. Because that waterfront was largely rebuilt after 2001, every
+building over sixty metres has to be shown to have been standing, by a start
+date in the data or by an explicit list in `build/build_scene.py`, and
+twenty-seven were dropped for want of that. Heights for the towers on the list
+are published figures. Below sixty metres the general rules apply and some
+post-2001 mid-rise will have come through with them.
+
 The Brooklyn waterfront — the strip from the Navy Yard round Brooklyn Heights
 to Red Hook, four hundred metres in from the water — is traced footprints from
 OpenStreetMap, most of them with a surveyed height. Facade families are

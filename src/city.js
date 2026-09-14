@@ -886,7 +886,7 @@ function buildingTint(b) {
  * and every one of them would be three thousand of something. Walls and roofs,
  * in the same facade families and with the same tinting, and nothing else.
  */
-export function farShore(list) {
+export function farShore(list, tag = 'far') {
   if (!list || !list.length) return [];
   const walls = {};
   const roofs = [];
@@ -905,12 +905,12 @@ export function farShore(list) {
     // Deliberately not casting: the sun's shadow camera covers a kilometre
     // around the towers and every one of these is outside it, so a shadow pass
     // over them is three thousand buildings drawn twice for nothing.
-    m.name = 'far-walls-' + cls;
+    m.name = tag + '-walls-' + cls;
     out.push(m);
   }
   if (roofs.length) {
     const m = new THREE.Mesh(mergeGeometries(roofs), CITY_MATS.roof);
-    m.name = 'far-roofs';
+    m.name = tag + '-roofs';
     out.push(m);
   }
   return out;

@@ -521,9 +521,9 @@ round every coast, pier and island, and the harbour read as a map with its
 borders highlighted. The land beyond the mapped blocks carries a street grain,
 masked by the same noise that decides what is built up. Without it, soft
 mottling on a flat plane read from a distance as a bank of low cloud rather
-than as Jersey City — but it is a grain and not a plan, and no buildings are
-invented on it. Where there are buildings on the far bank now, on the Brooklyn
-waterfront, they are the real ones — see below.
+than as a city — but it is a grain and not a plan, and no buildings are
+invented on it. Both waterfronts now carry real buildings instead, extracted
+from OpenStreetMap like everything else; the grain is what is left beyond them.
 
 **The Brooklyn Bridge.** Its Manhattan end is a kilometre east of the site and
 it closes every view up the East River; without it that side of the model
@@ -1010,6 +1010,52 @@ harder than the near city's — 1.8 m rather than 0.9 — because at this distan
 every vertex is a byte in the payload and a triangle in the frame, and nothing
 that survives is visible.
 
+**The Jersey City waterfront.** The other far bank, and from the towers it is
+most of the western horizon — nearer than Brooklyn's. Same problem, and a
+harder one, for two reasons.
+
+**New Jersey has had no aerial height import.** Thirty of six thousand
+footprints carry a height and two hundred and eighty carry a storey count.
+Everything else has to be estimated, which is fine for a row house and useless
+for a skyline.
+
+**And Jersey City's waterfront was rebuilt after 2001 more thoroughly than
+anywhere else this model can see.** Most of what stands at Exchange Place and
+Newport today went up between 2003 and 2019, on land that in 2001 was parking.
+OpenStreetMap carries a start date for thirteen of them. Extracting this the
+way Brooklyn was extracted would have put a 2019 skyline across the Hudson from
+the 2001 towers, which is a worse failure than leaving it blank.
+
+**So the rule here runs the other way.** Anything that reads as a tower — over
+sixty metres — has to be *shown* to have been standing, either by a start date
+in the data or by being on a curated list. Everything under sixty comes through
+as fabric, because the fabric here is Paulus Hook and Van Vorst and Hoboken,
+which are nineteenth-century row houses and have not moved. Twenty-seven
+towers were dropped for want of proof. The effect is to leave the waterfront
+*under*-built rather than over-built, and that is the right way to be wrong: a
+tower that was not there is a lie, and a gap is only a gap.
+
+One check makes most of the cut self-proving. **101 Hudson Street was the
+tallest building in New Jersey from 1992 until Goldman Sachs topped it in
+2004**, so nothing in the extract taller than its 167 m can belong here — which
+disposes of the two tallest things in the data without needing a date for
+either.
+
+What is left is a 2001 skyline: 101 Hudson standing alone, Exchange Place
+Centre beside it, Newport Tower up the shore, five or six blocks in the
+seventies and eighties of metres, and a long low brick waterfront under all of
+it. Twenty-one buildings over sixty metres in the whole strip.
+
+**And both strips are now trimmed by distance.** A row house four kilometres
+out is one pixel and about a hundred and thirty bytes of payload, so the
+minimum footprint a building needs to be carried grows with its range: ninety
+square metres at the near end, where the city itself keeps everything, and
+nearly three hundred at the far end of Hoboken. That took the two waterfronts
+from 6,488 buildings to 3,465 and the scene file from 1.15 MB to 810 KB,
+without any visible change beyond three kilometres.
+
+**5 draw calls and 26,015 triangles** for Jersey City.
+
 **Light and water.** The sun is placed from real solar geometry for 40.71° N
 on 11 September, so shadow directions through the day are the ones the site
 actually had. It is drawn by the Mie term of the sky model, and the asymmetry
@@ -1397,7 +1443,7 @@ out offset diagonally by 67.0 m east and 103.8 m south, which leaves the
 documented ~130 ft gap between their facing walls as an independent check
 that was never fed into the calculation.
 
-Nine things are deliberately not raw OpenStreetMap:
+Ten things are deliberately not raw OpenStreetMap:
 
 1. **Post-2001 buildings are removed** — the modern WTC site, and the towers
    that filled in the Financial District and Battery Park City between 2002
@@ -1425,10 +1471,10 @@ Nine things are deliberately not raw OpenStreetMap:
    ground floor is — glazing, piers, a fascia — and not one real shop.
    The land across the rivers is generic mottling for the same reason —
    nothing is invented on it, so it stays deliberately vague rather than
-   growing a Jersey City skyline out of nowhere. The Brooklyn waterfront is
-   the exception, and it is an exception because the data is there: those are
-   traced footprints with surveyed heights, extracted for the first time this
-   round. Everything beyond that strip is still mottling.
+   growing a skyline out of nowhere. The two waterfront strips are the
+   exception, and they are an exception because the data is there: traced
+   footprints, with surveyed heights in Brooklyn and a curated list of towers
+   in Jersey City. Everything beyond those strips is still mottling.
 5. **A few buildings are recoloured by name.** The facade family a building
    gets is chosen from its height and footprint, which cannot know what it is
    clad in. Four are corrected by hand, and the Woolworth's copper pyramid is
@@ -1483,6 +1529,14 @@ Nine things are deliberately not raw OpenStreetMap:
    the Coast Guard housing on the south fill was demolished before it was
    mapped, so the south end is emptier than it was. The trees are today's and
    are thinned on that half for the same reason.
+10. **Jersey City is curated the other way round from everywhere else.** The
+   data has almost no heights and the waterfront was rebuilt after 2001, so a
+   building only gets to be a tower here if it can be shown to have been one:
+   a start date in the data, or a place on a hand-written list of what stood
+   in 2001. Twenty-seven were dropped for want of proof. Below sixty metres
+   the ordinary rules apply, and a handful of post-2001 mid-rise blocks will
+   have come through with them — at two kilometres those are fabric rather
+   than skyline, but they are there and this is the admission.
 
 Background buildings with no height in OSM get a deterministic estimate from
 their id and footprint area, so the fabric varies instead of reading as one
@@ -1490,7 +1544,7 @@ uniform slab. Those are massing, not survey.
 
 ## Performance
 
-About 190 draw calls and 1.40M triangles in daylight — 206 and 1.62M from out
+About 195 draw calls and 1.58M triangles in daylight — a little more from out
 in the harbour with all three islands in frame — and roughly 2 to 3 ms a
 frame on an M2 at 2800 × 1800 once shaders are warm, with the post-processing
 running at full resolution and 4x multisampling.
@@ -1602,6 +1656,8 @@ raw/                  cached Overpass responses
                         the trees on Liberty Island
   brooklyn.json         the waterfront strip from the Navy Yard to Red
                         Hook, most of it with surveyed heights
+  jersey.json           Exchange Place, Newport, Hoboken and Liberty
+                        State Park — footprints, but almost no heights
   ellis.json            every building on both of Ellis Island's islands,
                         the covered corridors, and the trees
   governors.json        Governors Island: 244 buildings with heights on

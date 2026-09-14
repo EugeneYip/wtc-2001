@@ -919,9 +919,10 @@ async function init() {
     }
   }
 
-  // The far bank of the East River, which was flat ground with a street grain
-  // on it and is now the buildings that are actually there.
-  for (const m of farShore(data.brooklyn)) scene.add(m);
+  // Both far banks, which were flat ground with a street grain on them and are
+  // now the buildings that are actually there.
+  for (const m of farShore(data.brooklyn, 'brooklyn')) scene.add(m);
+  for (const m of farShore(data.jersey, 'jersey')) scene.add(m);
 
   // Three and a half kilometres down the harbour, and the only thing out there
   // anybody would notice the absence of.

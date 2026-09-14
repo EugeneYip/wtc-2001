@@ -71,6 +71,17 @@ QUERIES = {
          way["highway"]["name"="Brooklyn Bridge"](40.69,-74.02,40.72,-73.96););
         out geom;""",
 
+    # The Jersey City waterfront, which from the towers is most of the western
+    # horizon and is nearer than Brooklyn's. Exchange Place and Paulus Hook
+    # first, then Newport, then Hoboken, then Liberty State Park and the old
+    # Central Railroad of New Jersey terminal on the water below them.
+    "jersey": """[out:json][timeout:180];
+        (way["building"](40.7075,-74.0470,40.7235,-74.0300);
+         way["building"](40.7195,-74.0470,40.7340,-74.0295);
+         way["building"](40.7335,-74.0375,40.7530,-74.0225);
+         way["building"](40.6930,-74.0640,40.7110,-74.0390););
+        out geom;""",
+
     # The Brooklyn waterfront, from the Navy Yard round to Red Hook. Not all of
     # Brooklyn: a strip four hundred metres deep along the shore, which is what
     # the far bank of the East River actually is from the towers. Five boxes
