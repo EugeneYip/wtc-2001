@@ -361,6 +361,7 @@ function setNightGround(lit) {
   CITY_MATS.roadMinor.emissiveIntensity = lit * 0.12;
   CITY_MATS.sidewalk.emissiveIntensity = lit * 0.09;
   ISLAND_WALK.emissiveIntensity = lit * 0.015;
+  ISLAND_PATH.emissiveIntensity = lit * 0.02;
   CITY_MATS.ground.emissiveIntensity = lit * 0.03;
   // A park is not lit, but it is not a hole in the city either: enough for the
   // grass to separate from the buildings round it, and the walks a little more
@@ -448,6 +449,11 @@ function renderProbe() {
 // it, and neither island has a street lamp on it: run at the city's level it
 // drew a bright orange ring round each one in the middle of a black harbour.
 const ISLAND_WALK = CITY_MATS.sidewalk.clone();
+// And the same again for the walks across the islands themselves. A park path
+// in the city has lamps down it and the material carries their glow; the
+// island roads and footways have none, and run at the city's level they came
+// out as the brightest thing on an island this model says was empty.
+const ISLAND_PATH = CITY_MATS.parkPath.clone();
 
 const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -931,18 +937,21 @@ async function init() {
   // Three and a half kilometres down the harbour, and the only thing out there
   // anybody would notice the absence of.
   const liberty = buildLiberty(data.liberty,
-                               { grass: CITY_MATS.park, walk: ISLAND_WALK });
+                               { grass: CITY_MATS.park, walk: ISLAND_WALK,
+                                 path: ISLAND_PATH });
   if (liberty) scene.add(liberty);
 
   // Ellis Island is nearer than she is, and sits between her and the city.
   const ellis = buildEllis(data.ellis, { grass: CITY_MATS.park,
                                          walk: ISLAND_WALK,
+                                         path: ISLAND_PATH,
                                          brick: CITY_MATS.brick_red });
   if (ellis) scene.add(ellis);
 
   // And the biggest of the three, closing the view south from the Battery.
   const governors = buildGovernors(data.governors,
                                    { grass: CITY_MATS.park, walk: ISLAND_WALK,
+                                     path: ISLAND_PATH,
                                      red: CITY_MATS.brick_red,
                                      buff: CITY_MATS.masonry_old });
   if (governors) scene.add(governors);

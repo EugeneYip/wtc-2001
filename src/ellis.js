@@ -32,7 +32,8 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'BufferGeometryUtils';
-import { norm, poly, prism, hip, hipRing, islandGround, GROUND } from './geo.js';
+import { norm, poly, prism, hip, hipRing, islandGround, ribbon,
+         GROUND } from './geo.js';
 import { shell, tint } from './city.js';
 import { copperTexture, COPPER_TILE_M } from './textures.js';
 
@@ -272,6 +273,18 @@ export function buildEllis(ellis, mats = {}) {
       m.position.y = -GROUND.land;
       g.add(m);
     }
+    // The walks between the pavilions, which were in the extract all along.
+    if (ellis.paths && ellis.paths.length) {
+      const geos = ribbon(ellis.paths, GROUND.park + 0.012);
+      if (geos.length && mats.path) {
+        const m = new THREE.Mesh(mergeGeometries(geos), mats.path);
+        m.name = 'ellis-paths';
+        m.receiveShadow = true;
+        m.position.y = -GROUND.land;
+        g.add(m);
+      }
+    }
+
     g.userData.treeSites = [{ at: ellis.trees || [], y: GROUND.park, scale: 0.9 }];
   }
 

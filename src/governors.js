@@ -34,7 +34,8 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'BufferGeometryUtils';
-import { norm, flat, inset, hipRing, islandGround, GROUND } from './geo.js';
+import { norm, flat, inset, hipRing, islandGround, ribbon,
+         GROUND } from './geo.js';
 import { shell, tint } from './city.js';
 
 const PITCH = 34 * (Math.PI / 180);
@@ -289,6 +290,22 @@ export function buildGovernors(governors, mats = {}) {
       m.position.y = -GROUND.land;
       g.add(m);
     }
+    // The base's street grid — Andes, Barry, Carder, Comfort, Clayton, the
+    // Oval round Fort Jay — which was in the extract's neighbours all along
+    // and which this one had never asked for. It is what tells an island that
+    // had a garrison on it from a park: eight hundred buildings' worth of
+    // roads laid out in blocks, not a wandering path system.
+    if (governors.paths && governors.paths.length) {
+      const geos = ribbon(governors.paths, GROUND.park + 0.012);
+      if (geos.length && mats.path) {
+        const m = new THREE.Mesh(mergeGeometries(geos), mats.path);
+        m.name = 'governors-paths';
+        m.receiveShadow = true;
+        m.position.y = -GROUND.land;
+        g.add(m);
+      }
+    }
+
     // Nothing grows on a rampart, and nothing is meant to: a glacis is kept
     // clear so it can be swept. Anything mapped inside the star goes.
     const keep = governors.fort

@@ -44,7 +44,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'BufferGeometryUtils';
-import { norm, boxUV, islandGround, GROUND } from './geo.js';
+import { norm, boxUV, islandGround, ribbon, GROUND } from './geo.js';
 import { graniteTexture, GRANITE_TILE_M,
          copperTexture, COPPER_TILE_M } from './textures.js';
 
@@ -877,6 +877,23 @@ export function buildLiberty(liberty, mats = {}) {
       m.position.y = -GROUND.land;
       g.add(m);
     }
+    // The island's own walks, which were in the extract all along.
+    //
+    // The layout is the current one, not a 2001 survey — the same admission the
+    // trees carry. What it buys is that at three and a half kilometres the
+    // island stops being a green blob with a monument on it and becomes a place
+    // people are walked round.
+    if (liberty.paths && liberty.paths.length) {
+      const geos = ribbon(liberty.paths, GROUND.park + 0.012);
+      if (geos.length && mats.path) {
+        const m = new THREE.Mesh(mergeGeometries(geos), mats.path);
+        m.name = 'liberty-paths';
+        m.receiveShadow = true;
+        m.position.y = -GROUND.land;
+        g.add(m);
+      }
+    }
+
     // The trees are where OpenStreetMap has them, one node each. What they are
     // not is a 2001 survey: the island has been planted since the 1930s and
     // the beds were rearranged again in 2019, so this is the right kind of

@@ -277,6 +277,36 @@ export function strand(points, r, open = false) {
 }
 
 /**
+ * A flat ribbon run along a polyline, as merged quads.
+ *
+ * What a path is at two or three kilometres: a pale line across grass. Each
+ * segment is its own quad, overlapped by its own width at each end so the
+ * corners close up without anything having to mitre them — the same trick the
+ * city's carriageways use, and for the same reason, which is that a mitre on a
+ * two-metre path is smaller than a pixel and an open corner is not.
+ *
+ * `runs` is a list of `{ p: [[x, z], ...], w }`. Returns geometries to merge.
+ */
+export function ribbon(runs, y, fallback = 2.4) {
+  const out = [];
+  for (const r of runs || []) {
+    const w = r.w || fallback;
+    for (let i = 0; i < r.p.length - 1; i++) {
+      const [x0, z0] = r.p[i], [x1, z1] = r.p[i + 1];
+      const dx = x1 - x0, dz = z1 - z0;
+      const len = Math.hypot(dx, dz);
+      if (len < 0.2) continue;
+      const q = new THREE.PlaneGeometry(len + w, w);
+      q.rotateX(-Math.PI / 2);
+      q.rotateY(-Math.atan2(dz, dx));
+      q.translate((x0 + x1) / 2, y, (z0 + z1) / 2);
+      out.push(norm(q));
+    }
+  }
+  return out;
+}
+
+/**
  * A height that ramps smoothly through a list of [station, height] pairs.
  *
  * Used for a bridge deck, which rises from each approach to its anchorage,

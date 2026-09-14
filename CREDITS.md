@@ -40,6 +40,15 @@ demolished between 2013 and 2016 and appears in no dataset, so the south end
 of the island is emptier here than it was, and the trees on that half — planted
 in 2014 — are thinned to a quarter.
 
+The paths and roads on all three harbour islands are traced ways from
+OpenStreetMap, clipped to each island. Liberty's and Ellis's are their footway
+networks as mapped now, which is not a 2001 survey; anything serving a
+post-2001 building on Liberty Island is dropped with the building. Governors
+Island takes only the named roads — the Coast Guard base's own street grid,
+tagged as pedestrian ways because the island has been car-free since 2003 — and
+not the unnamed park footways laid over it from 2014. Widths are assigned by
+kind, not measured.
+
 The Jersey City waterfront — Exchange Place, Paulus Hook, Newport, Hoboken and
 Liberty State Park — is traced footprints from OpenStreetMap, but almost none
 of them carry a height: thirty out of six thousand. Storey counts supply a few

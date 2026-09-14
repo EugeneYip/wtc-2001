@@ -727,7 +727,7 @@ buildings are all later than 2001 — the museum opened in 2019, the screening
 building is a consequence of that September — so none of them are here.
 
 Hiding the whole island and putting it back, in a view that has both it and
-the city in it, is **7 draw calls and 13,894 triangles** — everything above
+the city in it, is **8 draw calls and 14,200 triangles** — everything above
 except the trees, which are instances of the city's own and cost no call at
 all. There are no shadows on her: the sun's shadow camera covers about a
 kilometre around the towers and she is three and a half out. At the range she
@@ -816,7 +816,7 @@ Also here: the Ferry Building's cupola, the covered corridors on their posts,
 and the 1986 service bridge to Liberty State Park — private, closed to
 visitors, and the only thing that joins either island to anywhere.
 
-**7 draw calls and 6,172 triangles** with the island in frame, plus 210 trees
+**8 draw calls and 6,488 triangles** with the island in frame, plus 210 trees
 that are instances of the city's own and cost no call at all. The visitor
 buildings that postdate 2001 are not here, because there are none: everything
 on Ellis Island is older than the model.
@@ -900,11 +900,61 @@ the lights on a timer; this island was shut. What it gets is a tenth of what an
 occupied block runs at — the trace a caretaker leaves — against Ellis's fifth
 and the city's full measure.
 
-**8 draw calls and 11,929 triangles**, plus 1,063 trees that are instances of
+**9 draw calls and 12,539 triangles**, plus 1,063 trees that are instances of
 the city's own. There would be more of those: 1,633 are mapped, and the 1,500
 of Hammock Grove went in on the south fill in 2014, where the model needs a car
 park. The south end is thinned to a quarter — enough for the street trees that
 were there, and not a wood that was not.
+
+**And all three of them were being walked on by nobody.** Each island stood as
+lawn, trees, buildings and a seawall promenade, and not one of them had a path
+across it — which is what makes an island look like a model of an island rather
+than a place people are taken round.
+
+The paths were in the data the whole time, and two of the three extracts had
+already downloaded them and thrown them away. Liberty Island's query asks for
+`way["highway"]` and gets 103 ways — the promenade, the radials to the star,
+the flagpole circle — and `build_liberty` returned the fort, the pedestal axis,
+the island ring and the trees. Ellis's does the same and gets 82. Only
+Governors Island's query had never asked at all, and it is the one with the
+most to say: the Coast Guard base's whole street grid, with the base's own
+street names on it.
+
+    Liberty      65 runs   2,160 m
+    Ellis        78 runs   4,443 m
+    Governors    51 runs   9,898 m — 24 named roads
+
+**Governors Island takes its named roads and nothing else.** Andes, Barry,
+Carder, Cartigan, Clayton, Comfort, Craig Road North and South, Division,
+Evans, Hay, Kimmel, King Avenue, Owasco, Quadrangle, Short Avenue, Tampa,
+Wheeler Avenue, Yeaton, the Oval round the parade ground. They are tagged
+`highway=pedestrian` because the island has been car-free since 2003, but they
+are the roads the garrison left and they are the thing that tells a base from a
+park. The eight hundred and sixty-one *unnamed* footways over them — thirty-five
+kilometres of them — are the 2014 park, and putting those in would have drawn
+Hammock Grove across an island that had been empty for five years. Hammock
+Grove and Play Way are named and are dropped by name.
+
+**Liberty Island's paths are cut to match its buildings.** Every building on
+that island is later than 2001 and none of them are modelled; their paths are
+in the same data, and the museum's are a dense little grid of them round a
+footprint dated 2019-05-16. So anything within fourteen metres of a post-2001
+footprint goes with the building it serves — which is a third of the island's
+path length, and the difference between a promenade with radials and a 2019
+site plan. What is left is the layout as OpenStreetMap has it now, which is not
+a 2001 survey any more than the trees are.
+
+**3 draw calls and 1,232 triangles** for all three islands' paths together,
+and 0.15 ms of a 16 ms frame in the view they exist for. Each segment is its
+own quad overlapped by its own width at each end, so the corners close without
+mitring — the same trick the city's carriageways use, because a mitre on a
+two-metre path is smaller than a pixel and an open corner is not.
+
+They are lit at the island's own level and not the city's. A park path in
+Manhattan carries an emissive glow standing in for the lamps down it; run at
+that level these came out as the brightest thing on an island this model has
+just finished arguing was dark. The seawall walk beside them already had its
+own dimmer clone for exactly that reason, and now the paths have one too.
 
 **The harbour traffic.** There were boats here before — thirty-eight of them,
 working back and forth along the channels with wakes behind them — but they
@@ -1881,17 +1931,18 @@ raw/                  cached Overpass responses
                         which are the only two ways named for it
   williamsburg.json     the Williamsburg Bridge's carriageways, which do
                         carry its name
-  liberty.json          Fort Wood, the pedestal as mapped squares, and
-                        the trees on Liberty Island
+  liberty.json          Fort Wood, the pedestal as mapped squares, the
+                        trees on Liberty Island and its footway network
   brooklyn.json         the waterfront strip from the Navy Yard to Red
                         Hook, most of it with surveyed heights
   jersey.json           Exchange Place, Newport, Hoboken and Liberty
                         State Park — footprints, but almost no heights
   ellis.json            every building on both of Ellis Island's islands,
-                        the covered corridors, and the trees
+                        the covered corridors, the trees and the walks
   governors.json        Governors Island: 244 buildings with heights on
                         most of them, Fort Jay, Castle Williams as a
-                        multipolygon, the piers and the trees
+                        multipolygon, the piers, the trees and the
+                        Coast Guard base's street grid
   relief.json           named hills with elevations, and the Palisades
   coast.json            the coastline, which defines where land is
   pools_geom.json       memorial pool corners — the source of the

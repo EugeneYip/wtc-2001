@@ -1439,6 +1439,126 @@ RELIEF_REACH = 16000.0      # metres from the origin worth carrying
 # museum opened in 2019, the screening building is a consequence of that
 # September — so nothing on the island is carried through except what the
 # statue stands on and the trees.
+# ---------------------------------------------------------------------------
+# Paths on the harbour islands
+# ---------------------------------------------------------------------------
+
+# How wide each kind of walked surface is drawn. OSM rarely gives a width on
+# these, and at two to four kilometres the only thing that reads is whether a
+# line is a footpath or a road, so they are assigned rather than measured.
+PATH_W = {
+    "footway": 2.4,
+    "path": 2.0,
+    "steps": 2.0,
+    "pedestrian": 6.5,
+    "service": 5.0,
+    "residential": 6.5,
+    "unclassified": 6.0,
+}
+
+# Governors Island's street grid is tagged `pedestrian` because the island has
+# been car-free since 2003, but the roads and their names are the Coast Guard
+# base's and were there in 2001. These two are not: Hammock Grove was planted
+# in 2014 and the Play Lawn with it, both on the south fill.
+GOVERNORS_NEW_WAYS = {"Hammock Grove", "Play Way"}
+
+# Post-2001 buildings on Liberty Island that carry no date in the data.
+LIBERTY_LATER = {"Screening Building"}
+
+
+def island_paths(els, island, pick=None, avoid=None, margin=14.0):
+    """The walked surfaces on an island, clipped to it.
+
+    Every one of the three island extracts already carried its own footway
+    network — Liberty's radial paths round the star, Ellis's walks between the
+    pavilions, Governors Island's whole street grid — and every one of them was
+    downloading it and throwing it away. A path is the cheapest thing in this
+    model that says a place is used rather than merely standing there.
+
+    Ways are clipped by keeping maximal runs of consecutive vertices inside the
+    island. Nothing here runs off the edge except at a landing, so the couple of
+    metres lost where a way crosses the seawall is not worth a real clip.
+
+    `avoid` is a list of footprints whose surroundings are dropped with them.
+    Liberty Island's buildings are all later than 2001 and none of them are
+    modelled, but their paths are in the same data and the museum's are a dense
+    little grid of them: leaving those in would have drawn the 2019 plan of an
+    island this model is claiming not to have built.
+    """
+    if not island:
+        return []
+
+    def blocked(q):
+        for ring in avoid or ():
+            if _point_in(q, ring):
+                return True
+            n = len(ring)
+            for i in range(n):
+                if _seg_dist(q, ring[i], ring[(i + 1) % n]) < margin:
+                    return True
+        return False
+
+    out = []
+    for e in els:
+        t = e.get("tags", {})
+        if e.get("type") != "way":
+            continue
+        kind = t.get("highway")
+        if kind not in PATH_W:
+            continue
+        if pick and not pick(t):
+            continue
+        g = [project(p["lat"], p["lon"]) for p in e.get("geometry", [])]
+        run = []
+        for q in g:
+            if _point_in(q, island) and not blocked(q):
+                run.append(q)
+            else:
+                if len(run) > 1:
+                    out.append((run, kind))
+                run = []
+        if len(run) > 1:
+            out.append((run, kind))
+    runs = []
+    for pts, kind in out:
+        pts = simplify_open(pts, 0.7)
+        if len(pts) < 2:
+            continue
+        runs.append({"p": [[round(x, 1), round(z, 1)] for x, z in pts],
+                     "w": PATH_W[kind]})
+    return runs
+
+
+def simplify_open(pts, tol=0.7):
+    """Douglas-Peucker on an open polyline."""
+    if len(pts) < 3:
+        return pts
+    keep = [False] * len(pts)
+    keep[0] = keep[-1] = True
+    stack = [(0, len(pts) - 1)]
+    while stack:
+        a, b = stack.pop()
+        if b <= a + 1:
+            continue
+        (x0, z0), (x1, z1) = pts[a], pts[b]
+        dx, dz = x1 - x0, z1 - z0
+        l2 = dx * dx + dz * dz
+        worst, wi = -1.0, -1
+        for i in range(a + 1, b):
+            x, z = pts[i]
+            t = 0.0 if l2 <= 0 else ((x - x0) * dx + (z - z0) * dz) / l2
+            t = max(0.0, min(1.0, t))
+            ex, ez = x - (x0 + dx * t), z - (z0 + dz * t)
+            d = ex * ex + ez * ez
+            if d > worst:
+                worst, wi = d, i
+        if worst > tol * tol:
+            keep[wi] = True
+            stack.append((a, wi))
+            stack.append((wi, b))
+    return [p for p, k in zip(pts, keep) if k]
+
+
 def build_liberty(land):
     """The star of Fort Wood, the pedestal's plan, and which way she looks.
 
@@ -1529,12 +1649,32 @@ def build_liberty(land):
             if math.dist((x, z), (cx, cz)) < 320:
                 trees.append([round(x, 1), round(z, 1)])
 
+    # Everything built on this island since 2001, so that the paths serving it
+    # can be dropped with it. The museum carries its own date; the screening
+    # building is a consequence of that September and has to be named.
+    later = []
+    for e in els:
+        t = e.get("tags", {})
+        if e["type"] != "way" or not t.get("building"):
+            continue
+        d = t.get("start_date", "")
+        if d[:4].isdigit() and int(d[:4]) <= 2001:
+            continue
+        if not (d or t.get("name") in LIBERTY_LATER):
+            continue
+        g = [project(p["lat"], p["lon"]) for p in e.get("geometry", [])]
+        if g and g[0] == g[-1]:
+            g = g[:-1]
+        if len(g) > 2:
+            later.append(g)
+
     return {
         "fort": [[round(x, 2), round(z, 2)] for x, z in ccw(fort)],
         "at": [round(cx, 2), round(cz, 2)],
         "face": round(face, 2),
         "island": island,
         "trees": trees,
+        "paths": island_paths(els, island, avoid=later),
     }
 
 
@@ -1795,6 +1935,7 @@ def build_ellis(land):
         "main": main,
         "link": link,
         "trees": trees,
+        "paths": island_paths(els, island),
     }
 
 
@@ -1988,6 +2129,13 @@ def build_governors(land):
         "piers": piers,
         "trees": kept,
         "castle": bool(castle),
+        # Named ways only. The island's street grid carries the Coast Guard
+        # base's own names and was there in 2001; the eight hundred unnamed
+        # footways over it are the 2014 park, and putting those in would draw
+        # Hammock Grove across a base that had been empty for five years.
+        "paths": island_paths(
+            els, island,
+            lambda t: bool(t.get("name")) and t["name"] not in GOVERNORS_NEW_WAYS),
     }
 
 
