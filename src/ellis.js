@@ -32,7 +32,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'BufferGeometryUtils';
-import { norm, flat, inset, islandGround, GROUND } from './geo.js';
+import { norm, poly, prism, hip, hipRing, islandGround, GROUND } from './geo.js';
 import { shell, tint } from './city.js';
 import { copperTexture, COPPER_TILE_M } from './textures.js';
 
@@ -47,7 +47,6 @@ const DOME = 31.4;            // the top of the lead-and-copper dome
 const FINIAL = 33.8;          // the tip of the finial on the lantern
 
 const PITCH = 38 * (Math.PI / 180);   // slate, on everything with a roof
-const EAVE = 0.65;                    // how far a roof oversails its wall
 
 const COPPER = copperTexture();
 
@@ -130,112 +129,6 @@ export function setEllisNight(lit) {
 // ---------------------------------------------------------------------------
 // Geometry helpers
 // ---------------------------------------------------------------------------
-
-const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _n = new THREE.Vector3();
-
-/**
- * A flat convex polygon, fanned, wound so that its normal agrees with `out`.
- *
- * Every roof plane and every tower face in here is built in some local frame
- * and it is not worth working out by hand which way round each one comes; the
- * direction each should face is obvious, so the winding is checked against it.
- */
-function poly(pts, out) {
-  _a.subVectors(pts[1], pts[0]);
-  _b.subVectors(pts[2], pts[0]);
-  _n.crossVectors(_a, _b);
-  const flip = _n.dot(out) < 0;
-  const p = [];
-  for (let i = 1; i + 1 < pts.length; i++) {
-    const t = flip ? [pts[0], pts[i + 1], pts[i]] : [pts[0], pts[i], pts[i + 1]];
-    for (const v of t) p.push(v.x, v.y, v.z);
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3));
-  g.computeVertexNormals();
-  return norm(g);
-}
-
-/** A box in the plan frame of `box`, from y0 to y1, inset from its edges. */
-function prism(box, y0, y1, inset) {
-  const [ox, oz] = box.o, [ux, uz] = box.u;
-  const vx = -uz, vz = ux;
-  const at = (du, dv, y) => new THREE.Vector3(
-    ox + ux * du + vx * dv, y, oz + uz * du + vz * dv);
-  const u0 = inset, u1 = box.L - inset, v0 = inset, v1 = box.D - inset;
-  const c = (y) => [at(u0, v0, y), at(u1, v0, y), at(u1, v1, y), at(u0, v1, y)];
-  const lo = c(y0), hi = c(y1);
-  const parts = [poly(hi, new THREE.Vector3(0, 1, 0))];
-  for (let i = 0; i < 4; i++) {
-    const j = (i + 1) % 4;
-    const e = new THREE.Vector3().subVectors(lo[j], lo[i]);
-    const out = new THREE.Vector3(e.z, 0, -e.x).normalize();
-    parts.push(poly([lo[i], lo[j], hi[j], hi[i]], out));
-  }
-  return mergeGeometries(parts);
-}
-
-/**
- * A hipped roof over an oriented box: two trapezoid slopes and two hip ends.
- *
- * Only put on a footprint that nearly fills its own bounding box. A straight
- * skeleton would roof anything, and this model has no call for one — what it
- * has is forty pavilions that are rectangles, and a handful that are not, and
- * the ones that are not keep the flat roof behind a parapet they already had.
- */
-function hip(box, y, pitch = PITCH, over = EAVE) {
-  const [ox, oz] = box.o, [ux, uz] = box.u;
-  const vx = -uz, vz = ux;
-  const L = box.L + over * 2, D = box.D + over * 2;
-  const at = (du, dv, h) => new THREE.Vector3(
-    ox + ux * (du - over) + vx * (dv - over), y + h,
-    oz + uz * (du - over) + vz * (dv - over));
-  const rise = (D / 2) * Math.tan(pitch);
-  const A = at(0, 0, 0), B = at(L, 0, 0), C = at(L, D, 0), Dv = at(0, D, 0);
-  // A ridge shorter than the hip runs to nothing and the roof is a pyramid,
-  // which is what a square pavilion gets.
-  const half = Math.min(D / 2, L / 2);
-  const P = at(half, D / 2, rise), Q = at(L - half, D / 2, rise);
-  const UP = new THREE.Vector3(0, 1, 0);
-  const out = (dx, dz, side) => new THREE.Vector3(dx * side, 0, dz * side)
-    .addScaledVector(UP, 1.2);
-  return mergeGeometries([
-    poly([A, B, Q, P], out(vx, vz, -1)),
-    poly([C, Dv, P, Q], out(vx, vz, 1)),
-    poly([Dv, A, P], out(ux, uz, -1)),
-    poly([B, C, Q], out(ux, uz, 1)),
-  ]);
-}
-
-/**
- * A hipped roof over a footprint of any shape, by lofting the outline to a
- * copy of itself moved in on all sides and lifted.
- *
- * The oriented-box version below roofs a rectangle correctly and nothing else,
- * and half the buildings here are not rectangles — the Baggage and Dormitory
- * range is a T and the Main Building is a long U. Left flat, those were the
- * largest grey nothings in the harbour. This is not a straight skeleton and
- * will not give the exact valley lines a real roof has at a reflex corner, but
- * every ridge is where a ridge goes and every slope runs the right way.
- */
-function hipRing(ring, y, run, pitch) {
-  const eave = inset(ring, -0.55);
-  const top = inset(ring, run);
-  const rise = run * Math.tan(pitch);
-  const pos = [];
-  const n = eave.length;
-  for (let i = 0; i < n; i++) {
-    const j = (i + 1) % n;
-    const a = [eave[i][0], y, eave[i][1]], b = [eave[j][0], y, eave[j][1]];
-    const c = [top[j][0], y + rise, top[j][1]];
-    const d = [top[i][0], y + rise, top[i][1]];
-    pos.push(...a, ...b, ...c, ...a, ...c, ...d);
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.computeVertexNormals();
-  return mergeGeometries([norm(g), flat(top, y + rise)]);
-}
 
 /** A round-arched opening, as a slab of dark set into a wall. */
 function arch(cx, cy, cz, nx, nz, w, h, depth) {
@@ -369,7 +262,7 @@ export function buildEllis(ellis, mats = {}) {
   // and without it both islands were the colour of the far shore.
   if (ellis.island && ellis.island.length > 3) {
     const isle = islandGround(ellis.island, 16.0,
-                              { walk: GROUND.walk, lawn: GROUND.park });
+                              { walk: GROUND.walk, lawn: GROUND.park }, 1.8);
     for (const [geo, mat, name] of [[isle.walk, mats.walk, 'ellis-walk'],
                                     [isle.lawn, mats.grass, 'ellis-lawn']]) {
       if (!mat) continue;

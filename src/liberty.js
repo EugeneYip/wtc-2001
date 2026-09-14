@@ -867,7 +867,7 @@ export function buildLiberty(liberty, mats = {}) {
 
   if (liberty.island && liberty.island.length > 3) {
     const isle = islandGround(liberty.island, 13.0,
-                              { walk: GROUND.walk, lawn: GROUND.park });
+                              { walk: GROUND.walk, lawn: GROUND.park }, 1.5);
     for (const [geo, mat, name] of [[isle.walk, mats.walk, 'liberty-walk'],
                                     [isle.lawn, mats.grass, 'liberty-lawn']]) {
       if (!mat) continue;

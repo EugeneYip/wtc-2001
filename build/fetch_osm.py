@@ -71,6 +71,21 @@ QUERIES = {
          way["highway"]["name"="Brooklyn Bridge"](40.69,-74.02,40.72,-73.96););
         out geom;""",
 
+    # Governors Island. The largest island in the harbour and the nearest of
+    # the three to the site, and in 2001 an empty one: the Coast Guard had gone
+    # in 1996 and the city did not buy it until 2003.
+    "governors": """[out:json][timeout:90];
+        (way["building"](40.6830,-74.0250,40.6955,-74.0110);
+         relation["building"](40.6830,-74.0250,40.6955,-74.0110);
+         way["man_made"](40.6830,-74.0250,40.6955,-74.0110);
+         way["historic"](40.6830,-74.0250,40.6955,-74.0110);
+         relation["historic"](40.6830,-74.0250,40.6955,-74.0110);
+         way["barrier"="wall"](40.6830,-74.0250,40.6955,-74.0110);
+         way["leisure"](40.6830,-74.0250,40.6955,-74.0110);
+         way["landuse"](40.6830,-74.0250,40.6955,-74.0110);
+         node["natural"="tree"](40.6830,-74.0250,40.6955,-74.0110););
+        out geom;""",
+
     # Ellis Island. Closer to the site than Liberty Island is, and the whole
     # of it — the Main Building, the hospital complex on the south island, the
     # ferry house, the seawalls — falls outside the building box.

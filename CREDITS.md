@@ -30,6 +30,16 @@ service bridge to Liberty State Park and the positions of its trees are from
 OpenStreetMap. None of those buildings carries a height in the data; the
 heights are assigned in `build/build_scene.py` and are the curated part of it.
 
+Governors Island's outline, its buildings, Fort Jay's star, Castle Williams —
+which is mapped as a multipolygon, so its parade ground comes through as the
+hole it is — the piers and the trees are all from OpenStreetMap, and most of
+the buildings carry a surveyed height. What is curated is which of them stood
+in 2001: the island has been a public park since 2003 and much of what is
+mapped is later than that. The Coast Guard housing on the south half was
+demolished between 2013 and 2016 and appears in no dataset, so the south end
+of the island is emptier here than it was, and the trees on that half — planted
+in 2014 — are thinned to a quarter.
+
 Relief on the far shores is placed from the named hills around the harbour,
 which OpenStreetMap carries with real elevations, and from the Palisades, which
 it maps as a cliff line. The gentle undulation between them is invented.
@@ -54,6 +64,10 @@ dimensions and historic site plans, and any error in them is mine:
 - The Deutsche Bank Building at 130 Liberty Street, demolished 2007–2011
 - The Brooklyn Bridge: plan from OpenStreetMap, section from published figures
   for the 1883 structure — 1,595 ft 6 in main span, 276 ft 6 in towers
+- Fort Jay's section (1794): the star is traced in OpenStreetMap, but the
+  glacis, ditch, scarp, parapet and terreplein are proportioned from what a
+  bastioned earthwork of that size is, not measured. So is the height of
+  Castle Williams' parapet above its surveyed 14.9 m wall
 - Ellis Island's Main Building (Boring & Tilton, 1900): footprint from
   OpenStreetMap, three storeys to the cornice as the data says, and four
   copper-domed towers placed on the corners of the central pavilion, which are

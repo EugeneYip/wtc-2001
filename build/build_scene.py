@@ -1787,6 +1787,199 @@ def build_ellis(land):
         "trees": trees,
     }
 
+
+# ---------------------------------------------------------------------------
+# Governors Island
+# ---------------------------------------------------------------------------
+
+# The largest island in the harbour, the nearest of the three to the site, and
+# in September 2001 an empty one: the Coast Guard left in 1996 and the city did
+# not buy it until 2003. Everything on it was still standing and nothing on it
+# was in use.
+#
+# Which is the difficulty. The island is mapped in enormous detail *now*, and a
+# great deal of what is mapped went up after 2003 — the park, the gardens, the
+# playgrounds, a brewery, a spa, and tents people sleep in. Worse, some of what
+# was there in 2001 has gone: the Coast Guard housing on the south fill came
+# down between 2013 and 2016 and is not in the data at all, so the south end of
+# this island is emptier here than it was. That is a gap and it is left as one
+# rather than invented.
+GOVERNORS_MODERN = {
+    "FDNY Training Area",       # the fire academy's props, post-2003
+    "Pizza Yard",
+    "Six Coasts",
+    "Visitor Center",
+}
+# These are current tenants in old buildings — the buildings are period, the
+# names are not, so the names are dropped and the buildings kept.
+GOVERNORS_NAMES = {
+    "Castle Williams", "Fort Jay", "Liggett Hall", "Chapel of St. Cornelius",
+    "Our Lady Star of the Sea", "Commanding Officer's Quarters", "Dutch House",
+    "Governors Island Vent Building",
+}
+
+
+def _seg_dist(p, a, b):
+    """Distance from a point to a line segment."""
+    dx, dz = b[0] - a[0], b[1] - a[1]
+    l2 = dx * dx + dz * dz
+    t = 0.0 if l2 <= 0 else ((p[0] - a[0]) * dx + (p[1] - a[1]) * dz) / l2
+    t = max(0.0, min(1.0, t))
+    return math.dist(p, (a[0] + dx * t, a[1] + dz * t))
+
+
+def build_governors(land):
+    """Every building on Governors Island, with the heights it already has.
+
+    Unlike Ellis, most of this comes with a height already — 97 of the
+    buildings carry one from an aerial survey — so the curation here is about
+    *which* buildings belong in 2001 rather than how tall they are.
+    """
+    path = os.path.join(RAW, "governors.json")
+    if not os.path.exists(path):
+        print("  governors island      : no extract, skipped")
+        return None
+    els = json.load(open(path))["elements"]
+
+    island = None
+    for l in land:
+        if _point_in((914.5, 2297.8), l["p"]):
+            island = l["p"]
+            break
+    if not island:
+        print("  governors island      : not in the coastline, skipped")
+        return None
+
+    def rings(e):
+        if e["type"] == "way":
+            g = [project(p["lat"], p["lon"]) for p in e.get("geometry", [])]
+            return ([g], []) if len(g) > 3 else (None, None)
+        out, holes = [], []
+        for m in e.get("members", []):
+            g = [project(p["lat"], p["lon"]) for p in m.get("geometry", [])]
+            if len(g) < 4:
+                continue
+            (out if m.get("role") == "outer" else holes).append(g)
+        return (out, holes) if out else (None, None)
+
+    buildings, fort, castle, trees, piers = [], None, None, [], []
+    for e in els:
+        t = e.get("tags", {})
+        if e["type"] == "node":
+            if t.get("natural") == "tree":
+                x, z = project(e["lat"], e["lon"])
+                if _point_in((x, z), island):
+                    trees.append([round(x, 1), round(z, 1)])
+            continue
+        # (buildings and areas below)
+        out, holes = rings(e)
+        if not out:
+            continue
+        g = out[0]
+        if g[0] == g[-1]:
+            g = g[:-1]
+        if t.get("man_made") == "pier":
+            a2 = 0.0
+            for i in range(len(g)):
+                x0, z0 = g[i]
+                x1, z1 = g[(i + 1) % len(g)]
+                a2 += x0 * z1 - x1 * z0
+            # A pier is mostly over water, so its centre is not on the island
+            # and the centroid test below would throw all of them away. What
+            # makes it this island's pier is that it touches this island.
+            near = _point_in(g[0], island) or min(
+                _seg_dist(q, island[i], island[(i + 1) % len(island)])
+                for q in g for i in range(len(island))) < 40
+            if abs(a2) / 2 > 500 and near:
+                piers.append([[round(x, 2), round(z, 2)] for x, z in ccw(g)])
+            continue
+
+        cx = sum(p[0] for p in g) / len(g)
+        cz = sum(p[1] for p in g) / len(g)
+        if not _point_in((cx, cz), island):
+            continue
+
+        if t.get("historic") == "fort" and t.get("name") == "Fort Jay":
+            fort = [[round(x, 2), round(z, 2)] for x, z in ccw(g)]
+            continue
+        if not t.get("building"):
+            continue
+        name = t.get("name", "")
+        if name in GOVERNORS_MODERN:
+            continue
+        if t.get("building") in ("static_caravan", "greenhouse", "roof"):
+            continue
+        if t.get("man_made") == "canopy":
+            continue
+
+        a2 = 0.0
+        for i in range(len(g)):
+            x0, z0 = g[i]
+            x1, z1 = g[(i + 1) % len(g)]
+            a2 += x0 * z1 - x1 * z0
+        area = abs(a2) / 2
+
+        h = None
+        try:
+            h = float(t["height"])
+        except (KeyError, ValueError):
+            pass
+        if h is None:
+            # Only the substantial ones. What is left without a height is
+            # mostly kiosks and sheds that were not there in 2001 anyway, and
+            # none of it is a pixel at the two and a half kilometres this
+            # island is looked at from.
+            if area < 90:
+                continue
+            h = 12.0 if area > 700 else 9.0 if area > 300 else 6.5
+        if h < 2.2:
+            continue
+
+        rec = {"p": [[round(x, 2), round(z, 2)] for x, z in ccw(g)],
+               "h": round(h, 1),
+               # Red brick on the barracks and the officers' rows, which are
+               # the big ones; buff on the rest. The island is both, and all of
+               # one colour it reads as a housing estate.
+               "k": "red" if area >= 700 else "buff"}
+        if name in GOVERNORS_NAMES:
+            rec["n"] = name
+        box = _obb(g)
+        if box:
+            rec["box"] = box
+        if t.get("historic") == "fort" and name == "Castle Williams":
+            rec["k"] = "castle"
+            if holes:
+                hg = holes[0]
+                if hg[0] == hg[-1]:
+                    hg = hg[:-1]
+                rec["hole"] = [[round(x, 2), round(z, 2)] for x, z in ccw(hg)]
+            castle = rec
+        buildings.append(rec)
+
+    if not buildings:
+        return None
+
+    # Liggett Hall was put across the island in 1929 precisely to divide it,
+    # and it still does: north of it is the nineteenth-century post, which was
+    # wooded in 2001 and is wooded now, and south of it is the landfill, which
+    # in 2001 was Coast Guard housing, roads and parking. The 1,500 trees of
+    # Hammock Grove were planted on that in 2014. Keeping all of them would
+    # put a wood where the model needs a car park, so the south end is thinned
+    # to a quarter — enough for the street trees that were there, and not a
+    # grove that was not.
+    kept = [t for i, t in enumerate(trees)
+            if t[1] < 2380 or i % 4 == 0]
+
+    return {
+        "island": island,
+        "at": [914.5, 2297.8],
+        "b": buildings,
+        "fort": fort,
+        "piers": piers,
+        "trees": kept,
+        "castle": bool(castle),
+    }
+
 def build_relief():
     path = os.path.join(RAW, "relief.json")
     if not os.path.exists(path):
@@ -1859,6 +2052,7 @@ def main():
     bridge = build_bridge(land)
     liberty = build_liberty(land)
     ellis = build_ellis(land)
+    governors = build_governors(land)
     relief = build_relief()
     if relief:
         print("  relief                : %d hills, %d ridge lines"
@@ -1876,6 +2070,13 @@ def main():
         print("  ellis island          : %d buildings, %d trees, towers %s"
               % (len(ellis["b"]), len(ellis["trees"]),
                  "found" if ellis["main"] else "NOT FOUND"))
+    if governors:
+        print("  governors island      : %d buildings, %d trees, %d piers, "
+              "fort %s, castle %s"
+              % (len(governors["b"]), len(governors["trees"]),
+                 len(governors["piers"]),
+                 "yes" if governors["fort"] else "no",
+                 "yes" if governors["castle"] else "no"))
 
     scene = {
         "meta": {
@@ -1904,6 +2105,7 @@ def main():
         "bridge": bridge,
         "liberty": liberty,
         "ellis": ellis,
+        "governors": governors,
         "relief": relief,
         "buildings": buildings,
         "roads": roads,

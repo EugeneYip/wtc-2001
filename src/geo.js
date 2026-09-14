@@ -7,6 +7,7 @@
  */
 
 import * as THREE from 'three';
+import { mergeGeometries } from 'BufferGeometryUtils';
 
 /** Strip the index and anything beyond position/normal/uv. */
 /**
@@ -114,7 +115,7 @@ export function inset(ring, d) {
  * a pale rim — so that is what this is. Returns the two surfaces and the ring
  * the lawn stops at, which is also where anything planted has to stay inside.
  */
-export function islandGround(ring, walk, levels) {
+export function islandGround(ring, walk, levels, spread = 1, holes) {
   const edge = inset(ring, 1.5);
   const lawn = inset(ring, walk);
   const y = levels.walk;
@@ -128,7 +129,130 @@ export function islandGround(ring, walk, levels) {
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(band, 3));
   g.computeVertexNormals();
-  return { walk: norm(g), lawn: flat(lawn, levels.lawn), ring: lawn };
+  const grass = flat(lawn, levels.lawn, holes);
+  if (spread !== 1) {
+    // Governors Island is 1.3 km long and the grass tiles every 34 m, so from
+    // above it came out as a rug: thirty-eight identical repeats in a grid,
+    // with its rows running square to the seawall because both are straight.
+    // Stretching the tile and turning it off the island's own axes does not
+    // remove the repeat — nothing short of a bigger texture would — but it
+    // stops the eye finding it.
+    const uv = grass.getAttribute('uv');
+    const c = Math.cos(0.55), sn = Math.sin(0.55);
+    for (let i = 0; i < uv.count; i++) {
+      const u = uv.getX(i) / spread, v = uv.getY(i) / spread;
+      uv.setXY(i, u * c - v * sn, u * sn + v * c);
+    }
+    uv.needsUpdate = true;
+  }
+  return { walk: norm(g), lawn: grass, ring: lawn };
+}
+
+const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _n = new THREE.Vector3();
+
+/**
+ * A flat convex polygon, fanned, wound so that its normal agrees with `out`.
+ *
+ * Every roof plane and every tower face in here is built in some local frame
+ * and it is not worth working out by hand which way round each one comes; the
+ * direction each should face is obvious, so the winding is checked against it.
+ */
+export function poly(pts, out) {
+  _a.subVectors(pts[1], pts[0]);
+  _b.subVectors(pts[2], pts[0]);
+  _n.crossVectors(_a, _b);
+  const flip = _n.dot(out) < 0;
+  const p = [];
+  for (let i = 1; i + 1 < pts.length; i++) {
+    const t = flip ? [pts[0], pts[i + 1], pts[i]] : [pts[0], pts[i], pts[i + 1]];
+    for (const v of t) p.push(v.x, v.y, v.z);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3));
+  g.computeVertexNormals();
+  return norm(g);
+}
+
+/** A box in the plan frame of `box`, from y0 to y1, inset from its edges. */
+export function prism(box, y0, y1, edge) {
+  const [ox, oz] = box.o, [ux, uz] = box.u;
+  const vx = -uz, vz = ux;
+  const at = (du, dv, y) => new THREE.Vector3(
+    ox + ux * du + vx * dv, y, oz + uz * du + vz * dv);
+  const u0 = edge, u1 = box.L - edge, v0 = edge, v1 = box.D - edge;
+  const c = (y) => [at(u0, v0, y), at(u1, v0, y), at(u1, v1, y), at(u0, v1, y)];
+  const lo = c(y0), hi = c(y1);
+  const parts = [poly(hi, new THREE.Vector3(0, 1, 0))];
+  for (let i = 0; i < 4; i++) {
+    const j = (i + 1) % 4;
+    const e = new THREE.Vector3().subVectors(lo[j], lo[i]);
+    const out = new THREE.Vector3(e.z, 0, -e.x).normalize();
+    parts.push(poly([lo[i], lo[j], hi[j], hi[i]], out));
+  }
+  return mergeGeometries(parts);
+}
+
+/**
+ * A hipped roof over an oriented box: two trapezoid slopes and two hip ends.
+ *
+ * Only put on a footprint that nearly fills its own bounding box. A straight
+ * skeleton would roof anything, and this model has no call for one — what it
+ * has is forty pavilions that are rectangles, and a handful that are not, and
+ * the ones that are not keep the flat roof behind a parapet they already had.
+ */
+export function hip(box, y, pitch, over = 0.6) {
+  const [ox, oz] = box.o, [ux, uz] = box.u;
+  const vx = -uz, vz = ux;
+  const L = box.L + over * 2, D = box.D + over * 2;
+  const at = (du, dv, h) => new THREE.Vector3(
+    ox + ux * (du - over) + vx * (dv - over), y + h,
+    oz + uz * (du - over) + vz * (dv - over));
+  const rise = (D / 2) * Math.tan(pitch);
+  const A = at(0, 0, 0), B = at(L, 0, 0), C = at(L, D, 0), Dv = at(0, D, 0);
+  // A ridge shorter than the hip runs to nothing and the roof is a pyramid,
+  // which is what a square pavilion gets.
+  const half = Math.min(D / 2, L / 2);
+  const P = at(half, D / 2, rise), Q = at(L - half, D / 2, rise);
+  const UP = new THREE.Vector3(0, 1, 0);
+  const out = (dx, dz, side) => new THREE.Vector3(dx * side, 0, dz * side)
+    .addScaledVector(UP, 1.2);
+  return mergeGeometries([
+    poly([A, B, Q, P], out(vx, vz, -1)),
+    poly([C, Dv, P, Q], out(vx, vz, 1)),
+    poly([Dv, A, P], out(ux, uz, -1)),
+    poly([B, C, Q], out(ux, uz, 1)),
+  ]);
+}
+
+/**
+ * A hipped roof over a footprint of any shape, by lofting the outline to a
+ * copy of itself moved in on all sides and lifted.
+ *
+ * Roofing an oriented bounding box instead gets a rectangle right and nothing
+ * else, and on these islands half the buildings are not rectangles — Ellis's
+ * Baggage and Dormitory range is a T and its Main Building a long U. Left
+ * flat, those were the largest grey nothings in the harbour. This is not a
+ * straight skeleton and will not give the exact valley lines a real roof has
+ * at a reflex corner, but every ridge is where a ridge goes and every slope
+ * runs the right way, on any shape.
+ */
+export function hipRing(ring, y, run, pitch) {
+  const eave = inset(ring, -0.55);
+  const top = inset(ring, run);
+  const rise = run * Math.tan(pitch);
+  const pos = [];
+  const n = eave.length;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    const a = [eave[i][0], y, eave[i][1]], b = [eave[j][0], y, eave[j][1]];
+    const c = [top[j][0], y + rise, top[j][1]];
+    const d = [top[i][0], y + rise, top[i][1]];
+    pos.push(...a, ...b, ...c, ...a, ...c, ...d);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return mergeGeometries([norm(g), flat(top, y + rise)]);
 }
 
 /** Footprint ring (x, z pairs) to a THREE.Shape with correct winding. */

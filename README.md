@@ -817,6 +817,88 @@ that are instances of the city's own and cost no call at all. The visitor
 buildings that postdate 2001 are not here, because there are none: everything
 on Ellis Island is older than the model.
 
+**Governors Island.** The largest island in the harbour — 172 acres, more
+than Liberty and Ellis together and then some — and the nearest of the three to
+the site at two and a half kilometres. It closes the view south from the
+Battery, and it was a bare grey slab.
+
+In September 2001 it was an *empty* island, and that is the thing to hold on to
+while reading it. The Coast Guard left in 1996 and the city did not buy it
+until 2003: every building was standing and not one of them was in use.
+
+Nearly all of it is surveyed, and unlike Ellis it comes with **heights** —
+ninety-seven of the buildings carry one from an aerial survey. So the curation
+here is not about how tall things are but about *which* of them belong in 2001.
+The island is mapped as it is now, and it has been a public park for twenty
+years: the brewery, the spa, the playgrounds, the gardens and the tents people
+sleep in are all later, and all dropped. The names mostly go too — a dozen of
+them are current tenants of period buildings, so the building stays and the
+name does not.
+
+**The gap runs the other way as well, and this cannot close it.** The Coast
+Guard housing that filled the south half came down between 2013 and 2016,
+before anyone mapped it in detail, so it is in no dataset. The south end of
+this island is emptier here than it was in 2001. That is left as a hole rather
+than filled with invention, which is the same rule the land across the rivers
+follows.
+
+Three things carry the silhouette, and all three come out of the data:
+
+- **Fort Jay**, 1794, traced in OSM as a four-bastioned star 215 m across. It
+  is built as a section rather than a wall, because that is what an earthwork
+  is: a glacis sloping up so anything approaching is exposed, a dry ditch
+  behind its crest, the scarp rising out of the ditch to the parapet, the
+  terreplein behind that, and the parade ground at the island's own level with
+  the four barracks standing on it. The batter is a scale about the centre, not
+  a parallel offset — same reason as Fort Wood under the statue: four salient
+  angles under sixty degrees turn themselves inside out if you try.
+- **Castle Williams**, 1807, which is mapped as a *multipolygon* — and that is
+  exactly the right shape to build from, because the outer ring is the wall and
+  the hole is the parade. Red sandstone, 14.9 m, with a crenellated parapet,
+  and a wall fourteen metres thick because that fort is three tiers of
+  casemates rather than a curtain.
+- **Liggett Hall**, 1929, McKim Mead & White: 309 m of barracks laid across the
+  full width of the island, 24.5 m to the ridge.
+
+**The fort is cut out of the lawn**, which matters more than it sounds. Its
+ditch is a metre and a half below the island and the grass sits a hand's
+breadth above that, so laid over the top the lawn simply filled the ditch in
+and Fort Jay became a bank with nothing behind it. The lawn is built with the
+fort's outline as a hole in it instead. Nothing is planted inside that hole
+either: a glacis is kept clear so it can be swept.
+
+**And the relief had been sitting on top of all of this the whole time.** The
+far-shore terrain pass excludes the ring the origin stands in, so it never
+touched Manhattan — but nothing kept it off the harbour islands, and Governors
+Island is big enough to score as inland. It was laying a lumpy grey sheet a few
+metres over the ground there, with the straight edges of its own 170 m grid
+showing through, and had been for as long as the relief has existed. Nobody
+could see it, because until there was a lawn under it the island was the same
+dark ground either way. The relief now stays off all three islands.
+
+**The lawn tiles at 34 m and this island is 1,300 m long.** From above that is
+thirty-eight identical repeats in a grid, running square to the seawall because
+both are straight — a rug, not a field. Stretching the tile and turning it off
+the island's own axes does not remove the repeat, and nothing short of a bigger
+texture would, but it stops the eye finding it. All three islands take it now,
+in proportion to their size.
+
+Two wall families, not one: red brick on the barracks and the officers' rows,
+and a pale buff on everything else, pushed warm and light on the way in because
+the officers' quarters are painted yellow with white trim and not left as bare
+masonry. Under a low sun the two raw colours both read brown.
+
+**At night it is dark, and that is the point.** Ellis at least had a museum with
+the lights on a timer; this island was shut. What it gets is a tenth of what an
+occupied block runs at — the trace a caretaker leaves — against Ellis's fifth
+and the city's full measure.
+
+**8 draw calls and 11,929 triangles**, plus 1,063 trees that are instances of
+the city's own. There would be more of those: 1,633 are mapped, and the 1,500
+of Hammock Grove went in on the south fill in 2014, where the model needs a car
+park. The south end is thinned to a quarter — enough for the street trees that
+were there, and not a wood that was not.
+
 **Light and water.** The sun is placed from real solar geometry for 40.71° N
 on 11 September, so shadow directions through the day are the ones the site
 actually had. It is drawn by the Mie term of the sky model, and the asymmetry
@@ -1204,7 +1286,7 @@ out offset diagonally by 67.0 m east and 103.8 m south, which leaves the
 documented ~130 ft gap between their facing walls as an independent check
 that was never fed into the calculation.
 
-Eight things are deliberately not raw OpenStreetMap:
+Nine things are deliberately not raw OpenStreetMap:
 
 1. **Post-2001 buildings are removed** — the modern WTC site, and the towers
    that filled in the Financial District and Battery Park City between 2002
@@ -1279,6 +1361,14 @@ Eight things are deliberately not raw OpenStreetMap:
    Building, which is the only one OSM gives a storey count for. The four
    towers are placed off the steps in the traced outline; how high they go is
    proportioned, because no source states it.
+9. **Governors Island is curated by date, not by height.** Ninety-seven of
+   its buildings carry a surveyed height, so almost nothing here is assigned.
+   What is decided is which buildings were there in 2001 — the island has been
+   a public park since 2003 and a great deal of what is mapped went up after
+   that — and the answer is imperfect in one direction that cannot be helped:
+   the Coast Guard housing on the south fill was demolished before it was
+   mapped, so the south end is emptier than it was. The trees are today's and
+   are thinned on that half for the same reason.
 
 Background buildings with no height in OSM get a deterministic estimate from
 their id and footprint area, so the fabric varies instead of reading as one
@@ -1286,8 +1376,8 @@ uniform slab. Those are massing, not survey.
 
 ## Performance
 
-About 190 draw calls and 1.40M triangles in daylight — 198 and 1.40M from out
-in the harbour with both Ellis and Liberty Island in frame — and roughly 2 to 3 ms a
+About 190 draw calls and 1.40M triangles in daylight — 206 and 1.62M from out
+in the harbour with all three islands in frame — and roughly 2 to 3 ms a
 frame on an M2 at 2800 × 1800 once shaders are warm, with the post-processing
 running at full resolution and 4x multisampling.
 
@@ -1377,6 +1467,7 @@ src/
   bridge.js           the Brooklyn Bridge
   liberty.js          the Statue of Liberty, her pedestal and her island
   ellis.js            Ellis Island, its fifty-one buildings and its roofs
+  governors.js        Governors Island, Fort Jay and Castle Williams
   terrain.js          relief on the far shores
   wtc.js              the towers, the complex, the plaza
   city.js             footprint extrusion, crowns, streets, water
@@ -1397,6 +1488,9 @@ raw/                  cached Overpass responses
                         the trees on Liberty Island
   ellis.json            every building on both of Ellis Island's islands,
                         the covered corridors, and the trees
+  governors.json        Governors Island: 244 buildings with heights on
+                        most of them, Fort Jay, Castle Williams as a
+                        multipolygon, the piers and the trees
   relief.json           named hills with elevations, and the Palisades
   coast.json            the coastline, which defines where land is
   pools_geom.json       memorial pool corners — the source of the

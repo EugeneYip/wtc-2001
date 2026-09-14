@@ -41,6 +41,7 @@ MODULES = [
     ("src/bridge.js",                      ["./bridge.js"]),
     ("src/liberty.js",                     ["./liberty.js"]),
     ("src/ellis.js",                       ["./ellis.js"]),
+    ("src/governors.js",                   ["./governors.js"]),
     ("src/terrain.js",                     ["./terrain.js"]),
     ("src/textures.js",                    ["./textures.js"]),
     ("src/details.js",                     ["./details.js"]),

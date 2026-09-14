@@ -73,7 +73,7 @@ function distToLine2(x, z, pts) {
   return best;
 }
 
-export function buildRelief(relief, landPolys, material) {
+export function buildRelief(relief, landPolys, material, keepOff) {
   if (!relief || !landPolys || !landPolys.length) return null;
   const peaks = relief.peaks || [];
   const ridges = relief.ridges || [];
@@ -98,7 +98,15 @@ export function buildRelief(relief, landPolys, material) {
   // were a layer of grey. Even at zero height it would sit two centimetres
   // over the flat ground and fight it for depth. Find the ring the origin is
   // standing in and keep the relief out of it altogether.
-  const homeRings = rings.filter((r) => ringContains(r, 0, 0));
+  // The same goes for the three islands in the harbour. Each of them is built
+  // in detail now — lawn, seawall walk, buildings — and the relief was sitting
+  // on top of all of it: on Governors Island, which is big enough to score as
+  // inland, it put a lumpy grey sheet a few metres over the grass, with the
+  // straight edges of its own 170 m grid showing through. It had been doing
+  // that all along and nobody could see it, because until there was a lawn
+  // under it the island was the same dark ground either way.
+  const homeRings = rings.filter((r) => ringContains(r, 0, 0))
+    .concat((keepOff || []).filter((r) => r && r.length > 2));
   const home = homeRings.length
     ? rasterise(homeRings, -REACH, -REACH, STEP, N, N)
     : new Uint8Array(N * N);

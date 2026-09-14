@@ -33,6 +33,7 @@ import { makeNightSky } from './nightsky.js';
 import { buildBridge, BRIDGE_MATS } from './bridge.js';
 import { buildLiberty, setLibertyNight } from './liberty.js';
 import { buildEllis, setEllisNight } from './ellis.js';
+import { buildGovernors, setGovernorsNight } from './governors.js';
 import { buildRelief } from './terrain.js';
 import { GROUND } from './geo.js';
 
@@ -305,6 +306,7 @@ function applyTime(hour) {
   BRIDGE_MATS.deck.emissiveIntensity = lit * 0.10;
   setLibertyNight(lit);
   setEllisNight(lit);
+  setGovernorsNight(lit);
   BRIDGE_MATS.walk.emissiveIntensity = lit * 0.10;
 
   CITY_MATS.water.color.copy(WATER_DAY).lerp(WATER_NIGHT, dusk);
@@ -928,10 +930,22 @@ async function init() {
                                          brick: CITY_MATS.brick_red });
   if (ellis) scene.add(ellis);
 
+  // And the biggest of the three, closing the view south from the Battery.
+  const governors = buildGovernors(data.governors,
+                                   { grass: CITY_MATS.park, walk: ISLAND_WALK,
+                                     red: CITY_MATS.brick_red,
+                                     buff: CITY_MATS.masonry_old });
+  if (governors) scene.add(governors);
+
   // Relief on the far shores, laid over the flat land rather than displacing
   // it: the coastline underneath is accurate to a few metres and a grid coarse
   // enough to afford would have chewed it up.
-  const relief = buildRelief(data.relief, data.land || [], CITY_MATS.ground);
+  // Everything the harbour islands stand on is built in detail, so the relief
+  // is kept off all three of them the way it is kept off Manhattan.
+  const relief = buildRelief(data.relief, data.land || [], CITY_MATS.ground,
+                             [data.liberty && data.liberty.island,
+                              data.ellis && data.ellis.island,
+                              data.governors && data.governors.island]);
   if (relief) scene.add(relief);
 
   status.textContent = 'Raising the towers…';
@@ -950,7 +964,8 @@ async function init() {
   for (const m of roofClutter(data.buildings.concat(data.complex))) detail.add(m);
   const treeSites = PLAZA_TREE_SITES(data, obstacleIndex)
     .concat((liberty && liberty.userData.treeSites) || [])
-    .concat((ellis && ellis.userData.treeSites) || []);
+    .concat((ellis && ellis.userData.treeSites) || [])
+    .concat((governors && governors.userData.treeSites) || []);
   for (const m of trees(data.parks, treeSites, footprints)) detail.add(m);
   // Sit them on the carriageway, not on the pavement level.
   const roadFleet = traffic(data.roads, tier.cars, footprints, GROUND.asphalt);
