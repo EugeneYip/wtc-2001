@@ -19,7 +19,7 @@ import { EffectComposer } from 'EffectComposer';
 import { RenderPass } from 'RenderPass';
 import { UnrealBloomPass } from 'UnrealBloomPass';
 import { OutputPass } from 'OutputPass';
-import { buildCity, cityLabels, animateWater, setShoreGlow, setWaterEnv,
+import { buildCity, farShore, cityLabels, animateWater, setShoreGlow, setWaterEnv,
          setFarRough, lampPoolShading, junctions, CITY_MATS,
          WALL_CLASSES } from './city.js';
 import { buildComplex, MATS as WTC_MATS, PLAZA_TREE_SITES,
@@ -918,6 +918,10 @@ async function init() {
       bridge.add(m);
     }
   }
+
+  // The far bank of the East River, which was flat ground with a street grain
+  // on it and is now the buildings that are actually there.
+  for (const m of farShore(data.brooklyn)) scene.add(m);
 
   // Three and a half kilometres down the harbour, and the only thing out there
   // anybody would notice the absence of.

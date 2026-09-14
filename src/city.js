@@ -871,6 +871,51 @@ function buildingTint(b) {
   return [l * (1 + warm), l, l * (1 - warm * 0.8)];
 }
 
+/**
+ * The far shore, built out of its own footprints.
+ *
+ * For a long time the land across the rivers was flat ground with a street
+ * grain painted on it, and the reason given was that there was no data behind
+ * it. That was never quite true — OpenStreetMap covers Brooklyn as thoroughly
+ * as it covers Manhattan — it was that the building extract stops at the
+ * Manhattan shoreline and nothing had asked it not to.
+ *
+ * What comes back is three thousand buildings, which is why this is not the
+ * same pass the city gets. No shopfronts, no crowns, no roof plant, no flags,
+ * no labels, no shadows: at one to four kilometres none of that is a pixel,
+ * and every one of them would be three thousand of something. Walls and roofs,
+ * in the same facade families and with the same tinting, and nothing else.
+ */
+export function farShore(list) {
+  if (!list || !list.length) return [];
+  const walls = {};
+  const roofs = [];
+  for (const b of list) {
+    const cls = WALL_CLASSES.includes(b.c) ? b.c : 'lowrise';
+    const into = (walls[cls] = walls[cls] || []);
+    const rgb = buildingTint(b);
+    const base = shell(b.p, b.h);
+    if (base.wall) into.push(tint(base.wall, rgb));
+    if (base.roof) roofs.push(tint(base.roof, roofTint(b, rgb)));
+  }
+  const out = [];
+  for (const [cls, geos] of Object.entries(walls)) {
+    if (!geos.length) continue;
+    const m = new THREE.Mesh(mergeGeometries(geos), CITY_MATS[cls]);
+    // Deliberately not casting: the sun's shadow camera covers a kilometre
+    // around the towers and every one of these is outside it, so a shadow pass
+    // over them is three thousand buildings drawn twice for nothing.
+    m.name = 'far-walls-' + cls;
+    out.push(m);
+  }
+  if (roofs.length) {
+    const m = new THREE.Mesh(mergeGeometries(roofs), CITY_MATS.roof);
+    m.name = 'far-roofs';
+    out.push(m);
+  }
+  return out;
+}
+
 /** Give a geometry a flat vertex colour so it can be merged with the rest. */
 export function tint(geo, rgb) {
   if (!geo) return geo;

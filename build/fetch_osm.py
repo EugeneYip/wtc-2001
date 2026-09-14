@@ -71,6 +71,20 @@ QUERIES = {
          way["highway"]["name"="Brooklyn Bridge"](40.69,-74.02,40.72,-73.96););
         out geom;""",
 
+    # The Brooklyn waterfront, from the Navy Yard round to Red Hook. Not all of
+    # Brooklyn: a strip four hundred metres deep along the shore, which is what
+    # the far bank of the East River actually is from the towers. Five boxes
+    # rather than one, because the shoreline turns through ninety degrees at
+    # the Heights and a single box that covered it would take in half of
+    # Downtown Brooklyn as well.
+    "brooklyn": """[out:json][timeout:180];
+        (way["building"](40.6995,-73.9940,40.7062,-73.9690);
+         way["building"](40.6970,-74.0005,40.7040,-73.9895);
+         way["building"](40.6878,-74.0035,40.7000,-73.9925);
+         way["building"](40.6788,-74.0135,40.6908,-73.9985);
+         way["building"](40.6718,-74.0245,40.6832,-74.0055););
+        out geom;""",
+
     # Governors Island. The largest island in the harbour and the nearest of
     # the three to the site, and in 2001 an empty one: the Coast Guard had gone
     # in 1996 and the city did not buy it until 2003.

@@ -1980,6 +1980,104 @@ def build_governors(land):
         "castle": bool(castle),
     }
 
+
+# ---------------------------------------------------------------------------
+# The Brooklyn waterfront
+# ---------------------------------------------------------------------------
+
+# The far bank of the East River was a flat plane with a street grain painted
+# on it, on the argument that there was no data behind it. There is: OSM covers
+# Brooklyn as thoroughly as it covers Manhattan, and four thousand of these
+# carry a surveyed height. What was true is that none of it had been *asked
+# for* — the building extract stops at the Manhattan shoreline.
+#
+# This is the strip, not the borough: four hundred metres in from the water,
+# from the Navy Yard round the Heights to Red Hook. Beyond that the ground goes
+# back to being generic, which is honest, because beyond that is two miles of
+# Brooklyn nobody can see from the site.
+BROOKLYN_DROP = {
+    "shed", "garage", "garages", "roof", "carport", "greenhouse",
+    "static_caravan", "construction", "hut", "container",
+}
+
+
+def brooklyn_class(h, a, oid, year, tags):
+    """Facade family for the far bank.
+
+    The near city's classifier falls through to a grey lowrise, because grey is
+    what Lower Manhattan's background fabric is. This side of the river it is
+    not: the Brooklyn waterfront is a nineteenth-century industrial and
+    residential district and almost all of it is brick — warehouses and loft
+    buildings along the water, brownstone rows up the hill. Using the
+    Manhattan rule over here painted three thousand brick buildings grey.
+    """
+    b = tags.get("building", "")
+    if year and year < 1915:
+        return "masonry_old"
+    if year and year < 1945:
+        return "masonry_deco"
+    # Higher thresholds than the near city uses. Downtown Brooklyn in 2001 was
+    # not a glass district: the tall things over here are pre-war masonry and
+    # post-war brick, and a curtain wall on anything under a hundred metres
+    # put a row of blue-green office slabs on a nineteenth-century waterfront.
+    if h >= 110:
+        return "tower_modern"
+    if h >= 55:
+        return "midrise"
+    if b in ("church", "chapel", "cathedral"):
+        return "masonry_old"
+    if h >= 30:
+        return "masonry_deco"
+    if a >= 700:
+        return "brick_red"               # warehouses, lofts, the pier sheds
+    if h >= 24:
+        return "masonry_deco"            # the taller apartment blocks
+    # Two brick to one brownstone, deterministically, which is roughly the mix.
+    return "masonry_old" if oid % 3 == 0 else "brick_red"
+
+
+def build_brooklyn():
+    path = os.path.join(RAW, "brooklyn.json")
+    if not os.path.exists(path):
+        print("  brooklyn waterfront   : no extract, skipped")
+        return []
+    out = []
+    dropped = 0
+    for e in json.load(open(path))["elements"]:
+        tags = e.get("tags", {})
+        if tags.get("building") in BROOKLYN_DROP:
+            continue
+        year = year_of(tags)
+        if year and year > 2001:
+            dropped += 1
+            continue
+        ring = ring_from(e)
+        if not ring or len(ring) < 4:
+            continue
+        poly = [project(la, lo) for la, lo in ring]
+        if poly[0] == poly[-1]:
+            poly.pop()
+        # A coarser tolerance than the near city gets. These stand between one
+        # and four kilometres off and every vertex is a byte in the payload and
+        # a triangle in the frame; at 1.8 m nothing that survives is visible.
+        poly = simplify(poly, 1.8)
+        if len(poly) < 3:
+            continue
+        a = area_of(poly)
+        if a < 90:
+            continue
+        h = parse_height(tags)
+        if h is None:
+            h = 11.0 + (e["id"] % 19) * 1.15 + min(a, 2400) / 340.0
+        h = max(h, 5.0)
+        out.append({"p": [[round(x, 1), round(z, 1)] for x, z in ccw(poly)],
+                    "h": round(h, 1),
+                    "c": brooklyn_class(h, a, e["id"], year, tags)})
+    print("  brooklyn waterfront   : %d buildings, %d dropped as post-2001"
+          % (len(out), dropped))
+    return out
+
+
 def build_relief():
     path = os.path.join(RAW, "relief.json")
     if not os.path.exists(path):
@@ -2053,6 +2151,7 @@ def main():
     liberty = build_liberty(land)
     ellis = build_ellis(land)
     governors = build_governors(land)
+    brooklyn = build_brooklyn()
     relief = build_relief()
     if relief:
         print("  relief                : %d hills, %d ridge lines"
@@ -2106,6 +2205,7 @@ def main():
         "liberty": liberty,
         "ellis": ellis,
         "governors": governors,
+        "brooklyn": brooklyn,
         "relief": relief,
         "buildings": buildings,
         "roads": roads,

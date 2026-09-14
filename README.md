@@ -522,7 +522,8 @@ borders highlighted. The land beyond the mapped blocks carries a street grain,
 masked by the same noise that decides what is built up. Without it, soft
 mottling on a flat plane read from a distance as a bank of low cloud rather
 than as Jersey City — but it is a grain and not a plan, and no buildings are
-invented on it.
+invented on it. Where there are buildings on the far bank now, on the Brooklyn
+waterfront, they are the real ones — see below.
 
 **The Brooklyn Bridge.** Its Manhattan end is a kilometre east of the site and
 it closes every view up the East River; without it that side of the model
@@ -960,6 +961,55 @@ the light rather than sitting under it.
 counted, against eight before. Two hundred triangles buys a boat that is a
 boat.
 
+**The Brooklyn waterfront.** The far bank of the East River was a flat plane
+with a street grain painted on it, and the reason given here for years was that
+there was no data behind it. That was never quite true. OpenStreetMap covers
+Brooklyn as thoroughly as it covers Manhattan; what was true is that nothing
+had ever *asked* for it — the building extract stops at the Manhattan
+shoreline, and the far shore had been the edge of the request rather than the
+edge of the record.
+
+So it was asked for, and **2,936 buildings** came back: the whole strip from
+the Navy Yard round the Heights to Red Hook, four hundred metres in from the
+water. Four thousand of the raw footprints carry a surveyed height, which is a
+better rate than Manhattan manages.
+
+That is the strip and not the borough, deliberately. Beyond four hundred metres
+the ground goes back to being mottling, because beyond that is two miles of
+Brooklyn nobody can see from the site — and because three thousand buildings is
+already 340 KB of scene data.
+
+**It is not the pass the near city gets.** No shopfronts, no crowns, no roof
+plant, no flags, no labels, and no shadows: at one to four kilometres none of
+that is a pixel, and every one of them would be three thousand of something.
+The shadows matter most — the sun's shadow camera covers about a kilometre
+around the towers and every one of these is outside it, so a shadow pass over
+them would be three thousand buildings drawn twice for nothing. Walls and
+roofs, in the same facade families and with the same per-building tinting, and
+nothing else.
+
+**The families needed their own rule.** The near city's classifier falls
+through to a grey lowrise, because grey is what Lower Manhattan's background
+fabric is. This side of the river it is not: the Brooklyn waterfront is a
+nineteenth-century industrial and residential district and almost all of it is
+brick — warehouses and loft buildings along the water, brownstone rows up the
+hill. Run through the Manhattan rule it came out as three thousand grey boxes,
+which is a description of somewhere else. The thresholds for the tall families
+went up too: Downtown Brooklyn in 2001 was not a glass district, and a curtain
+wall on anything under a hundred metres put a row of blue-green office slabs on
+a Victorian waterfront.
+
+**What is missing, and why.** The sheds on Piers 1 to 6 came down between 2008
+and 2010 for Brooklyn Bridge Park, so they are in no dataset and the piers here
+are bare aprons. Only two buildings were dropped as post-2001, because OSM
+rarely carries a start date — so a handful of things built since are in here,
+and they are all low. The same trade as Governors Island, in both directions.
+
+**6 draw calls and 43,117 triangles** for the lot. The footprints are simplified
+harder than the near city's — 1.8 m rather than 0.9 — because at this distance
+every vertex is a byte in the payload and a triangle in the frame, and nothing
+that survives is visible.
+
 **Light and water.** The sun is placed from real solar geometry for 40.71° N
 on 11 September, so shadow directions through the day are the ones the site
 actually had. It is drawn by the Mie term of the sky model, and the asymmetry
@@ -1373,9 +1423,12 @@ Nine things are deliberately not raw OpenStreetMap:
    furthest from survey of anything here: there is no record in the data of
    what occupied any given one, so what is modelled is the *kind* of thing a
    ground floor is — glazing, piers, a fascia — and not one real shop.
-   The land across the rivers is generic mottling for the same reason — there
-   is no data behind it, so it stays deliberately vague rather than inventing
-   a Jersey City skyline.
+   The land across the rivers is generic mottling for the same reason —
+   nothing is invented on it, so it stays deliberately vague rather than
+   growing a Jersey City skyline out of nowhere. The Brooklyn waterfront is
+   the exception, and it is an exception because the data is there: those are
+   traced footprints with surveyed heights, extracted for the first time this
+   round. Everything beyond that strip is still mottling.
 5. **A few buildings are recoloured by name.** The facade family a building
    gets is chosen from its height and footprint, which cannot know what it is
    clad in. Four are corrected by hand, and the Woolworth's copper pyramid is
@@ -1547,6 +1600,8 @@ raw/                  cached Overpass responses
                         building box but inside the view
   liberty.json          Fort Wood, the pedestal as mapped squares, and
                         the trees on Liberty Island
+  brooklyn.json         the waterfront strip from the Navy Yard to Red
+                        Hook, most of it with surveyed heights
   ellis.json            every building on both of Ellis Island's islands,
                         the covered corridors, and the trees
   governors.json        Governors Island: 244 buildings with heights on

@@ -40,6 +40,16 @@ demolished between 2013 and 2016 and appears in no dataset, so the south end
 of the island is emptier here than it was, and the trees on that half — planted
 in 2014 — are thinned to a quarter.
 
+The Brooklyn waterfront — the strip from the Navy Yard round Brooklyn Heights
+to Red Hook, four hundred metres in from the water — is traced footprints from
+OpenStreetMap, most of them with a surveyed height. Facade families are
+assigned by height and footprint the way the Manhattan fabric's are, by a rule
+written for a brick waterfront rather than a grey one; nothing over there is
+claimed to be clad in what it is actually clad in. Only two of those buildings
+could be dated and dropped as post-2001, because the data rarely carries a
+start date. The sheds that stood on Piers 1 to 6 were demolished in 2008–2010
+and are in no dataset, so those piers are bare here.
+
 Relief on the far shores is placed from the named hills around the harbour,
 which OpenStreetMap carries with real elevations, and from the Palisades, which
 it maps as a cliff line. The gentle undulation between them is invented.
