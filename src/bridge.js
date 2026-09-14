@@ -19,7 +19,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'BufferGeometryUtils';
-import { norm, boxUV, GROUND } from './geo.js';
+import { norm, boxUV, strand, GROUND } from './geo.js';
 import { graniteTexture, GRANITE_TILE_M, roadTexture } from './textures.js';
 
 const TOWER_H = 84.3;
@@ -228,27 +228,6 @@ function tower(deckY) {
  * over the vertices and costs nothing to draw.
  */
 const stoneUV = (g) => boxUV(g, GRANITE_TILE_M);
-
-/** A run of thin box segments along a polyline, as a cable or a stay. */
-function strand(points, r, open = false) {
-  const parts = [];
-  const up = new THREE.Vector3(0, 1, 0);
-  for (let i = 0; i < points.length - 1; i++) {
-    const a = points[i], b = points[i + 1];
-    const len = a.distanceTo(b);
-    if (len < 0.01) continue;
-    // A rail runs continuously, so every one of its end caps is buried in the
-    // next length of it: half the triangles in a mile and a half of handrail,
-    // drawn inside itself.
-    const g = new THREE.CylinderGeometry(r, r, len, 5, 1, open);
-    const dir = b.clone().sub(a).normalize();
-    const q = new THREE.Quaternion().setFromUnitVectors(up, dir);
-    g.applyQuaternion(q);
-    g.translate((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
-    parts.push(norm(g));
-  }
-  return parts;
-}
 
 /**
  * How far the Manhattan approach has to run before it is on a street.

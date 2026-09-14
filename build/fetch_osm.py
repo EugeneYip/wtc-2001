@@ -71,6 +71,19 @@ QUERIES = {
          way["highway"]["name"="Brooklyn Bridge"](40.69,-74.02,40.72,-73.96););
         out geom;""",
 
+    # The Manhattan Bridge, eight hundred metres upriver of it. Same treatment
+    # and the same reason: it is the other thing that closes the view up the
+    # East River, and from the towers the two of them are seen one behind the
+    # other.
+    # Its carriageways are not named for it — they carry street names, and the
+    # only ways that do carry the bridge's name are the bike path down one side
+    # and the footway down the other. Those two straddle the centreline, which
+    # is all the axis needs.
+    "manhattan": """[out:json][timeout:60];
+        (way["name"~"^Manhattan Bridge (Bike|Pedestrian)"](40.69,-74.01,40.72,-73.97);
+         way["railway"]["bridge"="yes"](40.700,-74.000,40.713,-73.980););
+        out geom;""",
+
     # The Jersey City waterfront, which from the towers is most of the western
     # horizon and is nearer than Brooklyn's. Exchange Place and Paulus Hook
     # first, then Newport, then Hoboken, then Liberty State Park and the old

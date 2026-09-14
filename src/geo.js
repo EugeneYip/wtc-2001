@@ -255,6 +255,27 @@ export function hipRing(ring, y, run, pitch) {
   return mergeGeometries([norm(g), flat(top, y + rise)]);
 }
 
+/** A run of thin box segments along a polyline, as a cable or a stay. */
+export function strand(points, r, open = false) {
+  const parts = [];
+  const up = new THREE.Vector3(0, 1, 0);
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i], b = points[i + 1];
+    const len = a.distanceTo(b);
+    if (len < 0.01) continue;
+    // A rail runs continuously, so every one of its end caps is buried in the
+    // next length of it: half the triangles in a mile and a half of handrail,
+    // drawn inside itself.
+    const g = new THREE.CylinderGeometry(r, r, len, 5, 1, open);
+    const dir = b.clone().sub(a).normalize();
+    const q = new THREE.Quaternion().setFromUnitVectors(up, dir);
+    g.applyQuaternion(q);
+    g.translate((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
+    parts.push(norm(g));
+  }
+  return parts;
+}
+
 /** Footprint ring (x, z pairs) to a THREE.Shape with correct winding. */
 export function shapeFrom(poly) {
   const pts = poly.map(([x, z]) => new THREE.Vector2(x, -z));

@@ -1,0 +1,890 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-09-14T01:24:17Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "way",
+  "id": 46179213,
+  "bounds": {
+    "minlat": 40.7146943,
+    "minlon": -73.9946946,
+    "maxlat": 40.7151632,
+    "maxlon": -73.9945382
+  },
+  "nodes": [
+    401875315,
+    401875316,
+    401875317,
+    401875318,
+    401875319,
+    3564739501,
+    3564739499,
+    3564739500,
+    588785602,
+    588785604
+  ],
+  "geometry": [
+    { "lat": 40.7151632, "lon": -73.9946941 },
+    { "lat": 40.7151204, "lon": -73.9946946 },
+    { "lat": 40.7150860, "lon": -73.9946938 },
+    { "lat": 40.7150505, "lon": -73.9946871 },
+    { "lat": 40.7150169, "lon": -73.9946736 },
+    { "lat": 40.7147933, "lon": -73.9945489 },
+    { "lat": 40.7147642, "lon": -73.9945386 },
+    { "lat": 40.7147445, "lon": -73.9945382 },
+    { "lat": 40.7147189, "lon": -73.9945417 },
+    { "lat": 40.7146943, "lon": -73.9945453 }
+  ],
+  "tags": {
+    "bicycle": "yes",
+    "bridge": "yes",
+    "foot": "no",
+    "highway": "cycleway",
+    "lanes": "2",
+    "layer": "2",
+    "name": "Manhattan Bridge Bike Path",
+    "name:etymology:wikidata": "Q11299",
+    "oneway": "no",
+    "surface": "paved"
+  }
+},
+{
+  "type": "way",
+  "id": 46179214,
+  "bounds": {
+    "minlat": 40.7143067,
+    "minlon": -73.9961826,
+    "maxlat": 40.7156687,
+    "maxlon": -73.9947740
+  },
+  "nodes": [
+    447998998,
+    447999037,
+    11496014351,
+    11496014350,
+    447999006,
+    4160352518,
+    4160352513,
+    447999005,
+    1813344232,
+    447999008
+  ],
+  "geometry": [
+    { "lat": 40.7143067, "lon": -73.9947740 },
+    { "lat": 40.7147763, "lon": -73.9950395 },
+    { "lat": 40.7148224, "lon": -73.9950720 },
+    { "lat": 40.7148630, "lon": -73.9951112 },
+    { "lat": 40.7156411, "lon": -73.9959935 },
+    { "lat": 40.7156567, "lon": -73.9960242 },
+    { "lat": 40.7156657, "lon": -73.9960561 },
+    { "lat": 40.7156687, "lon": -73.9960936 },
+    { "lat": 40.7156633, "lon": -73.9961345 },
+    { "lat": 40.7156481, "lon": -73.9961826 }
+  ],
+  "tags": {
+    "bicycle": "no",
+    "highway": "footway",
+    "name": "Manhattan Bridge Pedestrian Path",
+    "name:etymology:wikidata": "Q11299",
+    "surface": "concrete"
+  }
+},
+{
+  "type": "way",
+  "id": 46179218,
+  "bounds": {
+    "minlat": 40.6998062,
+    "minlon": -73.9944082,
+    "maxlat": 40.7144246,
+    "maxlon": -73.9862501
+  },
+  "nodes": [
+    11496014349,
+    9191842228,
+    11669846795,
+    11669846794,
+    9191842230,
+    9191842226,
+    11669846791,
+    11669846792,
+    11669846793,
+    9191842227,
+    9191775313,
+    11669846773,
+    11669846772,
+    11669846770,
+    9191775314,
+    11669846771,
+    9191775311,
+    11669846774,
+    9191775312,
+    11669756859,
+    401875393,
+    401875394,
+    2358967541,
+    401875396,
+    401875397,
+    401875399,
+    588785529
+  ],
+  "geometry": [
+    { "lat": 40.7144246, "lon": -73.9944082 },
+    { "lat": 40.7089432, "lon": -73.9913511 },
+    { "lat": 40.7089301, "lon": -73.9913329 },
+    { "lat": 40.7089183, "lon": -73.9913065 },
+    { "lat": 40.7088983, "lon": -73.9912835 },
+    { "lat": 40.7088847, "lon": -73.9912727 },
+    { "lat": 40.7088686, "lon": -73.9912666 },
+    { "lat": 40.7088471, "lon": -73.9912660 },
+    { "lat": 40.7088183, "lon": -73.9912728 },
+    { "lat": 40.7087968, "lon": -73.9912709 },
+    { "lat": 40.7052491, "lon": -73.9892900 },
+    { "lat": 40.7052344, "lon": -73.9892754 },
+    { "lat": 40.7052197, "lon": -73.9892530 },
+    { "lat": 40.7052005, "lon": -73.9892291 },
+    { "lat": 40.7051868, "lon": -73.9892185 },
+    { "lat": 40.7051678, "lon": -73.9892113 },
+    { "lat": 40.7051400, "lon": -73.9892077 },
+    { "lat": 40.7051136, "lon": -73.9892093 },
+    { "lat": 40.7050989, "lon": -73.9892072 },
+    { "lat": 40.7041869, "lon": -73.9887069 },
+    { "lat": 40.7024995, "lon": -73.9877522 },
+    { "lat": 40.7021206, "lon": -73.9875379 },
+    { "lat": 40.7019375, "lon": -73.9874371 },
+    { "lat": 40.7018600, "lon": -73.9873944 },
+    { "lat": 40.7016078, "lon": -73.9872556 },
+    { "lat": 40.7012627, "lon": -73.9870657 },
+    { "lat": 40.6998062, "lon": -73.9862501 }
+  ],
+  "tags": {
+    "bridge": "yes",
+    "foot": "no",
+    "highway": "cycleway",
+    "lanes": "2",
+    "layer": "2",
+    "name": "Manhattan Bridge Bike Path",
+    "name:etymology:wikidata": "Q11299",
+    "oneway": "no",
+    "surface": "concrete",
+    "width": "3",
+    "wikidata": "Q125050",
+    "wikipedia": "en:Manhattan Bridge"
+  }
+},
+{
+  "type": "way",
+  "id": 46340237,
+  "bounds": {
+    "minlat": 40.7071019,
+    "minlon": -73.9944756,
+    "maxlat": 40.7144045,
+    "maxlon": -73.9904174
+  },
+  "nodes": [
+    7693179420,
+    591995000
+  ],
+  "geometry": [
+    { "lat": 40.7071019, "lon": -73.9904174 },
+    { "lat": 40.7144045, "lon": -73.9944756 }
+  ],
+  "tags": {
+    "bridge": "yes",
+    "bridge:name": "Manhattan Bridge",
+    "electrified": "rail",
+    "frequency": "0",
+    "gauge": "1435",
+    "layer": "2",
+    "maxspeed": "25 mph",
+    "name": "BMT Brighton Line",
+    "operator": "New York City Transit Authority",
+    "railway": "subway",
+    "railway:preferred_direction": "forward",
+    "railway:track_ref": "4",
+    "railway:track_ref:signals": "B4",
+    "voltage": "625"
+  }
+},
+{
+  "type": "way",
+  "id": 46346751,
+  "bounds": {
+    "minlat": 40.6997237,
+    "minlon": -73.9946877,
+    "maxlat": 40.7143364,
+    "maxlon": -73.9865160
+  },
+  "nodes": [
+    592159725,
+    592320061
+  ],
+  "geometry": [
+    { "lat": 40.7143364, "lon": -73.9946877 },
+    { "lat": 40.6997237, "lon": -73.9865160 }
+  ],
+  "tags": {
+    "bridge": "yes",
+    "bridge:name": "Manhattan Bridge",
+    "electrified": "rail",
+    "frequency": "0",
+    "gauge": "1435",
+    "layer": "2",
+    "maxspeed": "25 mph",
+    "name": "BMT Brighton Line",
+    "operator": "New York City Transit Authority",
+    "railway": "subway",
+    "railway:preferred_direction": "forward",
+    "railway:track_ref": "1",
+    "railway:track_ref:signals": "H1",
+    "voltage": "625"
+  }
+},
+{
+  "type": "way",
+  "id": 122892020,
+  "bounds": {
+    "minlat": 40.6988451,
+    "minlon": -73.9867664,
+    "maxlat": 40.6996231,
+    "maxlon": -73.9865798
+  },
+  "nodes": [
+    11725893218,
+    1371803821,
+    11725893216,
+    11725893217,
+    11725893215,
+    1371803828,
+    1371803823,
+    11725893262,
+    11725893263,
+    11725893266,
+    11725893265,
+    11725893264,
+    11725893261,
+    1371803824,
+    11725893259
+  ],
+  "geometry": [
+    { "lat": 40.6988454, "lon": -73.9867664 },
+    { "lat": 40.6988451, "lon": -73.9867116 },
+    { "lat": 40.6988498, "lon": -73.9866895 },
+    { "lat": 40.6988579, "lon": -73.9866768 },
+    { "lat": 40.6988703, "lon": -73.9866673 },
+    { "lat": 40.6988869, "lon": -73.9866624 },
+    { "lat": 40.6991126, "lon": -73.9866522 },
+    { "lat": 40.6991626, "lon": -73.9866489 },
+    { "lat": 40.6992193, "lon": -73.9866386 },
+    { "lat": 40.6992893, "lon": -73.9866218 },
+    { "lat": 40.6994276, "lon": -73.9865941 },
+    { "lat": 40.6995109, "lon": -73.9865827 },
+    { "lat": 40.6995536, "lon": -73.9865798 },
+    { "lat": 40.6995982, "lon": -73.9865825 },
+    { "lat": 40.6996231, "lon": -73.9865859 }
+  ],
+  "tags": {
+    "bicycle": "no",
+    "highway": "footway",
+    "lit": "yes",
+    "name": "Manhattan Bridge Pedestrian Path",
+    "name:etymology:wikidata": "Q11299",
+    "surface": "paving_stones"
+  }
+},
+{
+  "type": "way",
+  "id": 357260631,
+  "bounds": {
+    "minlat": 40.6997042,
+    "minlon": -73.9947740,
+    "maxlat": 40.7143067,
+    "maxlon": -73.9866167
+  },
+  "nodes": [
+    3625789833,
+    3564736588,
+    3564736589,
+    3564739496,
+    11669756884,
+    9191842217,
+    11669801866,
+    9191842220,
+    11669756885,
+    9191775316,
+    9191842219,
+    11669801865,
+    11669801867,
+    11669801868,
+    11669846769,
+    9191842218,
+    9191842222,
+    11669846782,
+    11669846781,
+    9191842224,
+    9191842221,
+    11669846780,
+    11669846783,
+    11669846784,
+    9191842223,
+    3564754694,
+    447998998
+  ],
+  "geometry": [
+    { "lat": 40.6997042, "lon": -73.9866167 },
+    { "lat": 40.7001417, "lon": -73.9868631 },
+    { "lat": 40.7012570, "lon": -73.9874840 },
+    { "lat": 40.7026438, "lon": -73.9882551 },
+    { "lat": 40.7045953, "lon": -73.9893487 },
+    { "lat": 40.7049782, "lon": -73.9895640 },
+    { "lat": 40.7049917, "lon": -73.9895796 },
+    { "lat": 40.7050030, "lon": -73.9896022 },
+    { "lat": 40.7050145, "lon": -73.9896245 },
+    { "lat": 40.7050279, "lon": -73.9896410 },
+    { "lat": 40.7050437, "lon": -73.9896516 },
+    { "lat": 40.7050616, "lon": -73.9896590 },
+    { "lat": 40.7050812, "lon": -73.9896574 },
+    { "lat": 40.7051007, "lon": -73.9896491 },
+    { "lat": 40.7051167, "lon": -73.9896461 },
+    { "lat": 40.7051327, "lon": -73.9896477 },
+    { "lat": 40.7086772, "lon": -73.9916316 },
+    { "lat": 40.7086929, "lon": -73.9916479 },
+    { "lat": 40.7087045, "lon": -73.9916719 },
+    { "lat": 40.7087212, "lon": -73.9916941 },
+    { "lat": 40.7087394, "lon": -73.9917087 },
+    { "lat": 40.7087583, "lon": -73.9917153 },
+    { "lat": 40.7087862, "lon": -73.9917170 },
+    { "lat": 40.7088085, "lon": -73.9917102 },
+    { "lat": 40.7088287, "lon": -73.9917124 },
+    { "lat": 40.7135961, "lon": -73.9943724 },
+    { "lat": 40.7143067, "lon": -73.9947740 }
+  ],
+  "tags": {
+    "bicycle": "no",
+    "bridge": "yes",
+    "height": "41",
+    "highway": "footway",
+    "layer": "2",
+    "name": "Manhattan Bridge Pedestrian Path",
+    "name:etymology:wikidata": "Q11299",
+    "surface": "concrete",
+    "wikidata": "Q125050",
+    "wikipedia": "en:Manhattan Bridge"
+  }
+},
+{
+  "type": "way",
+  "id": 566845494,
+  "bounds": {
+    "minlat": 40.6993622,
+    "minlon": -73.9862501,
+    "maxlat": 40.6998508,
+    "maxlon": -73.9851838
+  },
+  "nodes": [
+    11710404500,
+    11710404501,
+    451029345,
+    11710404502,
+    11710404503,
+    451029341,
+    11710404553,
+    451029335,
+    11710404554,
+    451029332,
+    1371803825,
+    451029330,
+    3413665513,
+    451029328,
+    451029326,
+    11710404555,
+    451029324,
+    451029322,
+    451029321,
+    4384069441,
+    4384069439,
+    11710404562,
+    4384069437,
+    4384069436,
+    4384069435,
+    451029320,
+    11710404564,
+    451029312,
+    11710404569,
+    11710404568,
+    451029308,
+    4384069440,
+    4384069442,
+    451029302,
+    11710404575,
+    451029298,
+    11710404574,
+    451029296,
+    11710404573,
+    11710404572,
+    588785529
+  ],
+  "geometry": [
+    { "lat": 40.6998508, "lon": -73.9862393 },
+    { "lat": 40.6998481, "lon": -73.9861339 },
+    { "lat": 40.6998456, "lon": -73.9860678 },
+    { "lat": 40.6998408, "lon": -73.9860100 },
+    { "lat": 40.6998313, "lon": -73.9859368 },
+    { "lat": 40.6998204, "lon": -73.9858716 },
+    { "lat": 40.6998024, "lon": -73.9857721 },
+    { "lat": 40.6997758, "lon": -73.9856545 },
+    { "lat": 40.6997484, "lon": -73.9855393 },
+    { "lat": 40.6997212, "lon": -73.9854417 },
+    { "lat": 40.6996971, "lon": -73.9853710 },
+    { "lat": 40.6996653, "lon": -73.9852873 },
+    { "lat": 40.6996385, "lon": -73.9852345 },
+    { "lat": 40.6996148, "lon": -73.9852064 },
+    { "lat": 40.6995858, "lon": -73.9851911 },
+    { "lat": 40.6995570, "lon": -73.9851838 },
+    { "lat": 40.6995234, "lon": -73.9851855 },
+    { "lat": 40.6994915, "lon": -73.9851937 },
+    { "lat": 40.6994638, "lon": -73.9852073 },
+    { "lat": 40.6994392, "lon": -73.9852264 },
+    { "lat": 40.6994123, "lon": -73.9852538 },
+    { "lat": 40.6993923, "lon": -73.9852829 },
+    { "lat": 40.6993785, "lon": -73.9853163 },
+    { "lat": 40.6993686, "lon": -73.9853558 },
+    { "lat": 40.6993622, "lon": -73.9854060 },
+    { "lat": 40.6993623, "lon": -73.9854683 },
+    { "lat": 40.6993670, "lon": -73.9855291 },
+    { "lat": 40.6993734, "lon": -73.9855776 },
+    { "lat": 40.6993827, "lon": -73.9856315 },
+    { "lat": 40.6993955, "lon": -73.9856813 },
+    { "lat": 40.6994153, "lon": -73.9857418 },
+    { "lat": 40.6994376, "lon": -73.9858016 },
+    { "lat": 40.6994693, "lon": -73.9858745 },
+    { "lat": 40.6994953, "lon": -73.9859269 },
+    { "lat": 40.6995329, "lon": -73.9859882 },
+    { "lat": 40.6995718, "lon": -73.9860447 },
+    { "lat": 40.6996232, "lon": -73.9861075 },
+    { "lat": 40.6996707, "lon": -73.9861560 },
+    { "lat": 40.6997118, "lon": -73.9861892 },
+    { "lat": 40.6997629, "lon": -73.9862232 },
+    { "lat": 40.6998062, "lon": -73.9862501 }
+  ],
+  "tags": {
+    "foot": "no",
+    "highway": "cycleway",
+    "incline": "up",
+    "name": "Manhattan Bridge Bike Path",
+    "name:etymology:wikidata": "Q11299",
+    "oneway": "no",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 616217282,
+  "bounds": {
+    "minlat": 40.6997631,
+    "minlon": -73.9904682,
+    "maxlat": 40.7070865,
+    "maxlon": -73.9863891
+  },
+  "nodes": [
+    7693179419,
+    5826314107,
+    5826314108,
+    5826314109,
+    5826314110,
+    5826314111,
+    5826314112
+  ],
+  "geometry": [
+    { "lat": 40.7070865, "lon": -73.9904682 },
+    { "lat": 40.7065328, "lon": -73.9901621 },
+    { "lat": 40.7048973, "lon": -73.9892488 },
+    { "lat": 40.7032299, "lon": -73.9883271 },
+    { "lat": 40.7022834, "lon": -73.9877741 },
+    { "lat": 40.7007780, "lon": -73.9869446 },
+    { "lat": 40.6997631, "lon": -73.9863891 }
+  ],
+  "tags": {
+    "bridge": "yes",
+    "bridge:name": "Manhattan Bridge",
+    "electrified": "rail",
+    "frequency": "0",
+    "gauge": "1435",
+    "layer": "2",
+    "maxspeed": "25 mph",
+    "name": "BMT Brighton Line",
+    "operator": "New York City Transit Authority",
+    "railway": "subway",
+    "railway:preferred_direction": "forward",
+    "railway:track_ref": "3",
+    "railway:track_ref:signals": "A3",
+    "voltage": "625"
+  }
+},
+{
+  "type": "way",
+  "id": 799825257,
+  "bounds": {
+    "minlat": 40.7151632,
+    "minlon": -73.9947658,
+    "maxlat": 40.7156529,
+    "maxlon": -73.9946941
+  },
+  "nodes": [
+    7480410409,
+    11495928516,
+    11495928515,
+    7525116913,
+    6463384129,
+    11495928514,
+    11495928513,
+    11495928512,
+    11495928511,
+    11495928510,
+    11495928509,
+    11495928508,
+    401875315
+  ],
+  "geometry": [
+    { "lat": 40.7156529, "lon": -73.9947397 },
+    { "lat": 40.7156356, "lon": -73.9947529 },
+    { "lat": 40.7156169, "lon": -73.9947605 },
+    { "lat": 40.7155912, "lon": -73.9947658 },
+    { "lat": 40.7155338, "lon": -73.9947643 },
+    { "lat": 40.7154008, "lon": -73.9947571 },
+    { "lat": 40.7153660, "lon": -73.9947512 },
+    { "lat": 40.7153284, "lon": -73.9947419 },
+    { "lat": 40.7152897, "lon": -73.9947268 },
+    { "lat": 40.7152511, "lon": -73.9947109 },
+    { "lat": 40.7152198, "lon": -73.9947021 },
+    { "lat": 40.7151865, "lon": -73.9946959 },
+    { "lat": 40.7151632, "lon": -73.9946941 }
+  ],
+  "tags": {
+    "bicycle": "yes",
+    "foot": "no",
+    "highway": "cycleway",
+    "lanes": "2",
+    "name": "Manhattan Bridge Bike Path",
+    "name:etymology:wikidata": "Q11299",
+    "oneway": "no",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 799825258,
+  "bounds": {
+    "minlat": 40.7155985,
+    "minlon": -73.9947397,
+    "maxlat": 40.7156672,
+    "maxlon": -73.9944299
+  },
+  "nodes": [
+    7480410409,
+    9505936177,
+    11495928517,
+    9505936178,
+    8520809690,
+    7525116912,
+    11495928551,
+    11495928552,
+    11495928553,
+    11495928518
+  ],
+  "geometry": [
+    { "lat": 40.7156529, "lon": -73.9947397 },
+    { "lat": 40.7156629, "lon": -73.9947250 },
+    { "lat": 40.7156672, "lon": -73.9947034 },
+    { "lat": 40.7156644, "lon": -73.9946788 },
+    { "lat": 40.7156193, "lon": -73.9945267 },
+    { "lat": 40.7155999, "lon": -73.9944657 },
+    { "lat": 40.7155985, "lon": -73.9944539 },
+    { "lat": 40.7156014, "lon": -73.9944425 },
+    { "lat": 40.7156075, "lon": -73.9944349 },
+    { "lat": 40.7156145, "lon": -73.9944299 }
+  ],
+  "tags": {
+    "foot": "no",
+    "highway": "cycleway",
+    "lanes": "2",
+    "lanes:backward": "1",
+    "lanes:forward": "1",
+    "name": "Manhattan Bridge Bike Path",
+    "name:etymology:wikidata": "Q11299",
+    "oneway": "no",
+    "surface": "concrete"
+  }
+},
+{
+  "type": "way",
+  "id": 817756457,
+  "bounds": {
+    "minlat": 40.6997367,
+    "minlon": -73.9946448,
+    "maxlat": 40.7143479,
+    "maxlon": -73.9864741
+  },
+  "nodes": [
+    7637098599,
+    7637098598
+  ],
+  "geometry": [
+    { "lat": 40.6997367, "lon": -73.9864741 },
+    { "lat": 40.7143479, "lon": -73.9946448 }
+  ],
+  "tags": {
+    "bridge": "yes",
+    "bridge:name": "Manhattan Bridge",
+    "electrified": "rail",
+    "frequency": "0",
+    "gauge": "1435",
+    "layer": "2",
+    "maxspeed": "25 mph",
+    "name": "BMT Brighton Line",
+    "operator": "New York City Transit Authority",
+    "railway": "subway",
+    "railway:preferred_direction": "forward",
+    "railway:track_ref": "2",
+    "railway:track_ref:signals": "H2",
+    "voltage": "625"
+  }
+},
+{
+  "type": "way",
+  "id": 823986481,
+  "bounds": {
+    "minlat": 40.7070865,
+    "minlon": -73.9945311,
+    "maxlat": 40.7143857,
+    "maxlon": -73.9904682
+  },
+  "nodes": [
+    5826314102,
+    5826314103,
+    5826314104,
+    5826314105,
+    5826314106,
+    7693179419
+  ],
+  "geometry": [
+    { "lat": 40.7143857, "lon": -73.9945311 },
+    { "lat": 40.7125317, "lon": -73.9934927 },
+    { "lat": 40.7107629, "lon": -73.9925208 },
+    { "lat": 40.7091560, "lon": -73.9916284 },
+    { "lat": 40.7074348, "lon": -73.9906607 },
+    { "lat": 40.7070865, "lon": -73.9904682 }
+  ],
+  "tags": {
+    "bridge": "yes",
+    "bridge:name": "Manhattan Bridge",
+    "electrified": "rail",
+    "frequency": "0",
+    "gauge": "1435",
+    "layer": "2",
+    "maxspeed": "25 mph",
+    "name": "BMT Brighton Line",
+    "operator": "New York City Transit Authority",
+    "railway": "subway",
+    "railway:preferred_direction": "forward",
+    "railway:track_ref": "3",
+    "railway:track_ref:signals": "B3",
+    "voltage": "625"
+  }
+},
+{
+  "type": "way",
+  "id": 823986482,
+  "bounds": {
+    "minlat": 40.6997754,
+    "minlon": -73.9904174,
+    "maxlat": 40.7071019,
+    "maxlon": -73.9863494
+  },
+  "nodes": [
+    592320007,
+    7693179420
+  ],
+  "geometry": [
+    { "lat": 40.6997754, "lon": -73.9863494 },
+    { "lat": 40.7071019, "lon": -73.9904174 }
+  ],
+  "tags": {
+    "bridge": "yes",
+    "bridge:name": "Manhattan Bridge",
+    "electrified": "rail",
+    "frequency": "0",
+    "gauge": "1435",
+    "layer": "2",
+    "maxspeed": "25 mph",
+    "name": "BMT Brighton Line",
+    "operator": "New York City Transit Authority",
+    "railway": "subway",
+    "railway:preferred_direction": "forward",
+    "railway:track_ref": "4",
+    "railway:track_ref:signals": "A4",
+    "voltage": "625"
+  }
+},
+{
+  "type": "way",
+  "id": 1237664136,
+  "bounds": {
+    "minlat": 40.7156145,
+    "minlon": -73.9944299,
+    "maxlat": 40.7156470,
+    "maxlon": -73.9944104
+  },
+  "nodes": [
+    11495928518,
+    7480410407
+  ],
+  "geometry": [
+    { "lat": 40.7156145, "lon": -73.9944299 },
+    { "lat": 40.7156470, "lon": -73.9944104 }
+  ],
+  "tags": {
+    "button_operated": "no",
+    "crossing": "traffic_signals",
+    "crossing:island": "no",
+    "crossing:markings": "pictograms",
+    "crossing:signals": "yes",
+    "cycleway": "crossing",
+    "foot": "no",
+    "highway": "cycleway",
+    "lanes": "2",
+    "lanes:backward": "1",
+    "lanes:forward": "1",
+    "name": "Manhattan Bridge Bike Path",
+    "name:etymology:wikidata": "Q11299",
+    "oneway": "no",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 1237670420,
+  "bounds": {
+    "minlat": 40.7144246,
+    "minlon": -73.9945453,
+    "maxlat": 40.7146943,
+    "maxlon": -73.9944082
+  },
+  "nodes": [
+    588785604,
+    11496014348,
+    11496014347,
+    11496014349
+  ],
+  "geometry": [
+    { "lat": 40.7146943, "lon": -73.9945453 },
+    { "lat": 40.7146673, "lon": -73.9945426 },
+    { "lat": 40.7146472, "lon": -73.9945339 },
+    { "lat": 40.7144246, "lon": -73.9944082 }
+  ],
+  "tags": {
+    "embankment": "yes",
+    "foot": "no",
+    "highway": "cycleway",
+    "lanes": "2",
+    "name": "Manhattan Bridge Bike Path",
+    "name:etymology:wikidata": "Q11299",
+    "oneway": "no",
+    "surface": "concrete",
+    "width": "3",
+    "wikidata": "Q125050",
+    "wikipedia": "en:Manhattan Bridge"
+  }
+},
+{
+  "type": "way",
+  "id": 1259584852,
+  "bounds": {
+    "minlat": 40.6998508,
+    "minlon": -73.9863256,
+    "maxlat": 40.6998527,
+    "maxlon": -73.9862393
+  },
+  "nodes": [
+    1371803831,
+    11710404500
+  ],
+  "geometry": [
+    { "lat": 40.6998527, "lon": -73.9863256 },
+    { "lat": 40.6998508, "lon": -73.9862393 }
+  ],
+  "tags": {
+    "covered": "yes",
+    "foot": "no",
+    "highway": "cycleway",
+    "name": "Manhattan Bridge Bike Path",
+    "name:etymology:wikidata": "Q11299",
+    "oneway": "no",
+    "surface": "concrete"
+  }
+},
+{
+  "type": "way",
+  "id": 1262001703,
+  "bounds": {
+    "minlat": 40.6988454,
+    "minlon": -73.9867823,
+    "maxlat": 40.6988455,
+    "maxlon": -73.9867664
+  },
+  "nodes": [
+    1371803833,
+    11725893276,
+    11725893218
+  ],
+  "geometry": [
+    { "lat": 40.6988455, "lon": -73.9867823 },
+    { "lat": 40.6988454, "lon": -73.9867683 },
+    { "lat": 40.6988454, "lon": -73.9867664 }
+  ],
+  "tags": {
+    "bicycle": "no",
+    "highway": "footway",
+    "lit": "yes",
+    "name": "Manhattan Bridge Pedestrian Path",
+    "name:etymology:wikidata": "Q11299",
+    "surface": "concrete"
+  }
+},
+{
+  "type": "way",
+  "id": 1262001709,
+  "bounds": {
+    "minlat": 40.6996231,
+    "minlon": -73.9866167,
+    "maxlat": 40.6997042,
+    "maxlon": -73.9865859
+  },
+  "nodes": [
+    11725893259,
+    447999025,
+    11725893260,
+    3625789833
+  ],
+  "geometry": [
+    { "lat": 40.6996231, "lon": -73.9865859 },
+    { "lat": 40.6996486, "lon": -73.9865927 },
+    { "lat": 40.6996702, "lon": -73.9866004 },
+    { "lat": 40.6997042, "lon": -73.9866167 }
+  ],
+  "tags": {
+    "bicycle": "no",
+    "highway": "footway",
+    "lit": "yes",
+    "name": "Manhattan Bridge Pedestrian Path",
+    "name:etymology:wikidata": "Q11299",
+    "surface": "concrete"
+  }
+}
+
+  ]
+}

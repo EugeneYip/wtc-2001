@@ -1056,6 +1056,55 @@ without any visible change beyond three kilometres.
 
 **5 draw calls and 26,015 triangles** for Jersey City.
 
+**The Manhattan Bridge.** Eight hundred metres upriver of Roebling's, and
+from the towers the two of them are seen one behind the other — which is
+exactly why having only one was a problem. The East River had a bridge across
+it and then a gap where the next one goes.
+
+It is not the same kind of object as its neighbour and it is not built like
+one. The Brooklyn Bridge is masonry: two Gothic towers holding a slender deck
+on a web of diagonal stays. Moisseiff's, twenty-six years later, is all steel —
+**a pair of braced portal frames**, four cables, vertical suspenders and
+nothing else, hung from a **stiffening truss seven metres deep** carrying two
+decks. Seen end on, one is a thread and the other is a girder, and that
+difference is most of what tells them apart at two kilometres. There is not a
+single diagonal stay on this bridge, and that is the point of it.
+
+    main span          1,470 ft   448.1 m between tower centres
+    towers              322 ft     98.1 m above mean high water
+    clearance           135 ft     41.2 m at mid-span
+    four main cables   21 1/4 in    0.54 m
+    deck                120 ft     36.6 m wide, on two levels
+
+**The axis took some finding.** The Brooklyn Bridge's carriageways carry its
+name, so its centreline comes straight off them. The Manhattan Bridge's do not
+— they carry the names of the streets they feed — and the only two ways up
+there that carry the bridge's own name are the bike path down one side and the
+footway down the other. So the axis is the average of those two, which is the
+centreline by construction. The build function that found one now finds both.
+
+**The anchorages had to be found differently too.** Set at a fixed distance
+back from the towers, the way the Brooklyn Bridge's are, both of this one's
+came out standing in the river: its towers sit seventy-five metres inside each
+bank against the Brooklyn Bridge's forty, and its side spans are shorter. They
+are placed off the shore crossings the build already computes instead, which
+puts a block of concrete where a block of concrete goes.
+
+**And the truss needed to be dense before it read as one.** At eighteen metres
+a panel it came out as a wire fence hung under the roadway. The members are
+about a pixel across at the distance this is looked at from, so what makes a
+girder rather than a railing is how many of them overlap, not how thick any one
+of them is: twelve-metre panels, a diagonal each way, and a chord at
+mid-height where the upper deck's edge beam runs.
+
+The colour is the one thing here that is neither surveyed nor published. The
+bridge has been a pale grey-blue for most of its life and was halfway through a
+twenty-year reconstruction in 2001; what shade it wore that September is not
+something this can source, and the README should say so rather than let the
+paint pass for a fact.
+
+**6 draw calls and 17,228 triangles.**
+
 **Light and water.** The sun is placed from real solar geometry for 40.71° N
 on 11 September, so shadow directions through the day are the ones the site
 actually had. It is drawn by the Mie term of the sky model, and the asymmetry
@@ -1544,7 +1593,7 @@ uniform slab. Those are massing, not survey.
 
 ## Performance
 
-About 195 draw calls and 1.58M triangles in daylight — a little more from out
+About 200 draw calls and 1.62M triangles in daylight — a little more from out
 in the harbour with all three islands in frame — and roughly 2 to 3 ms a
 frame on an M2 at 2800 × 1800 once shaders are warm, with the post-processing
 running at full resolution and 4x multisampling.
@@ -1633,6 +1682,7 @@ wtc.html              the same thing inlined into one file
 src/
   main.js             renderer, sun, camera rig, UI
   bridge.js           the Brooklyn Bridge
+  mbridge.js          the Manhattan Bridge, which is a different animal
   liberty.js          the Statue of Liberty, her pedestal and her island
   ellis.js            Ellis Island, its fifty-one buildings and its roofs
   governors.js        Governors Island, Fort Jay and Castle Williams
@@ -1652,6 +1702,8 @@ raw/                  cached Overpass responses
   water/green.json
   bridge.json           the Brooklyn Bridge carriageway, outside the
                         building box but inside the view
+  manhattan.json        the Manhattan Bridge's bike path and footway,
+                        which are the only two ways named for it
   liberty.json          Fort Wood, the pedestal as mapped squares, and
                         the trees on Liberty Island
   brooklyn.json         the waterfront strip from the Navy Yard to Red

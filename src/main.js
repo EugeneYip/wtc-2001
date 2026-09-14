@@ -31,6 +31,7 @@ import { roofClutter, trees, traffic, parkedCars, manholes, vessels,
          DETAIL_MATS, VESSEL_MATS } from './details.js';
 import { makeNightSky } from './nightsky.js';
 import { buildBridge, BRIDGE_MATS } from './bridge.js';
+import { buildMBridge, setMBridgeNight } from './mbridge.js';
 import { buildLiberty, setLibertyNight } from './liberty.js';
 import { buildEllis, setEllisNight } from './ellis.js';
 import { buildGovernors, setGovernorsNight } from './governors.js';
@@ -305,6 +306,7 @@ function applyTime(hour) {
   VESSEL_MATS.navLight.emissiveIntensity = lit * 4.2;
   VESSEL_MATS.paint.emissiveIntensity = lit * 1.1;
   BRIDGE_MATS.deck.emissiveIntensity = lit * 0.10;
+  setMBridgeNight(lit);
   setLibertyNight(lit);
   setEllisNight(lit);
   setGovernorsNight(lit);
@@ -942,6 +944,10 @@ async function init() {
                                      red: CITY_MATS.brick_red,
                                      buff: CITY_MATS.masonry_old });
   if (governors) scene.add(governors);
+
+  // And the next one upriver, which closes the same view behind it.
+  const mbridge = buildMBridge(data.manhattan);
+  if (mbridge) scene.add(mbridge);
 
   // Relief on the far shores, laid over the flat land rather than displacing
   // it: the coastline underneath is accurate to a few metres and a grid coarse

@@ -1358,13 +1358,23 @@ def _bridge_axis(ways):
     return a, (dx / L, dz / L)
 
 
-def build_bridge(land):
-    path = os.path.join(RAW, "bridge.json")
+def build_bridge(land, extract="bridge", span=None, label="brooklyn bridge",
+                 pick=None):
+    """Axis, shore crossings and tower stations for a suspension bridge.
+
+    The Brooklyn Bridge's carriageways carry its name, so its axis comes
+    straight off them. The Manhattan Bridge's do not — they carry street names,
+    and the only ways named for the bridge are the bike path down one side and
+    the footway down the other. Those straddle the centreline, which is all an
+    axis needs, so `pick` says which ways to average.
+    """
+    span = span or MAIN_SPAN
+    path = os.path.join(RAW, extract + ".json")
     if not os.path.exists(path):
-        print("  brooklyn bridge       : no extract, skipped")
+        print("  %-22s: no extract, skipped" % label)
         return None
     els = json.load(open(path))["elements"]
-    ways = [e for e in els if e.get("tags", {}).get("highway")]
+    ways = [e for e in els if (pick or (lambda t: t.get("highway")))(e.get("tags", {}))]
     axis = _bridge_axis(ways)
     if not axis:
         return None
@@ -1376,12 +1386,12 @@ def build_bridge(land):
     # Where the axis leaves one shore and meets the other.
     rings = [l["p"] for l in land]
     wet = []
-    for i in range(-600, 1400):
+    for i in range(-900, 2100):
         x, z = at(i)
         wet.append(not any(_point_in((x, z), r) for r in rings))
-    edges = [i - 600 for i in range(1, len(wet)) if wet[i] != wet[i - 1]]
+    edges = [i - 900 for i in range(1, len(wet)) if wet[i] != wet[i - 1]]
     if len(edges) < 2:
-        print("  brooklyn bridge       : axis does not cross water, skipped")
+        print("  %-22s: axis does not cross water, skipped" % label)
         return None
     mid = (edges[0] + edges[-1]) / 2.0
 
@@ -1398,7 +1408,7 @@ def build_bridge(land):
         "u": [round(ux, 5), round(uz, 5)],
         "s0": round(s0, 1),
         "s1": round(s1, 1),
-        "towers": [round(mid - MAIN_SPAN / 2, 1), round(mid + MAIN_SPAN / 2, 1)],
+        "towers": [round(mid - span / 2, 1), round(mid + span / 2, 1)],
         "shore": [edges[0], edges[-1]],
     }
 
@@ -2285,6 +2295,12 @@ def main():
     water, parks = build_areas()
     land = build_land()
     bridge = build_bridge(land)
+    # 1,470 ft between the tower centres, against the Brooklyn Bridge's
+    # 1,595 ft 6 in. Its axis is averaged off the bike path and the footway,
+    # which are the only two ways on it that carry its name.
+    manhattan = build_bridge(
+        land, extract="manhattan", span=448.1, label="manhattan bridge",
+        pick=lambda t: t.get("name", "").startswith("Manhattan Bridge"))
     liberty = build_liberty(land)
     ellis = build_ellis(land)
     governors = build_governors(land)
@@ -2297,6 +2313,9 @@ def main():
     if bridge:
         print("  brooklyn bridge       : span %.0f m, towers at %s"
               % (bridge["s1"] - bridge["s0"], bridge["towers"]))
+    if manhattan:
+        print("  manhattan bridge      : run %.0f m, towers at %s"
+              % (manhattan["s1"] - manhattan["s0"], manhattan["towers"]))
     if liberty:
         print("  statue of liberty     : star of %d, facing grid %.1f deg "
               "(true %.1f), %d trees"
@@ -2340,6 +2359,7 @@ def main():
                   "stairs": PLAZA_STAIRS},
         "land": land,
         "bridge": bridge,
+        "manhattan": manhattan,
         "liberty": liberty,
         "ellis": ellis,
         "governors": governors,
