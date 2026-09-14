@@ -319,6 +319,50 @@ the run along the perimeter has to be true arc length for the shopfront bays to
 keep their width around a corner, and the tile has to be anchored at the
 pavement so the plinth is always at the bottom.
 
+**And the complex was the exception nobody had noticed.** That band goes on
+789 of the city's 814 buildings — the other 25 are under seven and a half
+metres and have no room for one — and both towers carry the pointed arcade at
+the foot of the trident columns. The five buildings of the complex itself,
+standing on the plaza in the middle of all of it, ran their office cladding
+straight into the paving. From Tobin Plaza that is a wall of office windows
+starting at your knees, which is the one thing none of them did.
+
+What 3, 4, 5 and 6 WTC did instead was carry the cladding's own piers down to
+the paving with the ground storey set behind them, so that walking round the
+plaza you walked under the building. That is what is there now: a plain
+rectangular colonnade, which is the same idea as the towers' arcade with the
+Gothic taken out of it, and which is what the two of them looked like standing
+next to each other.
+
+**Built as a recess it was invisible.** The obvious way round is to pull the
+glazing back inside the footprint — and the office wall below it is still
+there, so what you get is a ground floor hidden behind the very wall it was put
+there to replace. It stands proud instead: the glazing a hand's width clear of
+the wall, the piers a metre in front of that. Exactly the trick the shopfront
+band above already uses, for exactly the same reason.
+
+The storey is two of the cladding's own floors, so the soffit lands on a
+spandrel line instead of halfway up a window, and the piers are on two window
+bays. Those come out of the facade the model already builds. The setback depth
+and the pier width do not: they are proportioned.
+
+**7 WTC gets the other kind.** That building was put up over a Con Edison
+substation and the bottom of it had no windows — so instead of a colonnade it
+gets a blank band of the same granite standing proud of the ribbon glazing.
+Three of its own floors, which is the judgement here; that the substation was
+there is not.
+
+**And the concourse is lit after dark, but not much.** Left black it was a hole
+under a block of lit offices — the same fault the shopfront band was built to
+fix. The level is set against what the city is already doing rather than by
+eye: measured off one frame, the near city's shopfronts read 104 to 127 at
+night from the pavement, and this band is lit right across instead of in three
+bays out of four, so it runs at 85. Below the street's shops, which is what a
+mall that shut at six should be.
+
+**3 draw calls and 2,502 triangles** — 6 and 5,004 with the shadow pass — for
+the ground storeys of all five.
+
 **Around it.** 814 building footprints, the street grid, the Hudson and East
 rivers and the harbour out to about fifteen kilometres, and the parks. Cesar Pelli's World Financial Center
 towers with their dome and stepped-pyramid crowns, the Woolworth Building,

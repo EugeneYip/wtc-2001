@@ -109,6 +109,14 @@ dimensions and historic site plans, and any error in them is mine:
   height on the island is assigned from the storey counts the complex was
   built to, not measured, and every roof is lofted off its own footprint
   rather than surveyed
+- The ground storeys of 3, 4, 5 and 6 World Trade Center: a colonnade at plaza
+  level, with the cladding's own piers carried down to the paving and the
+  ground floor glazed behind them. The storey height and the pier spacing are
+  taken from the facade this model already builds — two floors and two window
+  bays; the depth of the reveal and the width of a pier are proportioned, not
+  measured. 7 World Trade Center's blank granite base is there because the
+  building stood over a Con Edison substation with no windows in it; how far up
+  it ran is a judgement, taken as three floors
 - The Manhattan Bridge: axis from OpenStreetMap — averaged off the bike path
   and the footway, which are the only two ways on the bridge that carry its
   name — and section from published figures for the 1909 structure: 1,470 ft

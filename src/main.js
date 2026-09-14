@@ -295,6 +295,14 @@ function applyTime(hour) {
   CITY_MATS.shopfront.emissiveIntensity = lit * 0.62;
   WTC_MATS.lowrise.emissiveIntensity = lit * 0.95;
   WTC_MATS.wtc7.emissiveIntensity = lit * 0.95;
+  // The concourse under the plaza buildings, set against what the city is
+  // already doing rather than by eye. Measured off the same frame: the near
+  // city's shopfront band reads 104 to 127 at night from the pavement, and
+  // this one is lit right across instead of in three bays out of four. At 0.07
+  // it comes out at 85 — below the street's shops, which is what a mall that
+  // shut at six should be, and not the black hole it was at zero.
+  WTC_MATS.loggia.emissiveIntensity = lit * 0.07;
+  WTC_MATS.wtc7Stone.emissiveIntensity = lit * 0.05;
   for (const k of WALL_CLASSES) CITY_MATS[k].emissiveIntensity = lit * 0.95;
   setNightGround(lit);
   beaconLevel = 0.35 + lit * 2.4;

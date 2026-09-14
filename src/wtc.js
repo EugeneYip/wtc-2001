@@ -17,7 +17,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'BufferGeometryUtils';
-import { norm, extrude } from './geo.js';
+import { norm, poly as facet, inset, extrude } from './geo.js';
 import { plazaTexture, facade, facadeLights } from './textures.js';
 import { shell, tint, roofTint, CITY_MATS } from './city.js';
 
@@ -258,6 +258,20 @@ export const MATS = {
     normalMap: WTC7_FACE.normal, normalScale: new THREE.Vector2(0.35, 0.35),
     emissive: new THREE.Color(0xffd6a4), emissiveIntensity: 0,
     metalness: 1, roughness: 1,
+  }),
+  // The concourse glazing behind the loggia piers. Dark in daylight because
+  // you are looking into a room, and lit after dark for the same reason the
+  // near city's shopfronts are: a black band under a block of lit offices is
+  // a hole in the building, not a ground floor.
+  loggia: new THREE.MeshStandardMaterial({
+    color: 0x22262b, metalness: 0.24, roughness: 0.52, name: 'wtc-loggia',
+    emissive: new THREE.Color(0xffcf9a), emissiveIntensity: 0,
+  }),
+  // The same granite as 7 WTC's facade with nothing cut into it, for the
+  // substation floors at the bottom of the building.
+  wtc7Stone: new THREE.MeshStandardMaterial({
+    color: 0x8a5b45, metalness: 0.14, roughness: 0.72, name: 'wtc7-granite',
+    emissive: new THREE.Color(0xffd6a4), emissiveIntensity: 0,
   }),
   roofPlant: new THREE.MeshStandardMaterial({
     color: 0x6e7276, metalness: 0.45, roughness: 0.6,
@@ -792,6 +806,102 @@ export const PLAZA_LAMP_SITES = (data) => {
   return sites;
 };
 
+// ---------------------------------------------------------------------------
+// Ground storeys
+// ---------------------------------------------------------------------------
+
+// Two of the low buildings' own floors. The concourse level under 4, 5 and 6
+// WTC was taller than the offices over it, and taking it as exactly two of
+// them lands the soffit on a spandrel line instead of halfway up a window.
+const LOGGIA_H = LOW_SPEC.floorH * 2;
+const LOGGIA_PROUD = 0.06;              // the glazing, just clear of the wall
+const LOGGIA_PIER = 0.95;               // how far the piers stand in front of it
+const PIER_BAY = LOW_SPEC.bayW * 2;     // piers on the cladding's own module
+const PIER_W = 0.62;
+// Three of 7 WTC's floors. The Con Edison substation the building was put up
+// over occupied the bottom of it and had no windows; how far up the blank
+// granite ran is the judgement here, not that it was there.
+const PODIUM7 = WTC7_SPEC.floorH * 3;
+const PODIUM7_PROUD = 0.12;
+
+/**
+ * The ground storey of a building on the plaza.
+ *
+ * Every building in the near city tall enough to have one carries a shopfront
+ * band, and both towers carry their arcade — and the five buildings of the
+ * complex, standing on the plaza in the middle of all of it, ran their office
+ * cladding straight into the paving. From the plaza that is a wall of office
+ * windows starting at your knees, which is the one thing none of them did.
+ *
+ * What they did instead was set the ground storey back behind the cladding's
+ * own piers, so that walking round Tobin Plaza you walked under the building.
+ * Built as a recess it was invisible: the office wall below it is still there,
+ * so glazing set back inside the footprint is hidden by the very wall it was
+ * put there to replace. It stands proud instead — a dark band a hand's width
+ * clear of the wall with the piers a metre in front of that — which is the
+ * same trick the near city's shopfronts use and reads as the same thing.
+ *
+ * The setback and the pier width are proportioned rather than measured; the
+ * module is the cladding's own, two window bays.
+ *
+ * 7 WTC gets the other kind: no piers and no reveal, a blank granite band
+ * standing proud of the ribbon glazing, because the bottom of that building
+ * was a substation.
+ */
+function groundStorey(ring, o) {
+  const { h, proud, pierD, piers } = o;
+  const y0 = o.y0 || 0, y1 = y0 + h;
+  const n = ring.length;
+  // Which way is out. The footprints come from the data with no promise about
+  // winding, so it is taken off the signed area rather than assumed.
+  let a2 = 0;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    a2 += ring[i][0] * ring[j][1] - ring[j][0] * ring[i][1];
+  }
+  const sgn = a2 > 0 ? 1 : -1;
+  const face = inset(ring, -proud);
+  const glass = [], pier = [], soffit = [];
+  const V = (p, y) => new THREE.Vector3(p[0], y, p[1]);
+  const DOWN = new THREE.Vector3(0, -1, 0);
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    const A = face[i], B = face[j];
+    const ex = B[0] - A[0], ez = B[1] - A[1];
+    const len = Math.hypot(ex, ez);
+    if (len < 0.6) continue;
+    const ux = ex / len, uz = ez / len;
+    const ox = sgn * uz, oz = -sgn * ux;           // outward, in plan
+    const out = new THREE.Vector3(ox, 0, oz);
+    glass.push(facet([V(A, y0), V(B, y0), V(B, y1), V(A, y1)], out));
+    if (!piers) continue;
+    // The head of the reveal, from the glazing out to the front of the piers.
+    const FA = [A[0] + ox * pierD, A[1] + oz * pierD];
+    const FB = [B[0] + ox * pierD, B[1] + oz * pierD];
+    soffit.push(facet([V(A, y1), V(B, y1), V(FB, y1), V(FA, y1)], DOWN));
+    // One pier at the far end of every edge, so each corner gets exactly one,
+    // and the rest spaced along it on the module.
+    const count = Math.max(1, Math.round(len / PIER_BAY));
+    for (let k = 1; k <= count; k++) {
+      const t = (k / count) * len;
+      const cx = A[0] + ux * t, cz = A[1] + uz * t;
+      const hw = Math.min(PIER_W / 2, len / (count * 2.2));
+      const p0 = [cx - ux * hw, cz - uz * hw], p1 = [cx + ux * hw, cz + uz * hw];
+      const f0 = [p0[0] + ox * pierD, p0[1] + oz * pierD];
+      const f1 = [p1[0] + ox * pierD, p1[1] + oz * pierD];
+      // Front face and the two returns. The back is against the glazing and
+      // the top is under the soffit, so neither is ever seen.
+      pier.push(facet([V(f0, y0), V(f1, y0), V(f1, y1), V(f0, y1)], out));
+      const sideL = new THREE.Vector3(-ux, 0, -uz);
+      const sideR = new THREE.Vector3(ux, 0, uz);
+      pier.push(facet([V(p0, y0), V(f0, y0), V(f0, y1), V(p0, y1)], sideL));
+      pier.push(facet([V(f1, y0), V(p1, y0), V(p1, y1), V(f1, y1)], sideR));
+    }
+  }
+  return { glass, pier, soffit };
+}
+
+
 export function buildComplex(data) {
   const g = new THREE.Group();
   g.name = 'WTC complex';
@@ -826,9 +936,23 @@ export function buildComplex(data) {
   // of the city -- otherwise these read as blank white slabs from above.
   const byMat = { wtc_low: [], wtc7: [] };
   const roofs = [];
+  const loggiaGlass = [], loggiaPier = [], podium = [];
   for (const b of data.complex) {
     const parts = shell(b.p, b.h);
     if (parts.wall) (byMat[b.c] || byMat.wtc_low).push(parts.wall);
+    // The ground storey. See groundStorey: a loggia for the four low
+    // buildings on the plaza, a blank substation base for 7 WTC.
+    if (b.c === 'wtc7') {
+      const g = groundStorey(b.p, { h: PODIUM7, proud: PODIUM7_PROUD,
+                                    piers: false });
+      podium.push(...g.glass);
+    } else {
+      const g = groundStorey(b.p, { h: LOGGIA_H, proud: LOGGIA_PROUD,
+                                    pierD: LOGGIA_PIER, piers: true,
+                                    y0: data.plaza.y });
+      loggiaGlass.push(...g.glass, ...g.soffit);
+      loggiaPier.push(...g.pier);
+    }
     // The roof material reads a vertex colour, and geometry that does not
     // carry one gets zero for it — so these came out not tar and gravel but
     // pure black, five flat black rectangles in the middle of the model. They
@@ -848,6 +972,15 @@ export function buildComplex(data) {
     const m = new THREE.Mesh(mergeGeometries(roofs), CITY_MATS.roof);
     m.receiveShadow = true;
     m.name = 'complex-roofs';
+    g.add(m);
+  }
+  for (const [list, mat, name] of [[loggiaGlass, MATS.loggia, 'complex-loggia'],
+                                   [loggiaPier, MATS.column, 'complex-piers'],
+                                   [podium, MATS.wtc7Stone, 'wtc7-podium']]) {
+    if (!list.length) continue;
+    const m = new THREE.Mesh(mergeGeometries(list), mat);
+    m.castShadow = true; m.receiveShadow = true;
+    m.name = name;
     g.add(m);
   }
 
