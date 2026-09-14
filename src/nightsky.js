@@ -41,6 +41,7 @@ const FRAG = `
   uniform vec3  uTwilight;
   uniform float uTwilightAmt;
   uniform float uStars;
+  uniform float uDither;      // see the note in main.js; 0 under the composer
 
   float hash( vec3 p ) {
     p = fract( p * 0.3183099 + vec3( 0.71, 0.113, 0.419 ) );
@@ -87,6 +88,28 @@ const FRAG = `
     col += uTwilight * uTwilightAmt * arch;
 
     gl_FragColor = vec4( col, uOpacity );
+
+    // These two are what the built-in materials end with, and they are what
+    // this shader was missing. The declarations they need are already in the
+    // prefix three.js puts in front of every ShaderMaterial, so including the
+    // pars as well is a redefinition and the shader will not compile.
+    //
+    // Under the composer they compile away to nothing — three.js only
+    // defines TONE_MAPPING and an sRGB output texel when the target is the
+    // canvas, and under the composer it is a half-float buffer —
+    // so on those tiers this is exactly the shader it was before. Without the
+    // composer they are the whole difference between a night sky and a black
+    // one: the dome was writing radiance straight into an eight-bit sRGB
+    // buffer with no encode, which put the horizon at 9 where it wanted to be
+    // 30, and squeezed the gradient over it into a third of its range.
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+
+    // Eight bits is not enough for a sky this dark; see dithered() in main.js
+    // for the argument. The composer dithers the whole frame in one place, so
+    // this only runs when there is no composer to do it.
+    gl_FragColor.rgb += uDither * ( hash( vec3( gl_FragCoord.xy, 1.0 ) ) +
+                                    hash( vec3( gl_FragCoord.yx, 7.0 ) ) - 1.0 );
   }
 `;
 
@@ -97,13 +120,28 @@ export function makeNightSky(radius = 16000) {
     uniforms: {
       uSunDir: { value: new THREE.Vector3(0, -1, 0) },
       uOpacity: { value: 0 },
-      uZenith: { value: new THREE.Color(0x05070f) },
+      // These are radiance, not screen colours, and the zenith used to be set
+      // low enough to fall off the bottom of the tone curve. ACES has a toe:
+      // the fit three.js ships returns zero for anything under about 0.0033,
+      // and at the night exposure of 0.86 that is an input radiance of
+      // 0.0023. 0x05070f converts to (0.00152, 0.00212, 0.00478), so red and
+      // green were both under it and the zenith measured 0/0/1 — not a dark
+      // blue but black, with one unit of blue in it, across the whole top
+      // third of the sky. The gradient this dome is meant to have simply was
+      // not there to see, and the stars sat on a dead field.
+      //
+      // Four times the radiance clears the toe with a margin of 2.7 and
+      // measures 3/5/15 on screen, which is about a ninth of the horizon
+      // band's brightness — the ratio a city zenith actually keeps against
+      // its own skyglow.
+      uZenith: { value: new THREE.Color(0x121726) },
       uHorizon: { value: new THREE.Color(0x14203a) },
       uGlow: { value: new THREE.Color(0xff9b4a) },
       uGlowAmt: { value: 0 },
       uTwilight: { value: new THREE.Color(0xff7a33) },
       uTwilightAmt: { value: 0 },
       uStars: { value: 0 },
+      uDither: { value: 0 },
     },
     side: THREE.BackSide,
     // Blended, but deliberately not `transparent`. A transparent material goes

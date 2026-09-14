@@ -179,3 +179,20 @@ along the mirror ray — so it lies in the right direction and falls off the
 right way, but it is a reflection of a map and carries no image of any
 particular building. Which shops are lit, and which have an illuminated
 fascia, is drawn from a seed rather than from any record.
+
+The stars are procedural and there are too many of them. A wide frame of open
+sky holds 267, which is well over a thousand across the dome, and from Lower
+Manhattan on a clear night you would pick out a few dozen at best. They are
+kept anyway, because a correctly empty sky above the towers says nothing; this
+is a choice about the picture and not a claim about the sky. There is no moon
+in it, which for the night either side of 11 September 2001 happens to be
+right — the moon was at last quarter and did not rise until nearly midnight —
+but that is a coincidence rather than a model of the moon's position.
+
+The sun's position *is* computed rather than chosen. Sunrise comes out at
+06:36, solar noon at 12:51, sunset at 19:07, and the sun's greatest height at
+53.8 degrees, against 54.1 degrees and a day two minutes longer worked from
+the geometry for 40.71°N at that declination. Published clock times for that
+morning are a few minutes wider at each end, because they are defined at the
+sun's upper limb and include atmospheric refraction, neither of which this
+models.

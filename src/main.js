@@ -218,11 +218,37 @@ function applyTime(hour) {
   // These are radiance added to a sky whose own horizon is about 0.04, so a
   // little goes a very long way; the first pass at 0.78 put a bar of daylight
   // right round the horizon and swallowed the city whole.
-  n.uGlowAmt.value = dusk * 0.036;
+  //
+  // But 0.036 was the other error, and a subtler one: it landed exactly on
+  // the crossover. The dome's own horizon colour is a blue, the glow laid
+  // over it is sodium orange, and at 0.036 the band just above the horizon
+  // measured 31/21/36 — red and blue level, green under both, which is a
+  // magenta. Not a warm sky and not a cold one, and over a city whose lit
+  // ground in the same frame reads 18/13/8 and whose water reads 24/11/8,
+  // both plainly orange. Skyglow is the city's own light scattered back
+  // down; it cannot be a different colour from the light that makes it.
+  //
+  // Swept on one frame at eleven at night, the band goes 3/10/33 at nothing,
+  // 31/21/36 at 0.036, 51/29/38 at 0.07, 75/41/42 at 0.12, 106/57/47 at 0.2
+  // and 176/104/65 at 0.5 — which is the bar of daylight the old note warns
+  // about. 0.12 is where red clears blue by enough for the band to read as
+  // the warm glow it is, and it is still dim enough that the towers stand
+  // against it rather than in front of it.
+  n.uGlowAmt.value = dusk * 0.12;
   // The sunset arch outlives the sunset itself, then goes with the last light.
-  n.uTwilightAmt.value = dusk * (1 - smooth(e, -13.0, -3.5)) * 0.13;
+  //
+  // Both of the next two ramps used to run the wrong way round, and the two
+  // errors were each other's: this line carried a `1 -` that belonged on the
+  // one below, and the one below was missing it. Measured, the model had no
+  // stars at any hour of the night — they came up to full strength at four
+  // degrees below the horizon, where the sky is still bright enough to wash
+  // them out, and were back to nothing by fifteen — and it kept a sunset arch
+  // burning at full strength in the west at three in the morning, while the
+  // sunset itself had none at all. Neither is what the comments describe and
+  // neither is what a sky does.
+  n.uTwilightAmt.value = dusk * smooth(e, -13.0, -3.5) * 0.13;
   // Stars only once the twilight has drained out of the sky.
-  n.uStars.value = smooth(e, -11.0, -6.0) * 0.42;
+  n.uStars.value = (1 - smooth(e, -11.0, -6.0)) * 0.42;
 
   _c.copy(SKY_DAY).lerp(SKY_DUSK, warm * 0.85);
   // The haze takes a gentler dose of the sunset than the ambient does. Given
@@ -1098,9 +1124,14 @@ async function init() {
     bloom = new UnrealBloomPass(
       new THREE.Vector2(innerWidth, innerHeight), 0.28, 0.6, 0.8);
     composer.addPass(bloom);
-    composer.addPass(new OutputPass());
+    composer.addPass(dithered(new OutputPass()));
     sizeComposer();
   }
+  // Half a step either side, the same amount the output pass adds — but only
+  // where there is no output pass to add it. On the tiers that have one the
+  // night dome is drawn into a half-float target where a step of 1/255 would
+  // be a blunt instrument, so there it stays off.
+  nightSky.material.uniforms.uDither.value = composer ? 0 : 0.5 / 255;
 
   makeLabels();
   wireUI();
@@ -1170,6 +1201,7 @@ async function loadData() {
  * Cap the pixels and derive the ratio from that. On everything up to a 4K
  * frame this changes nothing at all.
  */
+
 /**
  * EffectComposer multiplies the size it is given by its own pixel ratio and
  * does not round, so a fractional ratio gave it targets 3841.29 x 2160.72 —
@@ -1181,6 +1213,47 @@ function sizeComposer() {
   const size = renderer.getDrawingBufferSize(_size);
   composer.setPixelRatio(1);
   composer.setSize(size.x, size.y);
+}
+
+/**
+ * Break up the banding in the night sky.
+ *
+ * Everything upstream of here is half-float, and the last pass writes eight
+ * bits. A sky that is nearly black has almost no eight-bit levels left to
+ * land on once the encode has been applied, so a gradient that is perfectly
+ * smooth in the buffer comes out as a stack of flat plateaux with a hard edge
+ * between each — measured down a column of a nine o'clock frame, red held at
+ * the value 1 for eighty-five rows, then 2 for forty-two, then 3 for
+ * twenty-seven. Those edges read as contour rings centred on the zenith, and
+ * a step from 1 to 2 is a doubling of that channel: this is not subtle.
+ *
+ * The cure is the one the recording industry settled on decades ago. Add
+ * noise smaller than the step, and the rounding that follows carries the
+ * fraction as a probability rather than throwing it away, so the plateaux
+ * dissolve into a dither whose local average is the value that was wanted.
+ * The noise has to go in after the encode, because that is where the
+ * quantiser is; a dither applied in linear radiance would be far too coarse
+ * at the bottom of the range and invisible at the top.
+ *
+ * Two hash draws rather than one. A single uniform draw of half a step either
+ * way removes the plateaux but leaves the error correlated with the signal,
+ * which shows up as a faint patterning that still follows the gradient; the
+ * sum of two draws is triangular, and decorrelates it properly. One step
+ * peak to peak is the quietest amount that does the job — at two the noise
+ * itself becomes visible in the darkest part of the sky.
+ *
+ * three.js has a dither chunk of its own, but only the built-in materials
+ * include it, and the frame that needs it is drawn by a full-screen pass.
+ */
+function dithered(pass) {
+  pass.material.fragmentShader = pass.material.fragmentShader.replace(
+    /\}\s*$/,
+    `
+      float d1 = fract( sin( dot( gl_FragCoord.xy, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 );
+      float d2 = fract( sin( dot( gl_FragCoord.xy, vec2( 63.7264, 10.8735 ) ) ) * 32168.5432 );
+      gl_FragColor.rgb += ( d1 + d2 - 1.0 ) * ( 0.5 / 255.0 );
+    }`);
+  return pass;
 }
 
 /**

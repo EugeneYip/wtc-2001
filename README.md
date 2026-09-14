@@ -1735,8 +1735,16 @@ is all a working boat is at a mile.
 one, which the Preetham model cannot do: push its sun below the horizon and it
 turns a muddy brown. This one carries a gradient darkest overhead, the sodium
 dome of the city's own light hugging the horizon the whole way round, the warm
-arch left in the sun's quarter of the sky, and about as many stars as Lower
-Manhattan actually shows.
+arch left in the sun's quarter of the sky, and stars thinned out into the
+skyglow near the ground the way they really are here.
+
+The star count is generous rather than honest: a wide frame of open sky holds
+267 of them, which works out at something over a thousand across the whole
+dome, and from Lower Manhattan you would be doing well to pick out a few
+dozen. That is a deliberate keep. A memorial that renders the sky above the
+towers as a correctly empty orange smear is accurate and says nothing, and the
+faint ones here are near enough to the noise floor to read as depth rather
+than as a planetarium.
 
 Lit windows fall off from ceiling to sill and are divided by mullions, because
 a flat rectangle of colour reads from the pavement as a luminous sticker
@@ -1755,6 +1763,138 @@ surface gets the streets right from the air and is unmistakably wrong at eye
 level, where light comes in pools with darkness between them. Cars carry
 headlights and tail lamps; both towers carry red obstruction lights at their
 roof corners, and the mast tip flashes.
+
+**Then the dark was measured, and five things were wrong with it.**
+
+*The sky was banded.* Everything up to the last pass is half-float; the last
+pass writes eight bits. A sky that is nearly black has almost no eight-bit
+levels left to land on once the encode has been applied, so a gradient that is
+perfectly smooth in the buffer arrives as a stack of flat plateaux with a hard
+edge between each. Down a single column of a nine o'clock frame, red held at
+the value 1 for eighty-five rows, then 2 for forty-two, then 3 for
+twenty-seven, then 4 for twenty; green held 2 for sixty-nine rows. Those edges
+read as contour rings centred on the zenith — visible in the frame, and
+unmissable with a gain on it — and a step from 1 to 2 is a doubling of that
+channel.
+
+The cure is the one the recording industry settled on decades ago: add noise
+smaller than the quantiser's step, and the rounding carries the fraction as a
+probability instead of discarding it. It has to go in *after* the encode,
+because that is where the quantiser is — a dither applied to linear radiance
+would be far too coarse at the bottom of the range and invisible at the top —
+so it is a patch on the output pass rather than anything in the sky itself, and
+it covers the whole frame. Two hash draws, not one: a single uniform draw of
+half a step either way removes the plateaux but leaves the error correlated
+with the signal, and the sum of two is triangular and decorrelates it. One step
+peak to peak; at two the noise itself starts to show. Afterwards the same
+column runs 129 steps instead of 68, with the transitions interleaved rather
+than stepped, and the frame's mean is unchanged — 10.361 before, 10.358 after.
+It costs nothing measurable: 3.09 ms and 3.12 ms against 3.18 ms and 3.06 ms
+with the dither stripped back out.
+
+three.js has a dither chunk of its own, but only the built-in materials include
+it, and the frame that needs it is drawn by a full-screen pass.
+
+*The zenith was under the tone curve's black point.* ACES has a toe. The fit
+three.js ships returns zero for any input under about 0.0033, which at the
+night exposure of 0.86 is a radiance of 0.0023. The night dome's zenith colour
+was `0x05070f`, and these are radiance values rather than screen colours, so it
+converted to (0.00152, 0.00212, 0.00478) — red and green both under the toe.
+The zenith measured 0/0/1: not a dark blue but black with one unit of blue in
+it, across the whole top third of the sky. The gradient this dome is built to
+have was not there to see, and the stars sat on a dead field. Four times the
+radiance clears the toe with a margin of 2.7 and measures 3/5/15, about a ninth
+of the horizon band — which is the ratio a city zenith keeps against its own
+skyglow.
+
+*The stars never came out, and the sunset arch never went in.* Two ramps, and
+the two errors were each other's: the arch carried a `1 -` that belonged to the
+stars, and the stars were missing it. Measured across the evening, the model
+had no stars at any hour of the night — they reached full strength four degrees
+below the horizon, where the sky is still bright enough to wash them out, and
+were back to nothing by fifteen — and it kept a sunset arch burning at full
+strength in the west at three in the morning, while the sunset itself had none
+at all. Neither is what the comments beside them describe. Corrected, the arch
+peaks about twenty minutes after sunset and is gone by the end of nautical
+twilight, and the stars come up as it drains away and stay up until dawn.
+
+*The skyglow was the wrong colour, by landing exactly on a crossover.* The
+dome's own horizon colour is a blue and the glow laid over it is sodium orange,
+and at the old amount the band just above the horizon measured 31/21/36 — red
+and blue level, green under both, which is a magenta. Not a warm sky and not a
+cold one, and sitting over a city whose lit ground in the same frame reads
+18/13/8 and whose water reads 24/11/8, both plainly orange. Skyglow is the
+city's own light scattered back down; it cannot be a different colour from the
+light that makes it. Swept on one frame at eleven at night, the band goes
+3/10/33 with the glow off, 31/21/36 at 0.036, 51/29/38 at 0.07, 75/41/42 at
+0.12, 106/57/47 at 0.2, and 176/104/65 at 0.5 — which is the bar of daylight
+the first attempt at this was warned about. 0.12 is where red clears blue by
+enough for the band to read as the warm glow it is, and it is still dim enough
+that the towers stand against it rather than in front of it.
+
+*And on a phone the night dome had no encode at all.* Tiers with the bloom pass
+draw through the composer, which ends in an output pass that tone maps and
+encodes the whole frame. The lowest tier has no bloom and so no composer, and
+draws straight to the canvas — where each material has to do its own encoding.
+Every built-in material does. The Preetham dome does. This one did not: it was
+writing radiance into an eight-bit sRGB buffer raw, which put the horizon at
+9/6/10 where it should have been 30/20/35 and squeezed the gradient over it
+into a third of its range. Adding the two chunks the built-in materials end
+with fixes it, and changes nothing on the other tiers — three.js only defines
+them when the target is the canvas, so under the composer they compile away and
+the frame is bit-for-bit what it was. The dither goes in the same place for the
+same reason, behind a uniform that is zero whenever there is an output pass to
+do it instead.
+
+**What was already right.** Most of what was looked at in this round turned out
+not to be broken, which is worth recording:
+
+- **The sun does not step at the horizon.** Its intensity ramps 1.982, 1.808,
+  1.607, 1.363, 0.868, 0.110, 0 through the last degrees, and its colour
+  reddens with it — `#fff2df` at five, `#ff9a5e` at seven, `#ff8c3c` at
+  sunset. There is no trough either: a tower face falls monotonically from 175
+  to 11 as the exposure rises to meet it.
+- **The mid-sky is not milky.** Saturation runs 0.72 at twenty-six degrees,
+  0.47 at ten and 0.068 at one. The double-encode fix above had already dealt
+  with the "white by ten degrees" complaint recorded here; the complaint had
+  simply outlived it.
+- **The solar geometry is right.** The model puts sunrise at 06:36, solar noon
+  at 12:51, sunset at 19:07 and the sun's greatest height at 53.8 degrees.
+  Computed from scratch for 40.71°N with the sun's declination at +4.8°: 54.1
+  degrees, and a day 12 h 33 min long against the model's 12 h 31 min. The
+  published clock times for that morning are a few minutes wider at each end
+  because they are defined at the sun's upper limb and include refraction,
+  which this does not model.
+- **The dawn band is not a stripe.** It looked like one — a hard-edged maroon
+  line across the whole width with a sharp top edge — and it was not. Profiled
+  down a strip of sky clear of the city, the gradient is smooth and monotone
+  from 9 to 40 over three hundred rows with no knee anywhere. The hard edge in
+  the first measurement was the tower tops entering a full-width row average
+  at exactly that height: 87 and 67 where the sky either side was 10.
+- **The stars do not scintillate.** They are sub-pixel Gaussians on a
+  direction-space grid, which is the recipe for flicker as the camera turns.
+  Across five camera bearings the count of star pixels ran 155, 165, 157, 159,
+  167 and their total energy 7623 to 7884 — a seven per cent spread, which is
+  different patches of sky rather than the same stars blinking.
+- **The shadows are sound.** Checked at nine in the morning and half past four,
+  at the plaza and from above: no acne on the lit faces, no light leaking under
+  a contact, shadows attached to the things throwing them. The edges step at
+  about a metre on the middle tier, which is what a 2048 map over a 1.2 km
+  frustum buys, and that is the tier's own trade.
+
+One artefact was found and deliberately left: the towers' one-metre column
+pitch beats against the pixel grid at some distances and draws curved moiré
+fringes across a facade. That is a sampling problem in the facade, not in the
+sky or the light, and fixing it properly means changing how the columns are
+drawn rather than adjusting anything here.
+
+**A measurement trap worth writing down.** The reflection probes are debounced
+by 180 ms, because dragging the time slider fires continuously and each
+refresh is six scene renders and a convolution. A capture loop that sets the
+hour and renders immediately therefore gets a night sky lit by a *daytime*
+environment map — and the first set of dusk frames from this round showed a
+brightly lit city under a black sky, which looked like a lighting bug and was
+an impatient harness. Every measurement here waits out the debounce.
 
 ## Controls
 
