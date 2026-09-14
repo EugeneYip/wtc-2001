@@ -53,7 +53,10 @@ post-2001 mid-rise will have come through with them.
 
 The Brooklyn waterfront — the strip from the Navy Yard round Brooklyn Heights
 to Red Hook, four hundred metres in from the water — is traced footprints from
-OpenStreetMap, most of them with a surveyed height. Facade families are
+OpenStreetMap, most of them with a surveyed height. Both waterfronts are
+trimmed by distance: the smallest footprints are dropped as their range grows,
+so what is carried thins out towards Hoboken and Red Hook and no building is
+invented to fill the gaps. Facade families are
 assigned by height and footprint the way the Manhattan fabric's are, by a rule
 written for a brick waterfront rather than a grey one; nothing over there is
 claimed to be clad in what it is actually clad in. Only two of those buildings

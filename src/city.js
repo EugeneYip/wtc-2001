@@ -880,11 +880,21 @@ function buildingTint(b) {
  * as it covers Manhattan — it was that the building extract stops at the
  * Manhattan shoreline and nothing had asked it not to.
  *
- * What comes back is three thousand buildings, which is why this is not the
+ * What comes back is four thousand buildings, which is why this is not the
  * same pass the city gets. No shopfronts, no crowns, no roof plant, no flags,
  * no labels, no shadows: at one to four kilometres none of that is a pixel,
  * and every one of them would be three thousand of something. Walls and roofs,
  * in the same facade families and with the same tinting, and nothing else.
+ *
+ * Not paving. The ground texture decides where the far shore looks built up
+ * from its own noise, and the buildings now know better — so each of them was
+ * given a skirt of the same ground with the countryside taken out of it, seven
+ * metres out, which paves a terrace's own street from both sides. Measured
+ * from straight above the ten densest blocks it moved the ground by three
+ * parts in fifty; measured from the observation deck, which is the view this
+ * is for, it moved it by 0.3 of a luminance unit out of sixty, because at a
+ * grazing angle the buildings are standing on the streets. Fourteen thousand
+ * triangles for nothing anyone could see, so it is not here.
  */
 export function farShore(list, tag = 'far') {
   if (!list || !list.length) return [];
@@ -895,7 +905,7 @@ export function farShore(list, tag = 'far') {
     const into = (walls[cls] = walls[cls] || []);
     const rgb = buildingTint(b);
     const base = shell(b.p, b.h);
-    if (base.wall) into.push(tint(base.wall, rgb));
+    if (base.wall) into.push(canyon(base.wall, rgb, b.h));
     if (base.roof) roofs.push(tint(base.roof, roofTint(b, rgb)));
   }
   const out = [];
@@ -904,7 +914,7 @@ export function farShore(list, tag = 'far') {
     const m = new THREE.Mesh(mergeGeometries(geos), CITY_MATS[cls]);
     // Deliberately not casting: the sun's shadow camera covers a kilometre
     // around the towers and every one of these is outside it, so a shadow pass
-    // over them is three thousand buildings drawn twice for nothing.
+    // over them is four thousand buildings drawn twice for nothing.
     m.name = tag + '-walls-' + cls;
     out.push(m);
   }
@@ -914,6 +924,44 @@ export function farShore(list, tag = 'far') {
     out.push(m);
   }
   return out;
+}
+
+// How dark a far-shore wall gets at the pavement.
+const CANYON = 0.58;
+
+/**
+ * The same, but darkened towards the pavement.
+ *
+ * The far shore casts no shadows and receives none — the sun's shadow camera
+ * covers about a kilometre around the towers and none of this is inside it —
+ * so where the near city has its lower storeys in the shade of the buildings
+ * opposite, all four thousand of them were lit top to bottom as if each
+ * one stood alone on a plain. A city seen from four hundred metres up is dark
+ * at street level and that darkness is most of what makes it read as fabric
+ * rather than as models on a table.
+ *
+ * So it is put back by hand, as a gradient on the vertex colour the walls are
+ * already carrying. No triangles, no draw calls and no shadow pass: the wall
+ * geometry runs from the pavement to the parapet and the height of a vertex is
+ * already in it. The reach is the shorter of eighteen metres and four fifths
+ * of the building, so a row house is shaded most of the way up and a
+ * warehouse keeps a lit upper wall.
+ */
+function canyon(geo, rgb, h) {
+  if (!geo) return geo;
+  const p = geo.getAttribute('position');
+  const n = p.count;
+  const reach = Math.max(3, Math.min(18, h * 0.8));
+  const a = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const t = Math.min(1, Math.max(0, p.getY(i) / reach));
+    const k = CANYON + (1 - CANYON) * t * t * (3 - 2 * t);
+    a[i * 3] = rgb[0] * k;
+    a[i * 3 + 1] = rgb[1] * k;
+    a[i * 3 + 2] = rgb[2] * k;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(a, 3));
+  return geo;
 }
 
 /** Give a geometry a flat vertex colour so it can be merged with the rest. */

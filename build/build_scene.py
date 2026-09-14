@@ -2053,10 +2053,21 @@ def far_min_area(poly):
     bytes of payload. The near end of each strip keeps everything down to
     ninety square metres, the way the city itself does; the far end keeps only
     what can actually be resolved.
+
+    The dissolve used to start at 2.6 km and it started too soon, because when
+    it was set most of what it was thinning was invisible: the relief sheet was
+    lying over the far shore, and seven of every eight Brooklyn buildings were
+    buried to at least half their height. With the relief kept off, that band is Brooklyn
+    Heights, Cobble Hill and Paulus Hook, all of it square in the view from the
+    towers, and four buildings in five were being dropped out of it — which
+    left the big ones standing alone with their terraces gone. So the full
+    ninety-square-metre rule now runs to 3.2 km and the fade is steeper after
+    it: nine hundred more buildings in the band that shows, and none at all
+    added past four kilometres, where they really are one pixel.
     """
     cx, cz = centroid(poly)
     r = math.hypot(cx, cz)
-    return 90.0 + max(0.0, r - 2600.0) * 0.10
+    return 90.0 + max(0.0, r - 3200.0) * 0.16
 
 
 def build_brooklyn():

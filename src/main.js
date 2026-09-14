@@ -958,11 +958,15 @@ async function init() {
   // it: the coastline underneath is accurate to a few metres and a grid coarse
   // enough to afford would have chewed it up.
   // Everything the harbour islands stand on is built in detail, so the relief
-  // is kept off all three of them the way it is kept off Manhattan.
+  // is kept off all three of them the way it is kept off Manhattan — and now
+  // off both waterfronts too, which have four thousand buildings standing on
+  // the flat ground and were being buried by it: nine in ten of Brooklyn's
+  // were up to their eaves in a hillside that is not there.
   const relief = buildRelief(data.relief, data.land || [], CITY_MATS.ground,
                              [data.liberty && data.liberty.island,
                               data.ellis && data.ellis.island,
-                              data.governors && data.governors.island]);
+                              data.governors && data.governors.island],
+                             (data.brooklyn || []).concat(data.jersey || []));
   if (relief) scene.add(relief);
 
   status.textContent = 'Raising the towers…';

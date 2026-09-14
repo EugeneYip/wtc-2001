@@ -73,7 +73,7 @@ function distToLine2(x, z, pts) {
   return best;
 }
 
-export function buildRelief(relief, landPolys, material, keepOff) {
+export function buildRelief(relief, landPolys, material, keepOff, built) {
   if (!relief || !landPolys || !landPolys.length) return null;
   const peaks = relief.peaks || [];
   const ridges = relief.ridges || [];
@@ -135,6 +135,49 @@ export function buildRelief(relief, landPolys, material, keepOff) {
   };
   const inland = blur(land, 4);            // about 560 m
 
+  // Ground that is modelled in detail is not far shore either, and the far
+  // shore has quietly stopped being far shore. Both waterfronts now carry
+  // three and a half thousand real buildings standing on the flat, exact
+  // ground, and this sheet was laid straight over the top of them: sampled at
+  // their own centroids, 1,573 of Brooklyn's 1,780 were buried past half their
+  // height and 136 were under two and a half times it — gone. Jersey City had
+  // sixty-six metres of invented hill over a thirty-metre building.
+  //
+  // The same fault as Lower Manhattan and as the three islands, found the same
+  // way: by putting something underneath it. And the same fix, because the
+  // height being lost here is the part that carries no claim. Brooklyn Heights
+  // really does stand on a bluff, but the twenty-six metres this was giving it
+  // were value noise, not the bluff; the Jersey City waterfront is landfill at
+  // sea level and DUMBO, the Navy Yard and Red Hook are flat. The hills beyond
+  // are untouched, and they are the ones that make the profile.
+  const urban = new Uint8Array(N * N);
+  for (const b of built || []) {
+    if (!b || !b.p || !b.p.length) continue;
+    let cx = 0, cz = 0;
+    for (const q of b.p) { cx += q[0]; cz += q[1]; }
+    cx /= b.p.length; cz /= b.p.length;
+    const i = Math.round((cx + REACH) / STEP), j = Math.round((cz + REACH) / STEP);
+    if (i < 0 || i > N - 1 || j < 0 || j > N - 1) continue;
+    urban[j * N + i] = 1;
+  }
+  // Grown by two cells so a building is clear of the slope as well as the
+  // summit, then blurred by two more so the ground outside comes up over three
+  // hundred metres rather than in one step.
+  const grown = new Float32Array(N * N);
+  for (let j = 0; j < N; j++) {
+    for (let i = 0; i < N; i++) {
+      let v = 0;
+      for (let dj = -2; dj <= 2 && !v; dj++) {
+        const jj = Math.min(N - 1, Math.max(0, j + dj));
+        for (let di = -2; di <= 2; di++) {
+          if (urban[jj * N + Math.min(N - 1, Math.max(0, i + di))]) { v = 1; break; }
+        }
+      }
+      grown[j * N + i] = v;
+    }
+  }
+  const town = blur(grown, 2);
+
   const smooth = (v, a, b) => {
     const t = Math.min(1, Math.max(0, (v - a) / (b - a)));
     return t * t * (3 - 2 * t);
@@ -166,7 +209,8 @@ export function buildRelief(relief, landPolys, material, keepOff) {
       // than the table it replaces.
       h += (noise(x / 2100, z / 2100) - 0.42) * 42 +
            (noise(x / 700, z / 700) - 0.5) * 13;
-      height[j * N + i] = Math.max(0, h) * ramp;
+      height[j * N + i] = Math.max(0, h) * ramp *
+                          (1 - Math.min(1, town[j * N + i]));
     }
   }
 

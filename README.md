@@ -468,7 +468,10 @@ goes from 14 m to 1.7 km, which is the far side of the river, where it belongs.
 Worth saying plainly: this arrived with the relief and was not caught when it
 did. The checks then were all about the far shore and the coastline — whether
 the horizon was broken and whether the pier fingers survived — and none of them
-looked at what the new surface was doing to the ground underfoot.
+looked at what the new surface was doing to the ground underfoot. It has since
+happened twice more, to the three harbour islands and then to the far shore
+itself, and the pattern is always the same: the relief is invisible until
+something is built underneath it.
 
 It is a separate surface laid a couple of centimetres over the flat land rather
 than a displacement of it. The coastline is the most carefully built thing in
@@ -877,6 +880,9 @@ showing through, and had been for as long as the relief has existed. Nobody
 could see it, because until there was a lawn under it the island was the same
 dark ground either way. The relief now stays off all three islands.
 
+(It was doing the same thing to both far-shore waterfronts, and that took
+another two rounds to find. See *The far shore was underground* below.)
+
 **The lawn tiles at 34 m and this island is 1,300 m long.** From above that is
 thirty-eight identical repeats in a grid, running square to the seawall because
 both are straight — a rug, not a field. Stretching the tile and turning it off
@@ -969,22 +975,25 @@ had ever *asked* for it — the building extract stops at the Manhattan
 shoreline, and the far shore had been the edge of the request rather than the
 edge of the record.
 
-So it was asked for, and **2,936 buildings** came back: the whole strip from
-the Navy Yard round the Heights to Red Hook, four hundred metres in from the
-water. Four thousand of the raw footprints carry a surveyed height, which is a
-better rate than Manhattan manages.
+So it was asked for, and the whole strip came back: the Navy Yard round the
+Heights to Red Hook, four hundred metres in from the water. Four thousand of
+the raw footprints carry a surveyed height, which is a better rate than
+Manhattan manages. **2,431 of them are carried** — this line used to say 2,936,
+which was true when the rule was a flat ninety square metres, and stopped being
+true one round later when the distance-graded cull came in. See the far-shore
+section below for what the number is doing now.
 
 That is the strip and not the borough, deliberately. Beyond four hundred metres
 the ground goes back to being mottling, because beyond that is two miles of
-Brooklyn nobody can see from the site — and because three thousand buildings is
-already 340 KB of scene data.
+Brooklyn nobody can see from the site — and because a few thousand buildings is
+already most of the scene data.
 
 **It is not the pass the near city gets.** No shopfronts, no crowns, no roof
 plant, no flags, no labels, and no shadows: at one to four kilometres none of
 that is a pixel, and every one of them would be three thousand of something.
 The shadows matter most — the sun's shadow camera covers about a kilometre
 around the towers and every one of these is outside it, so a shadow pass over
-them would be three thousand buildings drawn twice for nothing. Walls and
+them would be four thousand buildings drawn twice for nothing. Walls and
 roofs, in the same facade families and with the same per-building tinting, and
 nothing else.
 
@@ -1005,7 +1014,7 @@ are bare aprons. Only two buildings were dropped as post-2001, because OSM
 rarely carries a start date — so a handful of things built since are in here,
 and they are all low. The same trade as Governors Island, in both directions.
 
-**6 draw calls and 43,117 triangles** for the lot. The footprints are simplified
+**6 draw calls and 37,053 triangles** for the lot. The footprints are simplified
 harder than the near city's — 1.8 m rather than 0.9 — because at this distance
 every vertex is a byte in the payload and a triangle in the frame, and nothing
 that survives is visible.
@@ -1051,10 +1060,101 @@ out is one pixel and about a hundred and thirty bytes of payload, so the
 minimum footprint a building needs to be carried grows with its range: ninety
 square metres at the near end, where the city itself keeps everything, and
 nearly three hundred at the far end of Hoboken. That took the two waterfronts
-from 6,488 buildings to 3,465 and the scene file from 1.15 MB to 810 KB,
-without any visible change beyond three kilometres.
+from 6,488 buildings to 3,465 and the scene file from 1.15 MB to 810 KB, and
+this line used to end "without any visible change beyond three kilometres."
+That was wrong, and the next section is about why it took another round to find
+out: between three and four kilometres the cull was taking four buildings in
+five, and it looked harmless because the relief was lying over that band and
+most of what was being dropped could not be seen anyway. The rule has been
+re-cut since — 4,378 buildings and 909 KB now.
 
-**5 draw calls and 26,015 triangles** for Jersey City.
+**5 draw calls and 30,819 triangles** for Jersey City — 26,015 before this
+round's cull change; see below.
+
+**The far shore was underground.** Both waterfronts had been built, checked and
+written up, and neither round noticed that most of what it had built was not
+being drawn. The relief — the sheet of low hills laid over the flat land so the
+horizon is not a ruled line — was sitting on top of the buildings.
+
+It is easy to say and it was not easy to see, because the far shore looks
+plausible either way: a band of buildings along the water, thinning inland. The
+thinning was the relief coming up. Sampled at each building's own centroid
+against its own height:
+
+    Brooklyn   1,573 of 1,780 buried past half their height
+                 136 of them under two and a half times it — gone
+                 worst: 26.2 m of ground over a 15.9 m building, 3.5 km out
+    Jersey       568 of 1,452 past half their height
+                  43 under two and a half times it
+                 worst: 66.4 m of ground over a 31.8 m building, 4.6 km out
+
+Eighty-eight per cent of Brooklyn was at least half buried in a hillside that
+is not there. Hide the relief and the same view has four- and five-storey brick
+terraces in it, several hundred of them, that nobody had ever seen.
+
+This is the third time and the same fault: the relief has no business over
+ground that is modelled in detail. It was kept off Lower Manhattan when it put
+a grey sheet across the street grid, and off the three harbour islands when
+they got lawns — both times found the same way, by putting something underneath
+it and watching it disappear. The far shore had stopped being far shore the
+moment it got four thousand real buildings and nobody updated the rule. So the footprints are binned into the relief's own grid, grown two cells
+and blurred two more, and the height is scaled to nothing under the town and
+back up over three hundred metres outside it. Nothing is buried past half its
+height now, and three buildings in 4,131 stand on more than a metre and a half
+of ground.
+
+**Nothing real is lost by flattening it,** which is why this is the right fix
+rather than lifting four thousand buildings onto a hillside. Brooklyn Heights
+does stand on a bluff, but the twenty-six metres this was giving it were value
+noise and not the bluff; the Jersey City waterfront is landfill at sea level;
+DUMBO, the Navy Yard and Red Hook are flat. The hills that carry a claim —
+Todt Hill, Battle Hill, Laurel Hill, the Palisades — are all beyond the strips
+and all untouched, and they are the ones that make the profile.
+
+**Then they needed shading, which they had never had.** The far shore casts no
+shadows and receives none, deliberately — the shadow camera covers about a
+kilometre and none of this is inside it. But that means every one of these
+buildings was lit from pavement to parapet as if it stood alone on a plain,
+where the near city has its lower storeys in the shade of the buildings
+opposite. A city seen from four hundred metres up is dark at street level and
+that darkness is most of what makes it read as fabric rather than as models on
+a table. So it is put back as a gradient on the vertex colour the walls were
+already carrying — down to 58% at the pavement, up to full over the shorter of
+eighteen metres and four fifths of the building. No triangles, no draw calls
+and no shadow pass. Over the Brooklyn band from the observation deck it takes
+the mean down from 59.1 to 56.7 and the spread from 27.4 to 24.5: the buildings
+stop popping off their own ground.
+
+**And the cull was tuned against a view that was mostly buried.** Anything
+under ninety square metres is dropped, rising with distance, and the rise used
+to start at 2.6 km — which meant that between three and four kilometres four
+buildings in five were being dropped. That band is Brooklyn Heights, Cobble
+Hill and Paulus Hook, all of it square in the view from the towers, and what it
+leaves behind is the big buildings standing alone with their terraces gone. It
+looked defensible when it was set because most of that band was under the
+relief anyway. With the relief off, the full rule now runs to 3.2 km and fades
+faster after it: **913 more buildings**, all of them in the band that shows and
+none at all past four kilometres, where they really are one pixel. Brooklyn
+1,915 to 2,431, Jersey City 1,550 to 1,947, and `data/city.json` 810 KB to
+909 KB — 12% more payload for the part of the far shore anyone actually looks
+at.
+
+**One thing was tried and taken out again.** The ground texture decides where
+the far shore looks built up from its own noise, and the buildings now know
+better than the noise does — so each of them was given a skirt of the same
+ground with the countryside taken out of it, seven metres out, which paves a
+terrace's own street from both sides at once. From directly above the ten
+densest blocks it moved the ground by three parts in fifty. From the
+observation deck, which is the view this is for, it moved it by **0.3 of a
+luminance unit out of sixty** — because at a grazing angle the buildings are
+standing on the streets and you cannot see the ground at all. Fourteen thousand
+triangles and two draw calls for something invisible, so it is not here, and
+the note in `farShore` says why in case anyone tries it again.
+
+**11 draw calls and 67,872 triangles** for both waterfronts together. Hiding
+them entirely saves 1.5 ms of a 17.2 ms frame in the view they exist for, which
+is what a city across a river ought to cost.
+
 
 **The Manhattan Bridge.** Eight hundred metres upriver of Roebling's, and
 from the towers the two of them are seen one behind the other — which is
@@ -1666,8 +1766,8 @@ uniform slab. Those are massing, not survey.
 
 ## Performance
 
-About 200 draw calls and 1.70M triangles in daylight — 1.72M from out in the
-harbour with all three islands in frame, 1.58M down at street level where most
+About 200 draw calls and 1.71M triangles in daylight — 1.73M from out in the
+harbour with all three islands in frame, 1.60M down at street level where most
 of the harbour is not — and roughly 2 to 3 ms a frame on an M2 at 2800 × 1800
 once shaders are warm, with the post-processing running at full resolution and
 4x multisampling.
