@@ -109,6 +109,10 @@ dimensions and historic site plans, and any error in them is mine:
   height on the island is assigned from the storey counts the complex was
   built to, not measured, and every roof is lofted off its own footprint
   rather than surveyed
+- The people on the pavements and on the plaza are generic figures placed by
+  rule from the street data. No individual is depicted, nothing about any of
+  them is characterised, and the numbers are what a weekday morning in the
+  Financial District looked like rather than a count of anybody
 - Street furniture — lamp standards, traffic signals, hydrants, litter bins,
   street-name blades and parking meters — is generic and placed by rule from
   the street data, not surveyed. The single-space parking meters are the period

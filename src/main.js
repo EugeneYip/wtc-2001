@@ -27,7 +27,7 @@ import { buildComplex, MATS as WTC_MATS, PLAZA_TREE_SITES,
 import { roofClutter, trees, traffic, parkedCars, manholes, vessels,
          animateVessels, animateTraffic, flags, FLAG_MATS,
          streetLamps, lampPoolTexture, trafficSignals,
-         kerbFurniture, obstacleIndex, flagsAt,
+         kerbFurniture, pedestrians, obstacleIndex, flagsAt,
          DETAIL_MATS, VESSEL_MATS } from './details.js';
 import { makeNightSky } from './nightsky.js';
 import { buildBridge, BRIDGE_MATS } from './bridge.js';
@@ -70,9 +70,9 @@ const clock = new THREE.Clock();
 // ---------------------------------------------------------------------------
 
 const TIERS = {
-  low:    { dpr: 1.5,  maxPx: 2.3e6, shadow: 1024, bloom: false, probe: 128, flags: 22, cars: 190, parked: 900,  parkReach: 450, boats: 14, lamps: 260, props: 110, pool: 512,  shadowSpan: 800 },
-  medium: { dpr: 1.75, maxPx: 4.5e6, shadow: 2048, bloom: true,  probe: 192, flags: 50, cars: 420, parked: 2100, parkReach: 650, boats: 26, lamps: 480, props: 200, pool: 1024, shadowSpan: 950 },
-  high:   { dpr: 2.0,  maxPx: 8.3e6, shadow: 4096, bloom: true,  probe: 256, flags: 90, cars: 620, parked: 4100, parkReach: 900, boats: 38, lamps: 700, props: 300, pool: 1024, shadowSpan: 1050 },
+  low:    { dpr: 1.5,  maxPx: 2.3e6, shadow: 1024, bloom: false, probe: 128, flags: 22, cars: 190, parked: 900,  parkReach: 450, boats: 14, lamps: 260, props: 110, pool: 512,  shadowSpan: 800, people: 1200, peopleReach: 380 },
+  medium: { dpr: 1.75, maxPx: 4.5e6, shadow: 2048, bloom: true,  probe: 192, flags: 50, cars: 420, parked: 2100, parkReach: 650, boats: 26, lamps: 480, props: 200, pool: 1024, shadowSpan: 950, people: 3000, peopleReach: 520 },
+  high:   { dpr: 2.0,  maxPx: 8.3e6, shadow: 4096, bloom: true,  probe: 256, flags: 90, cars: 620, parked: 4100, parkReach: 900, boats: 38, lamps: 700, props: 300, pool: 1024, shadowSpan: 1050, people: 5200, peopleReach: 640 },
 };
 
 function detectQuality() {
@@ -1023,6 +1023,36 @@ async function init() {
   for (const m of lamps) detail.add(m);
   for (const m of trafficSignals(junctions(data.roads), footprints)) detail.add(m);
   for (const m of kerbFurniture(data.roads, tier.props, footprints)) detail.add(m);
+  // And people on the pavements — see pedestrians(). Every other kind of life
+  // down here was already in: four thousand vehicles, the harbour traffic, a
+  // window lit on every other floor, and nobody walking.
+  // The plaza is raised four metres over the streets, so nobody placed off a
+  // road centreline reaches it; it gets its own scatter at deck level, kept
+  // off the tower bases and the low-rise frontages the same way the trees are,
+  // and off the fountain.
+  const half = data.towers.side / 2;
+  const plazaBlockers = data.complex.map((b) => b.p);
+  for (const key of ['wtc1', 'wtc2']) {
+    const [cx, cz] = data.towers[key].c;
+    plazaBlockers.push([[cx - half, cz - half], [cx + half, cz - half],
+                        [cx + half, cz + half], [cx - half, cz + half]]);
+  }
+  plazaBlockers.push([[SPHERE_AT[0] - 14, SPHERE_AT[1] - 14],
+                      [SPHERE_AT[0] + 14, SPHERE_AT[1] - 14],
+                      [SPHERE_AT[0] + 14, SPHERE_AT[1] + 14],
+                      [SPHERE_AT[0] - 14, SPHERE_AT[1] + 14]]);
+  const plazaCrowd = [{
+    poly: data.plaza.p, n: Math.round(tier.people * 0.09),
+    y: data.plaza.y, avoid: obstacleIndex(plazaBlockers),
+  }];
+  // The street pass is kept off the plaza as well as out of the buildings: a
+  // road that runs under the raised deck would otherwise leave people standing
+  // at street level inside it.
+  const walkBlockers = obstacleIndex(
+    data.buildings.map((b) => b.p).concat([data.plaza.p]));
+  for (const m of pedestrians(data.roads, tier.people, walkBlockers,
+                              GROUND.walk, tier.peopleReach,
+                              plazaCrowd)) detail.add(m);
   // Paint where those lamps land, and let the paved materials read it.
   const pool = lampPoolTexture(lamps[0].userData.sites, LAMP_SPAN, tier.pool);
   for (const m of [CITY_MATS.road, CITY_MATS.roadMinor, CITY_MATS.sidewalk,

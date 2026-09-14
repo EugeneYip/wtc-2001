@@ -1245,6 +1245,220 @@ export function kerbFurniture(roads, limit = 260, avoid, reach = 900) {
 }
 
 /**
+ * People on the pavements.
+ *
+ * Everything else that was alive down here is in this model — four thousand
+ * vehicles, thirty-eight boats working the channels, a window lit on every
+ * other floor — and the pavements were empty. A Financial District street on a
+ * Tuesday morning with cars on it and nobody walking does not read as a quiet
+ * city; it reads as an evacuated one, which is the one thing this particular
+ * morning must not look like at a quarter to nine.
+ *
+ * They are built at the same level of abstraction as everything else here. A
+ * car in this model is four boxes; a person is three, at the proportions that
+ * make a silhouette read as a person rather than a bollard — a head above
+ * shoulders, shoulders wider than the hips, and the whole of it about 1.7 m
+ * tall. Nobody is depicted. What is restored is that the place was full of
+ * people going to work, which is the plainest true thing about that morning
+ * and the one this model had been leaving out.
+ */
+// A weekday morning in the Financial District in early September: a lot of
+// dark suits and a lot of shirtsleeves, and not much in between. Weighted
+// lighter than the first pass, which came out as a rank of dark posts.
+const COAT_COLORS = [
+  0x2b2f36, 0x3a3d42, 0x1f2833, 0x4a4136,
+  0xb9b4a6, 0xc8c3b6, 0xd6d2c8, 0xa9b0b8, 0x93a0ad,
+  0x6d6a63, 0x8a8578, 0x5d4a44, 0x7a3b36, 0x2f4a3c,
+];
+const SKIN_COLORS = [0x8d6a4f, 0xa8825f, 0x6b4a35, 0xc3a184, 0x4f3726, 0x3a3330];
+
+function personGeo() {
+  const tint = (g, c) => {
+    const n = g.getAttribute('position').count;
+    const col = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { col[i * 3] = c[0]; col[i * 3 + 1] = c[1]; col[i * 3 + 2] = c[2]; }
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    return g;
+  };
+  // A box whose top is drawn in, so shoulders sit over hips and legs taper.
+  const taper = (w, h, d, y, k, c) => {
+    const g = new THREE.BoxGeometry(w, h, d);
+    const p = g.getAttribute('position');
+    for (let i = 0; i < p.count; i++) {
+      if (p.getY(i) < 0) { p.setX(i, p.getX(i) * k); p.setZ(i, p.getZ(i) * k); }
+    }
+    g.computeVertexNormals();
+    g.translate(0, y, 0);
+    return tint(norm(g), c);
+  };
+  const BODY = [1, 1, 1];                    // takes the instance colour
+  const DARK = [0.16, 0.16, 0.18];           // trousers, and what is in shadow
+  // Body and head are separate meshes sharing one transform. Per-instance
+  // colour applies to a whole mesh, so built as one geometry the head came out
+  // the same colour as the coat — and a figure whose top is the same tone as
+  // its middle is a bollard, whatever the proportions are. The head is the
+  // smallest part of this and the only one that has to differ.
+  return {
+    body: mergeGeometries([
+      taper(0.34, 0.86, 0.24, 0.43, 0.78, DARK),   // legs, narrowing to the feet
+      taper(0.44, 0.62, 0.26, 1.17, 0.80, BODY),   // torso, shoulders over hips
+    ]),
+    head: taper(0.19, 0.24, 0.20, 1.60, 0.86, BODY),
+  };
+}
+
+/**
+ * Where they stand.
+ *
+ * On the pavement, which this model does not carry as geometry it can sample —
+ * the paving is built from the road centrelines, so the people are placed the
+ * same way: out from the centreline past the kerb, then scattered across the
+ * width of the walk. Density is what a weekday morning down here looks like
+ * rather than a count of anybody: thicker on the wide streets, thinner on the
+ * side streets, and nobody standing inside a building.
+ */
+export function pedestrians(roads, limit = 1200, avoid, deck = 0, reach = 620,
+                            extra = []) {
+  const rand = rng(5521);
+  const geo = personGeo();
+
+  // Where the carriageways are, so nobody is left standing in one.
+  //
+  // A person is put out from the centreline of the street they are walking
+  // along, past its kerb — which is right for that street and says nothing
+  // about the one crossing it. Measured against every road rather than their
+  // own, 8.9% of them were standing in a traffic lane: at every junction, and
+  // everywhere OpenStreetMap maps an avenue as two parallel ways, the pavement
+  // of one street is the roadway of another. The pavement builder in city.js
+  // hit exactly this and solved it the same way — bucket the lanes into a
+  // coarse grid and ask.
+  const CELL = 40;
+  const lanes = new Map();
+  for (const r of roads) {
+    const half = carriageway(r.w) / 2;
+    for (let i = 0; i < r.p.length - 1; i++) {
+      const [x0, z0] = r.p[i], [x1, z1] = r.p[i + 1];
+      const ax = Math.floor(Math.min(x0, x1) / CELL), bx = Math.floor(Math.max(x0, x1) / CELL);
+      const az = Math.floor(Math.min(z0, z1) / CELL), bz = Math.floor(Math.max(z0, z1) / CELL);
+      for (let gx = ax - 1; gx <= bx + 1; gx++) {
+        for (let gz = az - 1; gz <= bz + 1; gz++) {
+          const k = gx + ',' + gz;
+          if (!lanes.has(k)) lanes.set(k, []);
+          lanes.get(k).push([x0, z0, x1, z1, half]);
+        }
+      }
+    }
+  }
+  const inRoadway = (px, pz) => {
+    const list = lanes.get(Math.floor(px / CELL) + ',' + Math.floor(pz / CELL));
+    if (!list) return false;
+    for (const [x0, z0, x1, z1, half] of list) {
+      const dx = x1 - x0, dz = z1 - z0, l2 = dx * dx + dz * dz;
+      let t = l2 > 0 ? ((px - x0) * dx + (pz - z0) * dz) / l2 : 0;
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const ex = px - (x0 + dx * t), ez = pz - (z0 + dz * t);
+      if (ex * ex + ez * ez < half * half) return true;
+    }
+    return false;
+  };
+
+  const spots = [];
+  for (const r of roads) {
+    if (r.w < 8) continue;
+    const walk = Math.min(4.0, Math.max(2.0, r.w * 0.22));
+    const half = carriageway(r.w) / 2;
+    // A wide street carries more people than a service alley does. These
+    // numbers are what a weekday morning down here looked like and not a count
+    // of anybody: on Broadway or Church Street at a quarter to nine there is
+    // somebody every couple of metres of pavement, and on a service alley
+    // behind a loading bay there is not.
+    const perM = 0.22 + Math.min(0.55, (r.w - 8) * 0.062);
+    for (let i = 0; i < r.p.length - 1; i++) {
+      const [x0, z0] = r.p[i], [x1, z1] = r.p[i + 1];
+      const dx = x1 - x0, dz = z1 - z0;
+      const len = Math.hypot(dx, dz);
+      if (len < 10) continue;
+      const ang = Math.atan2(dz, dx);
+      const rx = -Math.sin(ang), rz = Math.cos(ang);
+      for (const side of [1, -1]) {
+        let d = rand() * 4;
+        while (d < len - 1.5) {
+          const t = d / len;
+          // Across the walk, kerb to building line, but not right at either.
+          const across = half + 0.9 + rand() * Math.max(0.6, walk + 2.2);
+          const x = x0 + dx * t + rx * across * side;
+          const z = z0 + dz * t + rz * across * side;
+          d += (1 / perM) * (0.45 + rand() * 1.3);
+          if (Math.hypot(x, z) > reach) continue;
+          if (avoid && avoid.blocked(x, z)) continue;
+          if (inRoadway(x, z)) continue;
+          spots.push([x, z, ang]);
+        }
+      }
+    }
+  }
+  if (!spots.length && !extra.length) return [];
+  const step = Math.max(1, spots.length / limit);
+  const chosen = [];
+  for (let i = 0; i < spots.length && chosen.length < limit; i += step) {
+    chosen.push(spots[Math.floor(i)]);
+  }
+
+  // Surfaces that are not a street. Tobin Plaza is the one that matters: it is
+  // raised four metres over the roads, so nobody placed off a centreline lands
+  // on it, and the heart of this model was the one paved acre in it with
+  // nobody standing on it. Turned at random here rather than along a kerb,
+  // because a plaza has no direction to walk in.
+  for (const site of extra) {
+    for (const [x, z] of scatter(site.poly, site.n, rand,
+                                 { avoid: site.avoid || avoid, margin: 3 })) {
+      chosen.push([x, z, undefined, site.y]);
+    }
+  }
+  if (!chosen.length) return [];
+
+  const bodies = new THREE.InstancedMesh(geo.body, DETAIL_MATS.car, chosen.length);
+  const heads = new THREE.InstancedMesh(geo.head, DETAIL_MATS.car, chosen.length);
+  bodies.castShadow = bodies.receiveShadow = true;
+  heads.castShadow = heads.receiveShadow = true;
+  const m = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const pos = new THREE.Vector3();
+  const scl = new THREE.Vector3();
+  const col = new THREE.Color();
+  const up = new THREE.Vector3(0, 1, 0);
+  chosen.forEach(([x, z, ang, y], i) => {
+    // A pavement flows along its street. Turned at random the crowd read as a
+    // milling one, which is a queue or a demonstration and not people going to
+    // work: most are walking one way or the other along the kerb, and the rest
+    // are turned out of it — stopped, waiting to cross, talking to somebody.
+    const r = rand();
+    const along = ang === undefined ? 0
+      : -ang + (r < 0.46 ? 0 : r < 0.88 ? Math.PI : 0);
+    const stray = ang === undefined || r >= 0.88
+      ? rand() * Math.PI * 2 : (rand() - 0.5) * 0.5;
+    q.setFromAxisAngle(up, along + stray);
+    // People are not all the same height, and a rank of identical ones reads
+    // as a fence however good the silhouette is.
+    const s = 0.92 + rand() * 0.15;
+    scl.set(1, s, 1);
+    pos.set(x, y === undefined ? deck : y, z);
+    m.compose(pos, q, scl);
+    bodies.setMatrixAt(i, m);
+    heads.setMatrixAt(i, m);
+    bodies.setColorAt(i, col.setHex(COAT_COLORS[Math.floor(rand() * COAT_COLORS.length)]));
+    heads.setColorAt(i, col.setHex(SKIN_COLORS[Math.floor(rand() * SKIN_COLORS.length)]));
+  });
+  for (const im of [bodies, heads]) {
+    im.instanceMatrix.needsUpdate = true;
+    if (im.instanceColor) im.instanceColor.needsUpdate = true;
+  }
+  bodies.name = 'pedestrians';
+  heads.name = 'pedestrian-heads';
+  return [bodies, heads];
+}
+
+/**
  * Where the lamps actually put light on the ground, as a world-space texture.
  *
  * Ramping a flat emissive on the road and pavement makes the streets read from

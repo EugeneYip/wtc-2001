@@ -341,6 +341,53 @@ shadow pass counted, and 0.03 ms** — inside the noise of the measurement, on a
 frame that has been fill-bound rather than geometry-bound since it was first
 taken apart.
 
+**And nobody was walking.** Everything else that was alive down here had been
+put in — four thousand vehicles, thirty-eight boats working the channels, a
+window lit on every other floor, a flag on ninety roofs — and the pavements
+were bare. A Financial District street on a Tuesday morning with cars on it and
+nobody on the footway does not read as a quiet city. It reads as an evacuated
+one, which is the one thing this particular morning must not look like at a
+quarter to nine.
+
+They are built at the level of abstraction everything else here is built at. A
+car in this model is four boxes; a person is three, at the proportions that
+make a silhouette read as a person rather than a bollard — a head above
+shoulders, shoulders wider than the hips, and the whole of it about 1.7 m tall
+with a little variation. Nobody is depicted and nothing is characterised. What
+is restored is that the place was full of people going to work, which is the
+plainest true thing about that morning and the one this model had been leaving
+out.
+
+**The head had to be a mesh of its own,** which is the same lesson the cars
+taught about their glass: per-instance colour applies to a whole mesh, so built
+as one geometry every figure had a head the colour of its coat — and a figure
+whose top is the same tone as its middle is a post, whatever the proportions
+are. Body and head share one transform and carry separate colours, a coat and a
+skin tone. It is the smallest part of the figure and the only one that has to
+differ.
+
+**8.9 per cent of them were standing in traffic.** A person is placed out from
+the centreline of the street they are walking along, past its kerb, which is
+right for that street and says nothing about the one crossing it — so at every
+junction, and everywhere OpenStreetMap maps an avenue as two parallel ways, the
+pavement of one street is the carriageway of another. Measured against every
+road rather than their own, 154 of 1,734 sampled were in a live lane. The
+pavement builder in `city.js` hit exactly this and solved it the same way:
+bucket the lanes into a coarse grid and ask. None are now.
+
+**Tobin Plaza needed its own pass.** It stands four metres over the streets, so
+nobody placed off a road centreline reaches it, and the heart of this model was
+the one paved acre in it with nobody standing on it. 468 of them cross it now,
+scattered rather than ranked because a plaza has no direction to walk in, and
+kept off the tower bases, the low-rise frontages and the fountain.
+
+**5,668 figures: 4 draw calls and 408,096 triangles** — about what the entire
+shadow pass costs, which the performance section below measured at 0.3 ms. The
+frame-time difference here is smaller than that and below what the measurement
+can resolve: 18.01 ms against 17.99, on samples that range from 3.3 to 18.9
+because the frame is vsync-limited most of the time. Thirty-six triangles a
+person, and most of them a few pixels tall.
+
 **Traffic that moves.** For a long time the cars did not. Six hundred vehicles
 were placed on the streets at build time and never touched again — a city
 photographed rather than running.
