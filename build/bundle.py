@@ -40,6 +40,7 @@ MODULES = [
     ("src/nightsky.js",                    ["./nightsky.js"]),
     ("src/bridge.js",                      ["./bridge.js"]),
     ("src/mbridge.js",                     ["./mbridge.js"]),
+    ("src/wbridge.js",                     ["./wbridge.js"]),
     ("src/liberty.js",                     ["./liberty.js"]),
     ("src/ellis.js",                       ["./ellis.js"]),
     ("src/governors.js",                   ["./governors.js"]),

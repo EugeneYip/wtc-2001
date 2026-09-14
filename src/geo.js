@@ -276,6 +276,84 @@ export function strand(points, r, open = false) {
   return parts;
 }
 
+/**
+ * A height that ramps smoothly through a list of [station, height] pairs.
+ *
+ * Used for a bridge deck, which rises from each approach to its anchorage,
+ * over the tower and on to the crown at mid-span. Interpolated with a
+ * smoothstep rather than linearly: a roadway that changes gradient in a corner
+ * reads as folded card.
+ */
+export function rampProfile(key) {
+  return (s) => {
+    if (s <= key[0][0]) return key[0][1];
+    for (let i = 1; i < key.length; i++) {
+      if (s <= key[i][0]) {
+        const [a, ya] = key[i - 1], [b, yb] = key[i];
+        const t = (s - a) / (b - a);
+        return ya + (yb - ya) * t * t * (3 - 2 * t);
+      }
+    }
+    return key[key.length - 1][1];
+  };
+}
+
+/**
+ * A stiffening truss and the roadways it carries, run along a bridge's axis.
+ *
+ * This is what a twentieth-century suspension bridge is and what a
+ * nineteenth-century one is not. Roebling hung a slender floor from his cables
+ * and stayed it diagonally back to the towers; Buck and then Moisseiff hung a
+ * deep braced girder instead and let it do the stiffening — which is why there
+ * is not a single diagonal stay on either of the later East River bridges, and
+ * why end on they read as beams rather than threads.
+ *
+ * Panel spacing matters more than member size. At eighteen metres a panel the
+ * truss came out as a wire fence hung under the roadway: the members are about
+ * a pixel across at the distance these are looked at from, so what makes a
+ * girder rather than a railing is how many of them overlap.
+ */
+export function stiffeningTruss(o) {
+  const road = [], steel = [];
+  const { at, h, s0, s1, step, halfW, depth } = o;
+  // `depth` and each entry of `decks` may be a constant or a function of the
+  // station, so that a girder can fade into a shallower approach viaduct
+  // without the roadway it carries parting company with the top chord.
+  const fn = (v) => (typeof v === 'function' ? v : () => v);
+  const dep = fn(depth);
+  const decks = (o.decks || [0]).map(fn);
+  for (let s = s0; s < s1; s += step) {
+    const s2 = Math.min(s + step, s1);
+    const y0 = h(s), y1 = h(s2);
+    for (const d of decks) {
+      const q = [at(s, -halfW, y0 + d(s)), at(s2, -halfW, y1 + d(s2)),
+                 at(s2, halfW, y1 + d(s2)), at(s, halfW, y0 + d(s))];
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(
+        [...q[0].toArray(), ...q[1].toArray(), ...q[2].toArray(),
+         ...q[0].toArray(), ...q[2].toArray(), ...q[3].toArray()], 3));
+      geo.setAttribute('uv', new THREE.Float32BufferAttribute(
+        [0, s, 0, s2, 2, s2, 0, s, 2, s2, 2, s], 2));
+      geo.computeVertexNormals();
+      road.push(norm(geo));
+    }
+    const d0 = dep(s), d1 = dep(s2);
+    for (const side of [-1, 1]) {
+      const w = side * halfW;
+      const a0 = at(s, w, y0), a1 = at(s2, w, y1);
+      const b0 = at(s, w, y0 + d0), b1 = at(s2, w, y1 + d1);
+      const m0 = at(s, w, y0 + d0 * 0.5), m1 = at(s2, w, y1 + d1 * 0.5);
+      steel.push(...strand([a0, a1], o.chord, true));     // bottom chord
+      steel.push(...strand([b0, b1], o.chord, true));     // top chord
+      steel.push(...strand([m0, m1], o.chord * 0.52, true));
+      steel.push(...strand([a0, b0], o.chord * 0.58, true));   // the vertical
+      steel.push(...strand([a0, b1], o.chord * 0.45, true));   // and both
+      steel.push(...strand([b0, a1], o.chord * 0.45, true));   //   diagonals
+    }
+  }
+  return { road, steel };
+}
+
 /** Footprint ring (x, z pairs) to a THREE.Shape with correct winding. */
 export function shapeFrom(poly) {
   const pts = poly.map(([x, z]) => new THREE.Vector2(x, -z));

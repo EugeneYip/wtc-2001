@@ -1103,7 +1103,80 @@ twenty-year reconstruction in 2001; what shade it wore that September is not
 something this can source, and the README should say so rather than let the
 paint pass for a fact.
 
-**6 draw calls and 17,228 triangles.**
+**3 draw calls and 17,618 triangles.** This line used to say six draw calls.
+The bridge has only ever been three meshes — deck, steel, anchorages — and
+every other count in these notes is a mesh count, so the number here is the
+measured one.
+
+**The Williamsburg Bridge.** The third crossing and the last one in view,
+three and a half kilometres up the river, and the one that closes it behind
+the other two. From the deck you saw them receding one behind another, and
+stopping at two left the East River running out of bridges a mile early.
+
+It is the odd one of the three and that is the whole reason to build it.
+Roebling's is masonry and thread. Moisseiff's is a pair of braced steel
+portals over a truss seven metres deep. Leffert Buck's, six years older than
+the Manhattan and the first of the three built entirely in steel, is more
+extreme than either: **towers that are open lattice from pier to saddle**, and
+a stiffening truss **twelve metres deep** — forty feet, the deepest on the
+river and half as deep again as its neighbour's. It was called the ugliest
+bridge in New York for most of a century and those two numbers are the reason.
+
+    main span          1,600 ft   487.7 m between tower centres, the longest
+                                    of the three
+    towers               335 ft   102.1 m above mean high water
+    clearance            135 ft    41.1 m at mid-span
+    four main cables  18 3/4 in     0.48 m
+    deck                 118 ft    36.0 m wide, on one level
+
+**The axis came free.** The Manhattan Bridge's carriageways carry the names of
+the streets they feed rather than the bridge's, which is why its centreline had
+to be averaged off the bike path and the footway. The Williamsburg's do carry
+its name, so the build function written to solve the harder case just answered
+this one. The anchorages did need the harder rule again: these towers stand
+only forty-six metres inside each bank, so a block of concrete set back a fixed
+distance from them would be standing in the river, and they are placed off the
+shore crossings instead.
+
+**The approaches were the actual work, and they found a defect in the
+neighbour.** Run the twelve-metre girder to the end of the modelled stretch
+and a quarter of a kilometre of it floats at each end — over the Lower East
+Side one side, Williamsburg the other — with nothing under it and nothing at
+the end of it. So the truss depth is no longer a constant:
+`stiffeningTruss` now takes a function of the station for its depth and for
+each roadway it carries, and past the anchorages this one fades from twelve
+metres to three over a hundred and forty, on two columns and a cap every
+thirty-four metres, and dives into the street. Which is when it became obvious
+that **the Manhattan Bridge had been doing exactly the same thing** — both its
+approaches ran out over the ground with nothing under them, and its upper
+roadway finished in a seven-metre step off the edge. That was not introduced by
+this round, but it was made conspicuous by it, so it is fixed the same way and
+both bridges' approaches now land.
+
+**And the saddle tops were rendering black.** The flat cap over a tower shaft
+was wound the wrong way round, so `computeVertexNormals` gave it a normal
+pointing at the riverbed. It only showed from above the tower, which is not a
+view anyone would reach by accident — but it is a view, and it was wrong.
+
+The colour is a judgement and not a source, the same admission the Manhattan
+Bridge's carries. The Williamsburg was two-thirds of the way through a
+reconstruction that ran from 1991 to 2002, so in September 2001 it was part new
+steel and part eighty-year-old paint; what shade any given part of it wore that
+month is not something this can source.
+
+**3 draw calls and 27,524 triangles**, and none of them in the shadow pass:
+the sun's shadow camera covers about a kilometre around the towers and this is
+three and a half out, so hiding the bridge from it changes the shadow triangle
+count by zero. It is the heavier of the two later bridges by half again —
+17,618 for the Manhattan — and the lattice is why: a hundred metres of open
+steelwork is a thousand members whether or not you can resolve one. Roebling's,
+with its cable net, is still bigger than both at 60,214.
+
+What it lands on is the honest limitation. The far-shore extraction reaches the
+Navy Yard and Red Hook, not Williamsburg, so at both ends this bridge runs out
+onto bare terrain. At three and a half kilometres that costs a silhouette
+nothing, and the silhouette is what it is here for — but the ground under it is
+empty, and the model should say so rather than hope nobody flies over.
 
 **Light and water.** The sun is placed from real solar geometry for 40.71° N
 on 11 September, so shadow directions through the day are the ones the site
@@ -1593,10 +1666,11 @@ uniform slab. Those are massing, not survey.
 
 ## Performance
 
-About 200 draw calls and 1.62M triangles in daylight — a little more from out
-in the harbour with all three islands in frame — and roughly 2 to 3 ms a
-frame on an M2 at 2800 × 1800 once shaders are warm, with the post-processing
-running at full resolution and 4x multisampling.
+About 200 draw calls and 1.70M triangles in daylight — 1.72M from out in the
+harbour with all three islands in frame, 1.58M down at street level where most
+of the harbour is not — and roughly 2 to 3 ms a frame on an M2 at 2800 × 1800
+once shaders are warm, with the post-processing running at full resolution and
+4x multisampling.
 
 **What the frame is actually made of.** Measured with real GPU timings
 (`EXT_disjoint_timer_query_webgl2`), which is independent of the animation loop
@@ -1683,6 +1757,7 @@ src/
   main.js             renderer, sun, camera rig, UI
   bridge.js           the Brooklyn Bridge
   mbridge.js          the Manhattan Bridge, which is a different animal
+  wbridge.js          the Williamsburg Bridge, which is a third one again
   liberty.js          the Statue of Liberty, her pedestal and her island
   ellis.js            Ellis Island, its fifty-one buildings and its roofs
   governors.js        Governors Island, Fort Jay and Castle Williams
@@ -1704,6 +1779,8 @@ raw/                  cached Overpass responses
                         building box but inside the view
   manhattan.json        the Manhattan Bridge's bike path and footway,
                         which are the only two ways named for it
+  williamsburg.json     the Williamsburg Bridge's carriageways, which do
+                        carry its name
   liberty.json          Fort Wood, the pedestal as mapped squares, and
                         the trees on Liberty Island
   brooklyn.json         the waterfront strip from the Navy Yard to Red

@@ -84,6 +84,16 @@ QUERIES = {
          way["railway"]["bridge"="yes"](40.700,-74.000,40.713,-73.980););
         out geom;""",
 
+    # The Williamsburg Bridge, the third and furthest of the East River
+    # crossings this model can see. Its carriageways do carry its name, unlike
+    # the Manhattan Bridge's, so this is the same query the Brooklyn Bridge
+    # gets.
+    "williamsburg": """[out:json][timeout:60];
+        (way["man_made"="bridge"]["name"="Williamsburg Bridge"](40.705,-73.995,40.722,-73.955);
+         way["highway"]["name"="Williamsburg Bridge"](40.705,-73.995,40.722,-73.955);
+         way["name"~"^Williamsburg Bridge"](40.705,-73.995,40.722,-73.955););
+        out geom;""",
+
     # The Jersey City waterfront, which from the towers is most of the western
     # horizon and is nearer than Brooklyn's. Exchange Place and Paulus Hook
     # first, then Newport, then Hoboken, then Liberty State Park and the old

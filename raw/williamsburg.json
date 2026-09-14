@@ -1,0 +1,1948 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-09-14T01:41:47Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "way",
+  "id": 39946612,
+  "bounds": {
+    "minlat": 40.7100622,
+    "minlon": -73.9599620,
+    "maxlat": 40.7101591,
+    "maxlon": -73.9589345
+  },
+  "nodes": [
+    479719230,
+    592627488
+  ],
+  "geometry": [
+    { "lat": 40.7100622, "lon": -73.9599620 },
+    { "lat": 40.7101591, "lon": -73.9589345 }
+  ],
+  "tags": {
+    "hgv": "designated",
+    "highway": "motorway",
+    "lanes": "2",
+    "maxspeed:advisory": "30 mph",
+    "moped": "no",
+    "name": "Williamsburg Bridge",
+    "name:etymology:wikidata": "Q771572",
+    "name:ko": "윌리엄스버그 브리지",
+    "oneway": "yes",
+    "surface": "concrete",
+    "tiger:cfcc": "A63;A11",
+    "tiger:county": "Kings, NY",
+    "tiger:reviewed": "no"
+  }
+},
+{
+  "type": "way",
+  "id": 39972648,
+  "bounds": {
+    "minlat": 40.7117244,
+    "minlon": -73.9551970,
+    "maxlat": 40.7128788,
+    "maxlon": -73.9544111
+  },
+  "nodes": [
+    479718678,
+    9968376569,
+    9968376568,
+    479718677,
+    480221611
+  ],
+  "geometry": [
+    { "lat": 40.7128788, "lon": -73.9544111 },
+    { "lat": 40.7127700, "lon": -73.9544933 },
+    { "lat": 40.7126728, "lon": -73.9545659 },
+    { "lat": 40.7125498, "lon": -73.9546498 },
+    { "lat": 40.7117244, "lon": -73.9551970 }
+  ],
+  "tags": {
+    "destination": "Williamsburg Bridge;Manhattan",
+    "hgv": "designated",
+    "highway": "motorway",
+    "junction:ref": "32A",
+    "lanes": "2",
+    "lit": "yes",
+    "maxspeed": "35 mph",
+    "name": "Williamsburg Bridge",
+    "name:etymology:wikidata": "Q771572",
+    "name:ko": "윌리엄스버그 브리지",
+    "oneway": "yes",
+    "surface": "concrete",
+    "tiger:cfcc": "A63;A11",
+    "tiger:county": "Kings, NY",
+    "tiger:reviewed": "no",
+    "toll": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 39972954,
+  "bounds": {
+    "minlat": 40.7116882,
+    "minlon": -73.9551004,
+    "maxlat": 40.7136708,
+    "maxlon": -73.9535706
+  },
+  "nodes": [
+    480221805,
+    479719240,
+    9968370386,
+    9968370385,
+    9968370387,
+    479719241,
+    9968370388,
+    479719242,
+    9968370389,
+    479719243,
+    479719244,
+    9968370390,
+    598031720
+  ],
+  "geometry": [
+    { "lat": 40.7116882, "lon": -73.9551004 },
+    { "lat": 40.7124007, "lon": -73.9546523 },
+    { "lat": 40.7125022, "lon": -73.9545852 },
+    { "lat": 40.7126036, "lon": -73.9545133 },
+    { "lat": 40.7127131, "lon": -73.9544382 },
+    { "lat": 40.7128082, "lon": -73.9543685 },
+    { "lat": 40.7129339, "lon": -73.9542632 },
+    { "lat": 40.7130602, "lon": -73.9541590 },
+    { "lat": 40.7132031, "lon": -73.9540295 },
+    { "lat": 40.7133062, "lon": -73.9539317 },
+    { "lat": 40.7134526, "lon": -73.9537951 },
+    { "lat": 40.7135617, "lon": -73.9536859 },
+    { "lat": 40.7136708, "lon": -73.9535706 }
+  ],
+  "tags": {
+    "hgv": "designated",
+    "highway": "motorway",
+    "lanes": "1",
+    "maxspeed:advisory": "30 mph",
+    "name": "Williamsburg Bridge",
+    "name:ko": "윌리엄스버그 브리지",
+    "oneway": "yes",
+    "surface": "concrete",
+    "tiger:cfcc": "A63;A11",
+    "tiger:county": "Kings, NY",
+    "tiger:reviewed": "no"
+  }
+},
+{
+  "type": "way",
+  "id": 39972957,
+  "bounds": {
+    "minlat": 40.7102384,
+    "minlon": -73.9589524,
+    "maxlat": 40.7117244,
+    "maxlon": -73.9551970
+  },
+  "nodes": [
+    480221611,
+    479718676,
+    9968376567,
+    479718675,
+    9968376566,
+    479718674,
+    9968376565,
+    9968376564,
+    479718673,
+    9968376563,
+    9968376562,
+    479718672,
+    9968376561,
+    479718671,
+    9968376560,
+    7659489949,
+    479718670,
+    9968376559,
+    7659489950,
+    479718669,
+    9968376558,
+    7659489951,
+    479718668,
+    592627493
+  ],
+  "geometry": [
+    { "lat": 40.7117244, "lon": -73.9551970 },
+    { "lat": 40.7115210, "lon": -73.9553347 },
+    { "lat": 40.7114386, "lon": -73.9553955 },
+    { "lat": 40.7113506, "lon": -73.9554683 },
+    { "lat": 40.7112586, "lon": -73.9555520 },
+    { "lat": 40.7111812, "lon": -73.9556294 },
+    { "lat": 40.7111089, "lon": -73.9557082 },
+    { "lat": 40.7110425, "lon": -73.9557908 },
+    { "lat": 40.7109687, "lon": -73.9558896 },
+    { "lat": 40.7109025, "lon": -73.9559871 },
+    { "lat": 40.7108322, "lon": -73.9560993 },
+    { "lat": 40.7107711, "lon": -73.9562055 },
+    { "lat": 40.7107162, "lon": -73.9563112 },
+    { "lat": 40.7106616, "lon": -73.9564266 },
+    { "lat": 40.7106133, "lon": -73.9565422 },
+    { "lat": 40.7105695, "lon": -73.9566610 },
+    { "lat": 40.7105282, "lon": -73.9567851 },
+    { "lat": 40.7104939, "lon": -73.9569063 },
+    { "lat": 40.7104654, "lon": -73.9570196 },
+    { "lat": 40.7104392, "lon": -73.9571331 },
+    { "lat": 40.7104176, "lon": -73.9572466 },
+    { "lat": 40.7103998, "lon": -73.9573642 },
+    { "lat": 40.7103825, "lon": -73.9574868 },
+    { "lat": 40.7102384, "lon": -73.9589524 }
+  ],
+  "tags": {
+    "bridge": "yes",
+    "hgv": "designated",
+    "highway": "motorway",
+    "lanes": "2",
+    "layer": "2",
+    "lit": "yes",
+    "maxspeed": "35 mph",
+    "name": "Williamsburg Bridge",
+    "name:etymology:wikidata": "Q771572",
+    "name:ko": "윌리엄스버그 브리지",
+    "oneway": "yes",
+    "surface": "asphalt",
+    "tiger:cfcc": "A63;A11",
+    "tiger:county": "Kings, NY",
+    "tiger:reviewed": "no",
+    "toll": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 40337615,
+  "bounds": {
+    "minlat": 40.7114142,
+    "minlon": -73.9787954,
+    "maxlat": 40.7157200,
+    "maxlon": -73.9646127
+  },
+  "nodes": [
+    486849239,
+    3630219664,
+    592627494,
+    486859044,
+    486859046,
+    5079840928
+  ],
+  "geometry": [
+    { "lat": 40.7114142, "lon": -73.9646127 },
+    { "lat": 40.7118354, "lon": -73.9658906 },
+    { "lat": 40.7121293, "lon": -73.9669112 },
+    { "lat": 40.7152245, "lon": -73.9771211 },
+    { "lat": 40.7155931, "lon": -73.9782770 },
+    { "lat": 40.7157200, "lon": -73.9787954 }
+  ],
+  "tags": {
+    "bridge": "yes",
+    "hgv": "designated",
+    "highway": "motorway",
+    "lanes": "2",
+    "layer": "2",
+    "maxheight": "13'4\"",
+    "maxspeed": "35 mph",
+    "moped": "no",
+    "name": "Williamsburg Bridge",
+    "name:etymology:wikidata": "Q771572",
+    "name:ko": "윌리엄스버그 브리지",
+    "oneway": "yes",
+    "toll": "yes",
+    "wikidata": "Q125068",
+    "wikipedia": "en:Williamsburg Bridge"
+  }
+},
+{
+  "type": "way",
+  "id": 40337665,
+  "bounds": {
+    "minlat": 40.7155363,
+    "minlon": -73.9842574,
+    "maxlat": 40.7171427,
+    "maxlon": -73.9788947
+  },
+  "nodes": [
+    4727104610,
+    4727104614,
+    4727104619,
+    3785707057,
+    3785707059
+  ],
+  "geometry": [
+    { "lat": 40.7171427, "lon": -73.9842574 },
+    { "lat": 40.7169514, "lon": -73.9836174 },
+    { "lat": 40.7164723, "lon": -73.9820133 },
+    { "lat": 40.7159026, "lon": -73.9801246 },
+    { "lat": 40.7155363, "lon": -73.9788947 }
+  ],
+  "tags": {
+    "bridge": "yes",
+    "hgv": "designated",
+    "hgv:lanes": "no|no||",
+    "highway": "motorway",
+    "lanes": "4",
+    "layer": "2",
+    "maxspeed": "35 mph",
+    "moped": "no",
+    "name": "Williamsburg Bridge",
+    "name:etymology:wikidata": "Q771572",
+    "name:ko": "윌리엄스버그 브리지",
+    "oneway": "yes",
+    "surface": "concrete",
+    "turn:lanes": "slight_left|slight_left|slight_right|slight_right"
+  }
+},
+{
+  "type": "way",
+  "id": 40337691,
+  "bounds": {
+    "minlat": 40.7173458,
+    "minlon": -73.9854974,
+    "maxlat": 40.7177588,
+    "maxlon": -73.9841569
+  },
+  "nodes": [
+    486859051,
+    5079840929
+  ],
+  "geometry": [
+    { "lat": 40.7173458, "lon": -73.9841569 },
+    { "lat": 40.7177588, "lon": -73.9854974 }
+  ],
+  "tags": {
+    "hgv": "designated",
+    "highway": "motorway",
+    "lanes": "4",
+    "maxspeed": "35 mph",
+    "moped": "no",
+    "name": "Williamsburg Bridge",
+    "name:etymology:wikidata": "Q771572",
+    "name:ko": "윌리엄스버그 브리지",
+    "oneway": "yes",
+    "surface": "concrete",
+    "toll": "yes",
+    "turn:lanes": "through|through|through|right"
+  }
+},
+{
+  "type": "way",
+  "id": 40337706,
+  "bounds": {
+    "minlat": 40.7101398,
+    "minlon": -73.9611978,
+    "maxlat": 40.7103519,
+    "maxlon": -73.9599738
+  },
+  "nodes": [
+    479718667,
+    9968376555,
+    7659489948,
+    486871961,
+    9968376554,
+    7659489947,
+    486871967,
+    9968376553,
+    7659489946,
+    486871971,
+    9968376551
+  ],
+  "geometry": [
+    { "lat": 40.7101447, "lon": -73.9599738 },
+    { "lat": 40.7101418, "lon": -73.9600366 },
+    { "lat": 40.7101398, "lon": -73.9601277 },
+    { "lat": 40.7101399, "lon": -73.9602260 },
+    { "lat": 40.7101458, "lon": -73.9603311 },
+    { "lat": 40.7101571, "lon": -73.9604515 },
+    { "lat": 40.7101702, "lon": -73.9605470 },
+    { "lat": 40.7101920, "lon": -73.9606534 },
+    { "lat": 40.7102173, "lon": -73.9607643 },
+    { "lat": 40.7102458, "lon": -73.9608685 },
+    { "lat": 40.7103519, "lon": -73.9611978 }
+  ],
+  "tags": {
+    "hgv": "designated",
+    "highway": "motorway",
+    "lanes": "2",
+    "maxspeed": "35 mph",
+    "moped": "no",
+    "name": "Williamsburg Bridge",
+    "name:etymology:wikidata": "Q771572",
+    "name:ko": "윌리엄스버그 브리지",
+    "oneway": "yes",
+    "surface": "asphalt",
+    "tiger:cfcc": "A63;A11",
+    "tiger:county": "Kings, NY",
+    "tiger:reviewed": "no",
+    "toll": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 40337716,
+  "bounds": {
+    "minlat": 40.7100497,
+    "minlon": -73.9612928,
+    "maxlat": 40.7102057,
+    "maxlon": -73.9599620
+  },
+  "nodes": [
+    486863762,
+    9968370360,
+    486875354,
+    9968370365,
+    9968370364,
+    9968370363,
+    486875360,
+    486875364,
+    9968370361,
+    486875381,
+    9968370362,
+    479719230
+  ],
+  "geometry": [
+    { "lat": 40.7102057, "lon": -73.9612928 },
+    { "lat": 40.7101778, "lon": -73.9611914 },
+    { "lat": 40.7101487, "lon": -73.9610770 },
+    { "lat": 40.7101218, "lon": -73.9609710 },
+    { "lat": 40.7101000, "lon": -73.9608692 },
+    { "lat": 40.7100803, "lon": -73.9607444 },
+    { "lat": 40.7100667, "lon": -73.9606400 },
+    { "lat": 40.7100546, "lon": -73.9605153 },
+    { "lat": 40.7100497, "lon": -73.9603815 },
+    { "lat": 40.7100500, "lon": -73.9602364 },
+    { "lat": 40.7100558, "lon": -73.9600742 },
+    { "lat": 40.7100622, "lon": -73.9599620 }
+  ],
+  "tags": {
+    "destination": "Queens;Bronx",
+    "destination:ref": "I 278 East",
+    "hgv": "no",
+    "highway": "motorway",
+    "lanes": "2",
+    "maxspeed:advisory": "30 mph",
+    "moped": "no",
+    "name": "Williamsburg Bridge",
+    "name:etymology:wikidata": "Q771572",
+    "name:ko": "윌리엄스버그 브리지",
+    "oneway": "yes",
+    "surface": "asphalt",
+    "tiger:cfcc": "A63;A11",
+    "tiger:county": "Kings, NY",
+    "tiger:reviewed": "no"
+  }
+},
+{
+  "type": "way",
+  "id": 40338718,
+  "bounds": {
+    "minlat": 40.7104345,
+    "minlon": -73.9616112,
+    "maxlat": 40.7106032,
+    "maxlon": -73.9610600
+  },
+  "nodes": [
+    8842464614,
+    486876219,
+    592627485
+  ],
+  "geometry": [
+    { "lat": 40.7104345, "lon": -73.9610600 },
+    { "lat": 40.7104501, "lon": -73.9611146 },
+    { "lat": 40.7106032, "lon": -73.9616112 }
+  ],
+  "tags": {
+    "bicycle": "yes",
+    "foot": "no",
+    "highway": "cycleway",
+    "name": "Williamsburg Bridge Bikepath",
+    "oneway": "no",
+    "surface": "concrete"
+  }
+},
+{
+  "type": "way",
+  "id": 40338777,
+  "bounds": {
+    "minlat": 40.7155002,
+    "minlon": -73.9855040,
+    "maxlat": 40.7176325,
+    "maxlon": -73.9784712
+  },
+  "nodes": [
+    486876695,
+    3944685932,
+    486876742
+  ],
+  "geometry": [
+    { "lat": 40.7155002, "lon": -73.9784712 },
+    { "lat": 40.7172297, "lon": -73.9842144 },
+    { "lat": 40.7176325, "lon": -73.9855040 }
+  ],
+  "tags": {
+    "bicycle": "designated",
+    "bridge": "yes",
+    "cycleway:surface": "asphalt",
+    "foot": "designated",
+    "footway:surface": "asphalt",
+    "highway": "cycleway",
+    "layer": "3",
+    "name": "Williamsburg Bridge Bike Path",
+    "name:etymology:wikidata": "Q771572",
+    "name_1": "Williamsburg Bridge Walking Path",
+    "oneway": "no",
+    "segregated": "yes",
+    "smoothness": "excellent",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 40338793,
+  "bounds": {
+    "minlat": 40.7120416,
+    "minlon": -73.9784712,
+    "maxlat": 40.7155002,
+    "maxlon": -73.9672317
+  },
+  "nodes": [
+    486876695,
+    486876696,
+    3616468549,
+    3630219670,
+    9533256053
+  ],
+  "geometry": [
+    { "lat": 40.7155002, "lon": -73.9784712 },
+    { "lat": 40.7154253, "lon": -73.9784433 },
+    { "lat": 40.7149887, "lon": -73.9769936 },
+    { "lat": 40.7135403, "lon": -73.9721958 },
+    { "lat": 40.7120416, "lon": -73.9672317 }
+  ],
+  "tags": {
+    "bicycle": "no",
+    "bridge": "yes",
+    "foot": "yes",
+    "highway": "footway",
+    "layer": "3",
+    "name": "Williamsburg Bridge Footpath",
+    "name:etymology:wikidata": "Q771572",
+    "surface": "asphalt",
+    "wikidata": "Q125068",
+    "wikipedia": "en:Williamsburg Bridge"
+  }
+},
+{
+  "type": "way",
+  "id": 46359901,
+  "bounds": {
+    "minlat": 40.7108164,
+    "minlon": -73.9642321,
+    "maxlat": 40.7109675,
+    "maxlon": -73.9637342
+  },
+  "nodes": [
+    592627483,
+    3572646424,
+    9990599477
+  ],
+  "geometry": [
+    { "lat": 40.7109675, "lon": -73.9642321 },
+    { "lat": 40.7108301, "lon": -73.9637792 },
+    { "lat": 40.7108164, "lon": -73.9637342 }
+  ],
+  "tags": {
+    "bicycle": "no",
+    "foot": "yes",
+    "highway": "footway",
+    "name": "Williamsburg Bridge Footpath",
+    "name:etymology:wikidata": "Q771572",
+    "surface": "concrete"
+  }
+},
+{
+  "type": "way",
+  "id": 46359910,
+  "bounds": {
+    "minlat": 40.7103011,
+    "minlon": -73.9574692,
+    "maxlat": 40.7116882,
+    "maxlon": -73.9551004
+  },
+  "nodes": [
+    12101605022,
+    479719231,
+    9968370367,
+    9968370368,
+    479719232,
+    9968370369,
+    9968370370,
+    479719233,
+    9968370371,
+    9968370372,
+    9968370373,
+    479719234,
+    9968370374,
+    9968370375,
+    479719235,
+    9968370376,
+    9968370377,
+    9968370378,
+    479719236,
+    9968370379,
+    479719237,
+    9968370380,
+    9968370381,
+    479719238,
+    9968370382,
+    9968370383,
+    9968370384,
+    480221805
+  ],
+  "geometry": [
+    { "lat": 40.7103011, "lon": -73.9574692 },
+    { "lat": 40.7103057, "lon": -73.9574284 },
+    { "lat": 40.7103174, "lon": -73.9573252 },
+    { "lat": 40.7103349, "lon": -73.9572125 },
+    { "lat": 40.7103553, "lon": -73.9571083 },
+    { "lat": 40.7103796, "lon": -73.9570036 },
+    { "lat": 40.7104021, "lon": -73.9569119 },
+    { "lat": 40.7104319, "lon": -73.9568044 },
+    { "lat": 40.7104596, "lon": -73.9567122 },
+    { "lat": 40.7104940, "lon": -73.9566157 },
+    { "lat": 40.7105309, "lon": -73.9565163 },
+    { "lat": 40.7105664, "lon": -73.9564254 },
+    { "lat": 40.7106042, "lon": -73.9563380 },
+    { "lat": 40.7106474, "lon": -73.9562495 },
+    { "lat": 40.7106932, "lon": -73.9561602 },
+    { "lat": 40.7107471, "lon": -73.9560647 },
+    { "lat": 40.7107982, "lon": -73.9559801 },
+    { "lat": 40.7108579, "lon": -73.9558867 },
+    { "lat": 40.7109220, "lon": -73.9557964 },
+    { "lat": 40.7109954, "lon": -73.9557024 },
+    { "lat": 40.7110753, "lon": -73.9556059 },
+    { "lat": 40.7111532, "lon": -73.9555219 },
+    { "lat": 40.7112250, "lon": -73.9554486 },
+    { "lat": 40.7113061, "lon": -73.9553751 },
+    { "lat": 40.7113718, "lon": -73.9553194 },
+    { "lat": 40.7114539, "lon": -73.9552587 },
+    { "lat": 40.7115317, "lon": -73.9552022 },
+    { "lat": 40.7116882, "lon": -73.9551004 }
+  ],
+  "tags": {
+    "bridge": "yes",
+    "hgv": "designated",
+    "highway": "motorway",
+    "lanes": "2",
+    "layer": "2",
+    "maxspeed:advisory": "30 mph",
+    "name": "Williamsburg Bridge",
+    "name:etymology:wikidata": "Q771572",
+    "name:ko": "윌리엄스버그 브리지",
+    "oneway": "yes",
+    "surface": "asphalt",
+    "tiger:cfcc": "A63;A11",
+    "tiger:county": "Kings, NY",
+    "tiger:reviewed": "no"
+  }
+},
+{
+  "type": "way",
+  "id": 46359922,
+  "bounds": {
+    "minlat": 40.7114142,
+    "minlon": -73.9787954,
+    "maxlat": 40.7157200,
+    "maxlon": -73.9646127
+  },
+  "nodes": [
+    486849239,
+    486849241,
+    592627489,
+    486849242,
+    486849155,
+    5079840928
+  ],
+  "geometry": [
+    { "lat": 40.7114142, "lon": -73.9646127 },
+    { "lat": 40.7117730, "lon": -73.9659416 },
+    { "lat": 40.7121080, "lon": -73.9670879 },
+    { "lat": 40.7151695, "lon": -73.9771324 },
+    { "lat": 40.7155284, "lon": -73.9782822 },
+    { "lat": 40.7157200, "lon": -73.9787954 }
+  ],
+  "tags": {
+    "bridge": "yes",
+    "hgv": "no",
+    "highway": "motorway",
+    "lanes": "2",
+    "layer": "2",
+    "maxspeed": "35 mph",
+    "moped": "no",
+    "name": "Williamsburg Bridge",
+    "name:etymology:wikidata": "Q771572",
+    "name:ko": "윌리엄스버그 브리지",
+    "oneway": "yes",
+    "toll": "yes",
+    "wikidata": "Q125068",
+    "wikipedia": "en:Williamsburg Bridge"
+  }
+},
+{
+  "type": "way",
+  "id": 46359926,
+  "bounds": {
+    "minlat": 40.7105010,
+    "minlon": -73.9646127,
+    "maxlat": 40.7114142,
+    "maxlon": -73.9616663
+  },
+  "nodes": [
+    486859031,
+    486849239
+  ],
+  "geometry": [
+    { "lat": 40.7105010, "lon": -73.9616663 },
+    { "lat": 40.7114142, "lon": -73.9646127 }
+  ],
+  "tags": {
+    "bridge": "yes",
+    "hgv": "designated",
+    "highway": "motorway",
+    "lanes": "4",
+    "layer": "2",
+    "maxspeed": "35 mph",
+    "moped": "no",
+    "name": "Williamsburg Bridge",
+    "name:etymology:wikidata": "Q771572",
+    "name:ko": "윌리엄스버그 브리지",
+    "oneway": "yes",
+    "surface": "concrete",
+    "tiger:cfcc": "A63;A63;A41;A41;A63",
+    "tiger:county": "New York, NY;Kings, NY",
+    "tiger:name_base": "Williamsburg",
+    "tiger:name_type": "Brg",
+    "tiger:reviewed": "no",
+    "toll": "yes",
+    "turn:lanes": "slight_left|slight_left||"
+  }
+},
+{
+  "type": "way",
+  "id": 46359931,
+  "bounds": {
+    "minlat": 40.7102057,
+    "minlon": -73.9617571,
+    "maxlat": 40.7103459,
+    "maxlon": -73.9612928
+  },
+  "nodes": [
+    592627490,
+    486863762
+  ],
+  "geometry": [
+    { "lat": 40.7103459, "lon": -73.9617571 },
+    { "lat": 40.7102057, "lon": -73.9612928 }
+  ],
+  "tags": {
+    "destination": "Queens;Bronx",
+    "destination:ref": "I 278 East",
+    "hgv": "no",
+    "highway": "motorway",
+    "lanes": "2",
+    "maxspeed": "35 mph",
+    "moped": "no",
+    "name": "Williamsburg Bridge",
+    "name:etymology:wikidata": "Q771572",
+    "name:ko": "윌리엄스버그 브리지",
+    "oneway": "yes",
+    "surface": "concrete",
+    "tiger:cfcc": "A63;A63;A41;A41;A63",
+    "tiger:county": "New York, NY;Kings, NY",
+    "tiger:name_base": "Williamsburg",
+    "tiger:name_type": "Brg",
+    "tiger:reviewed": "no"
+  }
+},
+{
+  "type": "way",
+  "id": 46361719,
+  "bounds": {
+    "minlat": 40.7171427,
+    "minlon": -73.9853646,
+    "maxlat": 40.7174772,
+    "maxlon": -73.9842574
+  },
+  "nodes": [
+    11536126180,
+    4727104610
+  ],
+  "geometry": [
+    { "lat": 40.7174772, "lon": -73.9853646 },
+    { "lat": 40.7171427, "lon": -73.9842574 }
+  ],
+  "tags": {
+    "hgv": "designated",
+    "hgv:lanes": "no|no||",
+    "highway": "motorway",
+    "lanes": "4",
+    "maxspeed": "35 mph",
+    "moped": "no",
+    "name": "Williamsburg Bridge",
+    "name:etymology:wikidata": "Q771572",
+    "name:ko": "윌리엄스버그 브리지",
+    "oneway": "yes",
+    "surface": "concrete"
+  }
+},
+{
+  "type": "way",
+  "id": 206583328,
+  "bounds": {
+    "minlat": 40.7121488,
+    "minlon": -73.9784712,
+    "maxlat": 40.7155425,
+    "maxlon": -73.9671692
+  },
+  "nodes": [
+    10860460087,
+    3630219671,
+    3616468550,
+    486876223,
+    486876695
+  ],
+  "geometry": [
+    { "lat": 40.7121488, "lon": -73.9671692 },
+    { "lat": 40.7136509, "lon": -73.9721372 },
+    { "lat": 40.7150983, "lon": -73.9769410 },
+    { "lat": 40.7155425, "lon": -73.9783847 },
+    { "lat": 40.7155002, "lon": -73.9784712 }
+  ],
+  "tags": {
+    "bicycle": "yes",
+    "bridge": "yes",
+    "foot": "no",
+    "highway": "cycleway",
+    "layer": "3",
+    "name": "Williamsburg Bridge Bike Path",
+    "name:etymology:wikidata": "Q771572",
+    "oneway": "no",
+    "smoothness": "excellent",
+    "surface": "asphalt",
+    "wikidata": "Q125068",
+    "wikipedia": "en:Williamsburg Bridge"
+  }
+},
+{
+  "type": "way",
+  "id": 221684322,
+  "bounds": {
+    "minlat": 40.7094065,
+    "minlon": -73.9607828,
+    "maxlat": 40.7097151,
+    "maxlon": -73.9600342
+  },
+  "nodes": [
+    42505393,
+    5173383338,
+    9968370412,
+    9968370419,
+    9968370413,
+    9968370418,
+    9968370414,
+    9968370415,
+    9968370416,
+    9968370417,
+    2295777078,
+    9968370420,
+    2307215740
+  ],
+  "geometry": [
+    { "lat": 40.7094065, "lon": -73.9607828 },
+    { "lat": 40.7094590, "lon": -73.9606669 },
+    { "lat": 40.7096422, "lon": -73.9605112 },
+    { "lat": 40.7096596, "lon": -73.9604951 },
+    { "lat": 40.7096767, "lon": -73.9604736 },
+    { "lat": 40.7096900, "lon": -73.9604467 },
+    { "lat": 40.7097013, "lon": -73.9604160 },
+    { "lat": 40.7097088, "lon": -73.9603850 },
+    { "lat": 40.7097142, "lon": -73.9603318 },
+    { "lat": 40.7097151, "lon": -73.9602888 },
+    { "lat": 40.7097113, "lon": -73.9602504 },
+    { "lat": 40.7097006, "lon": -73.9601997 },
+    { "lat": 40.7096622, "lon": -73.9600342 }
+  ],
+  "tags": {
+    "access": "no",
+    "bus": "yes",
+    "highway": "service",
+    "name": "Williamsburg Bridge Plaza",
+    "oneway": "yes",
+    "service": "parking_aisle",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 221685708,
+  "bounds": {
+    "minlat": 40.7093457,
+    "minlon": -73.9593364,
+    "maxlat": 40.7094255,
+    "maxlon": -73.9592903
+  },
+  "nodes": [
+    2307215731,
+    6226508719,
+    2307215746
+  ],
+  "geometry": [
+    { "lat": 40.7093457, "lon": -73.9593364 },
+    { "lat": 40.7093958, "lon": -73.9593096 },
+    { "lat": 40.7094255, "lon": -73.9592903 }
+  ],
+  "tags": {
+    "access": "no",
+    "bus": "yes",
+    "highway": "service",
+    "name": "Williamsburg Bridge Plaza",
+    "oneway": "no",
+    "service": "parking_aisle",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 221685712,
+  "bounds": {
+    "minlat": 40.7089648,
+    "minlon": -73.9594910,
+    "maxlat": 40.7092675,
+    "maxlon": -73.9593691
+  },
+  "nodes": [
+    2307215728,
+    9968370406,
+    2307215734,
+    9968370405,
+    2307215732,
+    2307230978
+  ],
+  "geometry": [
+    { "lat": 40.7092675, "lon": -73.9593691 },
+    { "lat": 40.7092212, "lon": -73.9593814 },
+    { "lat": 40.7091607, "lon": -73.9593949 },
+    { "lat": 40.7091199, "lon": -73.9594093 },
+    { "lat": 40.7090541, "lon": -73.9594438 },
+    { "lat": 40.7089648, "lon": -73.9594910 }
+  ],
+  "tags": {
+    "access": "no",
+    "bus": "yes",
+    "highway": "service",
+    "name": "Williamsburg Bridge Plaza",
+    "oneway": "yes",
+    "service": "parking_aisle",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 439842841,
+  "bounds": {
+    "minlat": 40.7176584,
+    "minlon": -73.9857986,
+    "maxlat": 40.7177286,
+    "maxlon": -73.9855817
+  },
+  "nodes": [
+    9374913467,
+    486876882
+  ],
+  "geometry": [
+    { "lat": 40.7176584, "lon": -73.9855817 },
+    { "lat": 40.7177286, "lon": -73.9857986 }
+  ],
+  "tags": {
+    "bicycle": "designated",
+    "foot": "designated",
+    "highway": "cycleway",
+    "name": "Williamsburg Bridge Bike Path",
+    "name:etymology:wikidata": "Q771572",
+    "oneway": "no",
+    "segregated": "yes",
+    "smoothness": "excellent",
+    "surface": "concrete"
+  }
+},
+{
+  "type": "way",
+  "id": 521358279,
+  "bounds": {
+    "minlat": 40.7157200,
+    "minlon": -73.9841569,
+    "maxlat": 40.7173458,
+    "maxlon": -73.9787954
+  },
+  "nodes": [
+    5079840928,
+    13519263275,
+    486859051
+  ],
+  "geometry": [
+    { "lat": 40.7157200, "lon": -73.9787954 },
+    { "lat": 40.7172217, "lon": -73.9837476 },
+    { "lat": 40.7173458, "lon": -73.9841569 }
+  ],
+  "tags": {
+    "bridge": "yes",
+    "hgv": "designated",
+    "highway": "motorway",
+    "lanes": "4",
+    "layer": "2",
+    "maxspeed": "35 mph",
+    "moped": "no",
+    "name": "Williamsburg Bridge",
+    "name:etymology:wikidata": "Q771572",
+    "name:ko": "윌리엄스버그 브리지",
+    "oneway": "yes",
+    "surface": "concrete",
+    "toll": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 521358284,
+  "bounds": {
+    "minlat": 40.7112944,
+    "minlon": -73.9788947,
+    "maxlat": 40.7155363,
+    "maxlon": -73.9649789
+  },
+  "nodes": [
+    3785707059,
+    486876215,
+    486876216,
+    486876217,
+    486876218,
+    9968370327
+  ],
+  "geometry": [
+    { "lat": 40.7155363, "lon": -73.9788947 },
+    { "lat": 40.7154494, "lon": -73.9785341 },
+    { "lat": 40.7150516, "lon": -73.9771768 },
+    { "lat": 40.7119945, "lon": -73.9671403 },
+    { "lat": 40.7114800, "lon": -73.9654812 },
+    { "lat": 40.7112944, "lon": -73.9649789 }
+  ],
+  "tags": {
+    "bridge": "yes",
+    "destination": "Queens;Bronx",
+    "destination:ref": "I 278 East",
+    "hgv": "no",
+    "highway": "motorway",
+    "lanes": "2",
+    "layer": "2",
+    "maxheight": "12'11\"",
+    "maxspeed": "35 mph",
+    "moped": "no",
+    "name": "Williamsburg Bridge",
+    "name:etymology:wikidata": "Q771572",
+    "name:ko": "윌리엄스버그 브리지",
+    "oneway": "yes",
+    "wikidata": "Q125068",
+    "wikipedia": "en:Williamsburg Bridge"
+  }
+},
+{
+  "type": "way",
+  "id": 533212910,
+  "bounds": {
+    "minlat": 40.7102537,
+    "minlon": -73.9842919,
+    "maxlat": 40.7174160,
+    "maxlon": -73.9616032
+  },
+  "nodes": [
+    3944686210,
+    592627492,
+    592627490,
+    2166027696,
+    2166027697,
+    486859031,
+    592627485,
+    3944686170,
+    3944685938,
+    3944685952,
+    3944686204,
+    3944686225,
+    3944685936,
+    3944686219,
+    3944685951,
+    3944686203,
+    3944686234,
+    3944686215,
+    3944685934,
+    3944686233,
+    3944686202,
+    3944686220,
+    3944685935,
+    3944686216,
+    3944686199,
+    3944686224,
+    3944686195,
+    3944686182,
+    3944686192,
+    3944685943,
+    3944685948,
+    3944685937,
+    3944685942,
+    3944686178,
+    3944685949,
+    3944685941,
+    3944686188,
+    3944686161,
+    3944686184,
+    3944686181,
+    3944686164,
+    3944686166,
+    3944686208,
+    3944686167,
+    3944686185,
+    3944686183,
+    3944685950,
+    3944685945,
+    3944685946,
+    3944686191,
+    3944685947,
+    3944686196,
+    3944686226,
+    3944686197,
+    486859051,
+    3944685932,
+    4727104610,
+    3944686186,
+    3944686209,
+    3944685956,
+    3944686168,
+    3944686157,
+    3944686160,
+    3944685933,
+    3944686198,
+    3944686159,
+    3944685939,
+    3944686212,
+    3944686205,
+    11038072061,
+    3944686172,
+    3944686162,
+    3944686221,
+    3944686169,
+    3944686173,
+    3944686211,
+    3944686223,
+    3944686214,
+    3944686163,
+    3944686171,
+    3944685940,
+    3944686165,
+    3944686207,
+    3944686222,
+    3944686229,
+    3944686228,
+    3944686174,
+    3944686231,
+    3944686200,
+    3944686158,
+    3944685953,
+    3944686227,
+    3944685954,
+    3944686177,
+    3944686201,
+    3944686230,
+    3944686189,
+    3944685944,
+    3944686218,
+    3944686213,
+    2838160013,
+    9374905467,
+    3944686179,
+    3944686187,
+    3944686217,
+    3944686176,
+    3944686175,
+    592627483,
+    3944686190,
+    3944686210
+  ],
+  "geometry": [
+    { "lat": 40.7102537, "lon": -73.9618079 },
+    { "lat": 40.7102929, "lon": -73.9617865 },
+    { "lat": 40.7103459, "lon": -73.9617571 },
+    { "lat": 40.7104020, "lon": -73.9617230 },
+    { "lat": 40.7104381, "lon": -73.9617039 },
+    { "lat": 40.7105010, "lon": -73.9616663 },
+    { "lat": 40.7106032, "lon": -73.9616112 },
+    { "lat": 40.7106206, "lon": -73.9616032 },
+    { "lat": 40.7122211, "lon": -73.9669632 },
+    { "lat": 40.7122347, "lon": -73.9669559 },
+    { "lat": 40.7122772, "lon": -73.9670931 },
+    { "lat": 40.7122666, "lon": -73.9670988 },
+    { "lat": 40.7123548, "lon": -73.9673833 },
+    { "lat": 40.7123161, "lon": -73.9674041 },
+    { "lat": 40.7125191, "lon": -73.9681236 },
+    { "lat": 40.7128789, "lon": -73.9692421 },
+    { "lat": 40.7129179, "lon": -73.9692547 },
+    { "lat": 40.7129399, "lon": -73.9693265 },
+    { "lat": 40.7129596, "lon": -73.9693325 },
+    { "lat": 40.7129674, "lon": -73.9693453 },
+    { "lat": 40.7129704, "lon": -73.9693788 },
+    { "lat": 40.7129616, "lon": -73.9693942 },
+    { "lat": 40.7129819, "lon": -73.9694626 },
+    { "lat": 40.7129687, "lon": -73.9694760 },
+    { "lat": 40.7129775, "lon": -73.9695009 },
+    { "lat": 40.7129613, "lon": -73.9695089 },
+    { "lat": 40.7145033, "lon": -73.9745957 },
+    { "lat": 40.7145287, "lon": -73.9745890 },
+    { "lat": 40.7145369, "lon": -73.9746159 },
+    { "lat": 40.7145511, "lon": -73.9746172 },
+    { "lat": 40.7145708, "lon": -73.9746875 },
+    { "lat": 40.7145887, "lon": -73.9746896 },
+    { "lat": 40.7146019, "lon": -73.9747124 },
+    { "lat": 40.7146040, "lon": -73.9747392 },
+    { "lat": 40.7145931, "lon": -73.9747479 },
+    { "lat": 40.7146114, "lon": -73.9748176 },
+    { "lat": 40.7146003, "lon": -73.9748297 },
+    { "lat": 40.7146080, "lon": -73.9748559 },
+    { "lat": 40.7145840, "lon": -73.9748807 },
+    { "lat": 40.7150882, "lon": -73.9765651 },
+    { "lat": 40.7151051, "lon": -73.9765564 },
+    { "lat": 40.7151616, "lon": -73.9766849 },
+    { "lat": 40.7151777, "lon": -73.9766763 },
+    { "lat": 40.7152664, "lon": -73.9769658 },
+    { "lat": 40.7152816, "lon": -73.9769577 },
+    { "lat": 40.7153306, "lon": -73.9771176 },
+    { "lat": 40.7152722, "lon": -73.9771487 },
+    { "lat": 40.7152860, "lon": -73.9771908 },
+    { "lat": 40.7153389, "lon": -73.9771599 },
+    { "lat": 40.7153592, "lon": -73.9772203 },
+    { "lat": 40.7153077, "lon": -73.9772504 },
+    { "lat": 40.7155178, "lon": -73.9779136 },
+    { "lat": 40.7156266, "lon": -73.9782328 },
+    { "lat": 40.7174160, "lon": -73.9841222 },
+    { "lat": 40.7173458, "lon": -73.9841569 },
+    { "lat": 40.7172297, "lon": -73.9842144 },
+    { "lat": 40.7171427, "lon": -73.9842574 },
+    { "lat": 40.7170730, "lon": -73.9842919 },
+    { "lat": 40.7156035, "lon": -73.9794283 },
+    { "lat": 40.7155842, "lon": -73.9793787 },
+    { "lat": 40.7153108, "lon": -73.9784829 },
+    { "lat": 40.7149814, "lon": -73.9773038 },
+    { "lat": 40.7149216, "lon": -73.9773357 },
+    { "lat": 40.7148722, "lon": -73.9771744 },
+    { "lat": 40.7148859, "lon": -73.9771671 },
+    { "lat": 40.7147976, "lon": -73.9768791 },
+    { "lat": 40.7148213, "lon": -73.9768665 },
+    { "lat": 40.7147903, "lon": -73.9767461 },
+    { "lat": 40.7147991, "lon": -73.9766852 },
+    { "lat": 40.7147479, "lon": -73.9765195 },
+    { "lat": 40.7142909, "lon": -73.9750396 },
+    { "lat": 40.7142472, "lon": -73.9750195 },
+    { "lat": 40.7142221, "lon": -73.9749531 },
+    { "lat": 40.7142058, "lon": -73.9749410 },
+    { "lat": 40.7141916, "lon": -73.9749276 },
+    { "lat": 40.7141936, "lon": -73.9749035 },
+    { "lat": 40.7142058, "lon": -73.9748900 },
+    { "lat": 40.7141794, "lon": -73.9748109 },
+    { "lat": 40.7141902, "lon": -73.9747996 },
+    { "lat": 40.7141835, "lon": -73.9747761 },
+    { "lat": 40.7141994, "lon": -73.9747580 },
+    { "lat": 40.7126556, "lon": -73.9696745 },
+    { "lat": 40.7126373, "lon": -73.9696812 },
+    { "lat": 40.7126292, "lon": -73.9696544 },
+    { "lat": 40.7126140, "lon": -73.9696571 },
+    { "lat": 40.7125946, "lon": -73.9695980 },
+    { "lat": 40.7125855, "lon": -73.9695927 },
+    { "lat": 40.7125702, "lon": -73.9695699 },
+    { "lat": 40.7125641, "lon": -73.9695390 },
+    { "lat": 40.7125713, "lon": -73.9695189 },
+    { "lat": 40.7125499, "lon": -73.9694519 },
+    { "lat": 40.7125641, "lon": -73.9694425 },
+    { "lat": 40.7125591, "lon": -73.9694237 },
+    { "lat": 40.7125723, "lon": -73.9694116 },
+    { "lat": 40.7125652, "lon": -73.9693875 },
+    { "lat": 40.7125702, "lon": -73.9693741 },
+    { "lat": 40.7120264, "lon": -73.9675851 },
+    { "lat": 40.7120057, "lon": -73.9675925 },
+    { "lat": 40.7119979, "lon": -73.9675758 },
+    { "lat": 40.7119873, "lon": -73.9675815 },
+    { "lat": 40.7118968, "lon": -73.9672895 },
+    { "lat": 40.7118901, "lon": -73.9672931 },
+    { "lat": 40.7118498, "lon": -73.9671633 },
+    { "lat": 40.7118647, "lon": -73.9671553 },
+    { "lat": 40.7116418, "lon": -73.9664673 },
+    { "lat": 40.7116411, "lon": -73.9664491 },
+    { "lat": 40.7109566, "lon": -73.9642404 },
+    { "lat": 40.7109675, "lon": -73.9642321 },
+    { "lat": 40.7109841, "lon": -73.9642210 },
+    { "lat": 40.7102537, "lon": -73.9618079 }
+  ],
+  "tags": {
+    "height": "41",
+    "layer": "2",
+    "man_made": "bridge",
+    "name": "Williamsburg Bridge",
+    "wikidata": "Q125068",
+    "wikipedia": "en:Williamsburg Bridge"
+  }
+},
+{
+  "type": "way",
+  "id": 546364858,
+  "bounds": {
+    "minlat": 40.7112944,
+    "minlon": -73.9788947,
+    "maxlat": 40.7155363,
+    "maxlon": -73.9649789
+  },
+  "nodes": [
+    3785707059,
+    486864447,
+    486864450,
+    486864454,
+    486864457,
+    9968370327
+  ],
+  "geometry": [
+    { "lat": 40.7155363, "lon": -73.9788947 },
+    { "lat": 40.7153733, "lon": -73.9785566 },
+    { "lat": 40.7150019, "lon": -73.9772515 },
+    { "lat": 40.7119388, "lon": -73.9671943 },
+    { "lat": 40.7114212, "lon": -73.9654995 },
+    { "lat": 40.7112944, "lon": -73.9649789 }
+  ],
+  "tags": {
+    "bridge": "yes",
+    "destination": "Staten Island",
+    "destination:ref:to": "I 278 West",
+    "destination:street": "Broadway",
+    "hgv": "designated",
+    "highway": "motorway",
+    "lanes": "2",
+    "layer": "2",
+    "maxheight": "13'4\"",
+    "maxspeed": "35 mph",
+    "moped": "no",
+    "name": "Williamsburg Bridge",
+    "name:etymology:wikidata": "Q771572",
+    "name:ko": "윌리엄스버그 브리지",
+    "oneway": "yes",
+    "wikidata": "Q125068",
+    "wikipedia": "en:Williamsburg Bridge"
+  }
+},
+{
+  "type": "way",
+  "id": 546364862,
+  "bounds": {
+    "minlat": 40.7177588,
+    "minlon": -73.9857233,
+    "maxlat": 40.7178259,
+    "maxlon": -73.9854974
+  },
+  "nodes": [
+    5079840929,
+    12195869759,
+    486869939
+  ],
+  "geometry": [
+    { "lat": 40.7177588, "lon": -73.9854974 },
+    { "lat": 40.7177864, "lon": -73.9856023 },
+    { "lat": 40.7178259, "lon": -73.9857233 }
+  ],
+  "tags": {
+    "hgv": "designated",
+    "highway": "motorway",
+    "lanes": "3",
+    "maxspeed": "25 mph",
+    "moped": "no",
+    "name": "Williamsburg Bridge",
+    "name:etymology:wikidata": "Q771572",
+    "name:ko": "윌리엄스버그 브리지",
+    "oneway": "yes",
+    "toll": "yes",
+    "turn:lanes": "through|through|through"
+  }
+},
+{
+  "type": "way",
+  "id": 955386395,
+  "bounds": {
+    "minlat": 40.7104306,
+    "minlon": -73.9609541,
+    "maxlat": 40.7104664,
+    "maxlon": -73.9609370
+  },
+  "nodes": [
+    8842464593,
+    9967920694,
+    3630206134,
+    3630206135
+  ],
+  "geometry": [
+    { "lat": 40.7104664, "lon": -73.9609370 },
+    { "lat": 40.7104533, "lon": -73.9609401 },
+    { "lat": 40.7104406, "lon": -73.9609457 },
+    { "lat": 40.7104306, "lon": -73.9609541 }
+  ],
+  "tags": {
+    "bicycle": "yes",
+    "foot": "no",
+    "highway": "cycleway",
+    "name": "Williamsburg Bridge Bikepath",
+    "oneway": "no",
+    "surface": "concrete"
+  }
+},
+{
+  "type": "way",
+  "id": 955386396,
+  "bounds": {
+    "minlat": 40.7104181,
+    "minlon": -73.9610600,
+    "maxlat": 40.7104345,
+    "maxlon": -73.9609541
+  },
+  "nodes": [
+    3630206135,
+    9967920693,
+    9967920692,
+    9967920691,
+    6981101023,
+    8842464614
+  ],
+  "geometry": [
+    { "lat": 40.7104306, "lon": -73.9609541 },
+    { "lat": 40.7104234, "lon": -73.9609644 },
+    { "lat": 40.7104194, "lon": -73.9609746 },
+    { "lat": 40.7104181, "lon": -73.9609879 },
+    { "lat": 40.7104197, "lon": -73.9610011 },
+    { "lat": 40.7104345, "lon": -73.9610600 }
+  ],
+  "tags": {
+    "bicycle": "designated",
+    "foot": "designated",
+    "highway": "cycleway",
+    "name": "Williamsburg Bridge Bikepath",
+    "oneway": "no",
+    "segregated": "no",
+    "surface": "concrete"
+  }
+},
+{
+  "type": "way",
+  "id": 1016434038,
+  "bounds": {
+    "minlat": 40.7176325,
+    "minlon": -73.9855817,
+    "maxlat": 40.7176584,
+    "maxlon": -73.9855040
+  },
+  "nodes": [
+    486876742,
+    9374913467
+  ],
+  "geometry": [
+    { "lat": 40.7176325, "lon": -73.9855040 },
+    { "lat": 40.7176584, "lon": -73.9855817 }
+  ],
+  "tags": {
+    "bicycle": "designated",
+    "covered": "yes",
+    "foot": "designated",
+    "highway": "cycleway",
+    "name": "Williamsburg Bridge Bike Path",
+    "name:etymology:wikidata": "Q771572",
+    "oneway": "no",
+    "segregated": "yes",
+    "smoothness": "excellent",
+    "surface": "concrete"
+  }
+},
+{
+  "type": "way",
+  "id": 1034898979,
+  "bounds": {
+    "minlat": 40.7109675,
+    "minlon": -73.9672317,
+    "maxlat": 40.7120416,
+    "maxlon": -73.9642321
+  },
+  "nodes": [
+    9533256053,
+    486876698,
+    486876700,
+    486876718,
+    592627483
+  ],
+  "geometry": [
+    { "lat": 40.7120416, "lon": -73.9672317 },
+    { "lat": 40.7120323, "lon": -73.9672008 },
+    { "lat": 40.7118779, "lon": -73.9671144 },
+    { "lat": 40.7112839, "lon": -73.9652639 },
+    { "lat": 40.7109675, "lon": -73.9642321 }
+  ],
+  "tags": {
+    "bicycle": "no",
+    "bridge": "yes",
+    "foot": "yes",
+    "highway": "footway",
+    "layer": "3",
+    "name": "Williamsburg Bridge Footpath",
+    "name:etymology:wikidata": "Q771572",
+    "smoothness": "good",
+    "surface": "concrete"
+  }
+},
+{
+  "type": "way",
+  "id": 1087974356,
+  "bounds": {
+    "minlat": 40.7104506,
+    "minlon": -73.9649789,
+    "maxlat": 40.7112944,
+    "maxlon": -73.9621372
+  },
+  "nodes": [
+    9968370327,
+    9968370328
+  ],
+  "geometry": [
+    { "lat": 40.7112944, "lon": -73.9649789 },
+    { "lat": 40.7104506, "lon": -73.9621372 }
+  ],
+  "tags": {
+    "bridge": "yes",
+    "destination:lanes": "Queens;Bronx|Queens;Bronx|Broadway East|Broadway West",
+    "hgv": "designated",
+    "highway": "motorway",
+    "lanes": "4",
+    "layer": "2",
+    "maxspeed": "35 mph",
+    "moped": "no",
+    "name": "Williamsburg Bridge",
+    "name:etymology:wikidata": "Q771572",
+    "name:ko": "윌리엄스버그 브리지",
+    "oneway": "yes",
+    "surface": "concrete",
+    "tiger:cfcc": "A63;A63;A41;A41;A63",
+    "tiger:county": "New York, NY;Kings, NY",
+    "tiger:name_base": "Williamsburg",
+    "tiger:name_type": "Brg",
+    "turn:lanes": "slight_left|slight_left|slight_right|slight_right",
+    "wikidata": "Q125068",
+    "wikipedia": "en:Williamsburg Bridge"
+  }
+},
+{
+  "type": "way",
+  "id": 1087974357,
+  "bounds": {
+    "minlat": 40.7103459,
+    "minlon": -73.9621372,
+    "maxlat": 40.7104506,
+    "maxlon": -73.9617571
+  },
+  "nodes": [
+    9968370328,
+    592627490
+  ],
+  "geometry": [
+    { "lat": 40.7104506, "lon": -73.9621372 },
+    { "lat": 40.7103459, "lon": -73.9617571 }
+  ],
+  "tags": {
+    "bridge": "yes",
+    "destination": "Queens;Bronx",
+    "destination:ref": "I 278 East",
+    "hgv": "no",
+    "highway": "motorway",
+    "lanes": "2",
+    "layer": "2",
+    "maxheight": "12'11\"",
+    "maxspeed": "35 mph",
+    "moped": "no",
+    "name": "Williamsburg Bridge",
+    "name:etymology:wikidata": "Q771572",
+    "name:ko": "윌리엄스버그 브리지",
+    "oneway": "yes",
+    "surface": "concrete",
+    "tiger:cfcc": "A63;A63;A41;A41;A63",
+    "tiger:county": "New York, NY;Kings, NY",
+    "tiger:name_base": "Williamsburg",
+    "tiger:name_type": "Brg",
+    "wikidata": "Q125068",
+    "wikipedia": "en:Williamsburg Bridge"
+  }
+},
+{
+  "type": "way",
+  "id": 1087974364,
+  "bounds": {
+    "minlat": 40.7095407,
+    "minlon": -73.9591557,
+    "maxlat": 40.7096072,
+    "maxlon": -73.9590101
+  },
+  "nodes": [
+    2307215729,
+    8384292627
+  ],
+  "geometry": [
+    { "lat": 40.7095407, "lon": -73.9591557 },
+    { "lat": 40.7096072, "lon": -73.9590101 }
+  ],
+  "tags": {
+    "access": "no",
+    "bus": "yes",
+    "highway": "service",
+    "name": "Williamsburg Bridge Plaza",
+    "oneway": "yes",
+    "service": "parking_aisle",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 1087974367,
+  "bounds": {
+    "minlat": 40.7096622,
+    "minlon": -73.9604078,
+    "maxlat": 40.7099889,
+    "maxlon": -73.9600342
+  },
+  "nodes": [
+    486871373,
+    2307215740
+  ],
+  "geometry": [
+    { "lat": 40.7099889, "lon": -73.9604078 },
+    { "lat": 40.7096622, "lon": -73.9600342 }
+  ],
+  "tags": {
+    "access": "no",
+    "bus": "yes",
+    "highway": "service",
+    "name": "Williamsburg Bridge Plaza",
+    "oneway": "yes",
+    "service": "parking_aisle",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 1087974368,
+  "bounds": {
+    "minlat": 40.7095407,
+    "minlon": -73.9594048,
+    "maxlat": 40.7096283,
+    "maxlon": -73.9591557
+  },
+  "nodes": [
+    9968370398,
+    2307215729
+  ],
+  "geometry": [
+    { "lat": 40.7096283, "lon": -73.9594048 },
+    { "lat": 40.7095407, "lon": -73.9591557 }
+  ],
+  "tags": {
+    "access": "no",
+    "bus": "yes",
+    "highway": "service",
+    "name": "Williamsburg Bridge Plaza Lane 1",
+    "oneway": "yes",
+    "service": "parking_aisle",
+    "surface": "concrete"
+  }
+},
+{
+  "type": "way",
+  "id": 1087974370,
+  "bounds": {
+    "minlat": 40.7094836,
+    "minlon": -73.9592472,
+    "maxlat": 40.7095407,
+    "maxlon": -73.9591557
+  },
+  "nodes": [
+    2307215739,
+    9968370399,
+    9968370408,
+    2307215729
+  ],
+  "geometry": [
+    { "lat": 40.7094836, "lon": -73.9592472 },
+    { "lat": 40.7095040, "lon": -73.9592218 },
+    { "lat": 40.7095223, "lon": -73.9591922 },
+    { "lat": 40.7095407, "lon": -73.9591557 }
+  ],
+  "tags": {
+    "access": "no",
+    "bus": "yes",
+    "highway": "service",
+    "name": "Williamsburg Bridge Plaza",
+    "oneway": "no",
+    "service": "parking_aisle",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 1087974372,
+  "bounds": {
+    "minlat": 40.7094255,
+    "minlon": -73.9592903,
+    "maxlat": 40.7094836,
+    "maxlon": -73.9592472
+  },
+  "nodes": [
+    2307215746,
+    9968370400,
+    2307215739
+  ],
+  "geometry": [
+    { "lat": 40.7094255, "lon": -73.9592903 },
+    { "lat": 40.7094573, "lon": -73.9592696 },
+    { "lat": 40.7094836, "lon": -73.9592472 }
+  ],
+  "tags": {
+    "access": "no",
+    "bus": "yes",
+    "highway": "service",
+    "name": "Williamsburg Bridge Plaza",
+    "oneway": "no",
+    "service": "parking_aisle",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 1087974374,
+  "bounds": {
+    "minlat": 40.7092675,
+    "minlon": -73.9593691,
+    "maxlat": 40.7093457,
+    "maxlon": -73.9593364
+  },
+  "nodes": [
+    2307215728,
+    9968370407,
+    2307215731
+  ],
+  "geometry": [
+    { "lat": 40.7092675, "lon": -73.9593691 },
+    { "lat": 40.7093067, "lon": -73.9593539 },
+    { "lat": 40.7093457, "lon": -73.9593364 }
+  ],
+  "tags": {
+    "access": "no",
+    "bus": "yes",
+    "highway": "service",
+    "name": "Williamsburg Bridge Plaza",
+    "oneway": "no",
+    "service": "parking_aisle",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 1087977623,
+  "bounds": {
+    "minlat": 40.7101447,
+    "minlon": -73.9599738,
+    "maxlat": 40.7102384,
+    "maxlon": -73.9589524
+  },
+  "nodes": [
+    592627493,
+    9968376557,
+    9968376556,
+    479718667
+  ],
+  "geometry": [
+    { "lat": 40.7102384, "lon": -73.9589524 },
+    { "lat": 40.7101592, "lon": -73.9597699 },
+    { "lat": 40.7101504, "lon": -73.9598731 },
+    { "lat": 40.7101447, "lon": -73.9599738 }
+  ],
+  "tags": {
+    "hgv": "designated",
+    "highway": "motorway",
+    "lanes": "2",
+    "maxspeed": "35 mph",
+    "moped": "no",
+    "name": "Williamsburg Bridge",
+    "name:etymology:wikidata": "Q771572",
+    "name:ko": "윌리엄스버그 브리지",
+    "oneway": "yes",
+    "surface": "concrete",
+    "tiger:cfcc": "A63;A11",
+    "tiger:county": "Kings, NY",
+    "tiger:reviewed": "no",
+    "toll": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1087977627,
+  "bounds": {
+    "minlat": 40.7103519,
+    "minlon": -73.9616663,
+    "maxlat": 40.7105010,
+    "maxlon": -73.9611978
+  },
+  "nodes": [
+    9968376551,
+    486859031
+  ],
+  "geometry": [
+    { "lat": 40.7103519, "lon": -73.9611978 },
+    { "lat": 40.7105010, "lon": -73.9616663 }
+  ],
+  "tags": {
+    "hgv": "designated",
+    "highway": "motorway",
+    "lanes": "2",
+    "maxspeed": "35 mph",
+    "moped": "no",
+    "name": "Williamsburg Bridge",
+    "name:etymology:wikidata": "Q771572",
+    "name:ko": "윌리엄스버그 브리지",
+    "oneway": "yes",
+    "surface": "concrete",
+    "tiger:cfcc": "A63;A11",
+    "tiger:county": "Kings, NY",
+    "tiger:reviewed": "no",
+    "toll": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1167752612,
+  "bounds": {
+    "minlat": 40.7106032,
+    "minlon": -73.9671692,
+    "maxlat": 40.7121927,
+    "maxlon": -73.9616112
+  },
+  "nodes": [
+    592627485,
+    486876465,
+    486876220,
+    486876221,
+    486876222,
+    10860460087
+  ],
+  "geometry": [
+    { "lat": 40.7106032, "lon": -73.9616112 },
+    { "lat": 40.7111817, "lon": -73.9635141 },
+    { "lat": 40.7116536, "lon": -73.9650596 },
+    { "lat": 40.7121927, "lon": -73.9669252 },
+    { "lat": 40.7121353, "lon": -73.9671247 },
+    { "lat": 40.7121488, "lon": -73.9671692 }
+  ],
+  "tags": {
+    "bicycle": "yes",
+    "bridge": "yes",
+    "foot": "no",
+    "highway": "cycleway",
+    "layer": "3",
+    "name": "Williamsburg Bridge Bike Path",
+    "name:etymology:wikidata": "Q771572",
+    "oneway": "no",
+    "smoothness": "excellent",
+    "surface": "concrete",
+    "wikidata": "Q125068",
+    "wikipedia": "en:Williamsburg Bridge"
+  }
+},
+{
+  "type": "way",
+  "id": 1241559458,
+  "bounds": {
+    "minlat": 40.7174772,
+    "minlon": -73.9858243,
+    "maxlat": 40.7176161,
+    "maxlon": -73.9853646
+  },
+  "nodes": [
+    3630249566,
+    11536126181,
+    11536126180
+  ],
+  "geometry": [
+    { "lat": 40.7176161, "lon": -73.9858243 },
+    { "lat": 40.7175229, "lon": -73.9855158 },
+    { "lat": 40.7174772, "lon": -73.9853646 }
+  ],
+  "tags": {
+    "hgv": "designated",
+    "hgv:lanes": "no|no||",
+    "highway": "motorway",
+    "lanes": "4",
+    "maxspeed": "35 mph",
+    "moped": "no",
+    "name": "Williamsburg Bridge",
+    "name:etymology:wikidata": "Q771572",
+    "name:ko": "윌리엄스버그 브리지",
+    "oneway": "yes",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 1306707149,
+  "bounds": {
+    "minlat": 40.7101591,
+    "minlon": -73.9589345,
+    "maxlat": 40.7103011,
+    "maxlon": -73.9574692
+  },
+  "nodes": [
+    592627488,
+    13519263276,
+    9968370366,
+    12101605022
+  ],
+  "geometry": [
+    { "lat": 40.7101591, "lon": -73.9589345 },
+    { "lat": 40.7101942, "lon": -73.9585692 },
+    { "lat": 40.7102933, "lon": -73.9575374 },
+    { "lat": 40.7103011, "lon": -73.9574692 }
+  ],
+  "tags": {
+    "bridge": "yes",
+    "hgv": "designated",
+    "highway": "motorway",
+    "lanes": "2",
+    "layer": "2",
+    "maxspeed": "30 mph",
+    "name": "Williamsburg Bridge",
+    "name:etymology:wikidata": "Q771572",
+    "name:ko": "윌리엄스버그 브리지",
+    "oneway": "yes",
+    "surface": "asphalt",
+    "tiger:cfcc": "A63;A11",
+    "tiger:county": "Kings, NY",
+    "tiger:reviewed": "no"
+  }
+}
+
+  ]
+}

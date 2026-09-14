@@ -102,6 +102,15 @@ dimensions and historic site plans, and any error in them is mine:
   name — and section from published figures for the 1909 structure: 1,470 ft
   main span, 322 ft towers, 135 ft clearance, a 120 ft deck on two levels. Its
   colour is neither surveyed nor published here and is a judgement
+- The Williamsburg Bridge: axis from OpenStreetMap — its carriageways do carry
+  its name, unlike the Manhattan Bridge's — and section from published figures
+  for the 1903 structure: 1,600 ft main span, 335 ft towers, 135 ft clearance,
+  a 40 ft stiffening truss and a 118 ft deck on one level. The tower shafts are
+  proportioned against those figures rather than taken from them, and the
+  approach viaducts are a reasonable steel viaduct rather than a survey of the
+  real ones. Its colour is neither surveyed nor published here and is a
+  judgement: the bridge was two-thirds through a reconstruction that ran from
+  1991 to 2002
 - The Statue of Liberty: plan from OpenStreetMap, dimensions from the National
   Park Service's published figures for the 1886 statue and pedestal — 305 ft
   1 in overall, 151 ft 1 in of copper on an 89 ft pedestal on a 65 ft

@@ -31,13 +31,15 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'BufferGeometryUtils';
-import { norm, strand, GROUND } from './geo.js';
+import { norm, strand, rampProfile, stiffeningTruss, GROUND } from './geo.js';
 import { roadTexture } from './textures.js';
 
 const TOWER_H = 98.1;          // 322 ft above the water
 const LEG_OFF = 14.6;          // the two legs, either side of the centreline
 const LEG_W = 4.2;             // across the bridge
 const LEG_D = 6.2;             // along it
+const APPROACH_D = 3.0;        // the viaduct girder, once the suspension ends
+const FADE = 120;              // over how much of the approach it gets there
 const DECK_W = 36.6;           // 120 ft
 const TRUSS_D = 7.3;           // the depth of the stiffening truss
 const CABLE_R = 0.34;          // drawn a little over its 21 1/4 in, see below
@@ -74,37 +76,6 @@ export function setMBridgeNight(lit) {
   MBRIDGE_MATS.stone.emissiveIntensity = lit * 0.05;
 }
 
-/**
- * Height of the truss's bottom chord along the bridge.
- *
- * Rises from each approach to its anchorage, over the tower, and on to the
- * crown at mid-span, interpolated smoothly — a roadway that changes gradient
- * in a corner reads as folded card.
- */
-function profile(stations) {
-  const [s0, anchorA, tA, mid, tB, anchorB, s1] = stations;
-  const key = [
-    [s0, GROUND.asphalt],
-    [anchorA, 27.0],
-    [tA, 38.4],
-    [mid, 41.2],
-    [tB, 38.4],
-    [anchorB, 27.0],
-    [s1, GROUND.asphalt],
-  ];
-  return (s) => {
-    if (s <= key[0][0]) return key[0][1];
-    for (let i = 1; i < key.length; i++) {
-      if (s <= key[i][0]) {
-        const [a, ya] = key[i - 1], [b, yb] = key[i];
-        const t = (s - a) / (b - a);
-        return ya + (yb - ya) * t * t * (3 - 2 * t);
-      }
-    }
-    return key[key.length - 1][1];
-  };
-}
-
 /** A box between two corner rings, wound so the faces look outward. */
 function band(lo, hi) {
   const pos = [];
@@ -138,7 +109,20 @@ export function buildMBridge(spec) {
   const anchorB = Math.max(tB + 150, shoreB + 95);
   const s0 = Math.max(spec.s0, anchorA - 230);
   const s1 = Math.min(spec.s1, anchorB + 260);
-  const h = profile([s0, anchorA, tA, mid, tB, anchorB, s1]);
+  const h = rampProfile([
+    [s0, GROUND.asphalt - APPROACH_D], [anchorA, 27.0], [tA, 38.4], [mid, 41.2],
+    [tB, 38.4], [anchorB, 27.0], [s1, GROUND.asphalt - APPROACH_D],
+  ]);
+  // Past the anchorages the truss is stiffening nothing, and the real
+  // approaches are plain steel viaducts on bents — Flatbush Avenue Extension
+  // one side, Canal Street the other. Carried at full depth to the end of the
+  // modelled stretch, both of them finished seven metres up in mid-air, and
+  // the upper roadway ended in a step off the edge.
+  const dep = (v) => {
+    if (v >= anchorA && v <= anchorB) return TRUSS_D;
+    const k = Math.min(1, (v < anchorA ? anchorA - v : v - anchorB) / FADE);
+    return TRUSS_D + (APPROACH_D - TRUSS_D) * k * k * (3 - 2 * k);
+  };
   const at = (s, off, y) =>
     new THREE.Vector3(ax + ux * s + px * off, y, az + uz * s + pz * off);
 
@@ -150,48 +134,14 @@ export function buildMBridge(spec) {
 
   // ---- the stiffening truss ---------------------------------------------
   //
-  // This is the bridge. Roebling hung a slender floor from his cables and
-  // stayed it diagonally back to the towers; Moisseiff hung a deep braced
-  // girder instead and let it do the stiffening, which is why there is not a
-  // single diagonal stay on this bridge and why, end on, it reads as a beam
-  // and not a thread.
-  // Twelve metres a panel. At eighteen the truss read as a wire fence: the
-  // members are about a pixel across at the distance this is looked at from,
-  // so what makes it a girder rather than a railing is how many of them
-  // overlap, not how thick any one of them is.
-  const STEP = 12;
-  const halfW = DECK_W / 2;
-  for (let s = s0; s < s1; s += STEP) {
-    const s2 = Math.min(s + STEP, s1);
-    const y0 = h(s), y1 = h(s2);
-    // The two roadways: the lower one on the bottom chord and the upper one on
-    // top of the truss, which is the thing nobody ever remembers about it.
-    for (const [yA, yB, w] of [[y0, y1, halfW], [y0 + TRUSS_D, y1 + TRUSS_D, halfW]]) {
-      const q = [at(s, -w, yA), at(s2, -w, yB), at(s2, w, yB), at(s, w, yA)];
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.Float32BufferAttribute(
-        [...q[0].toArray(), ...q[1].toArray(), ...q[2].toArray(),
-         ...q[0].toArray(), ...q[2].toArray(), ...q[3].toArray()], 3));
-      geo.setAttribute('uv', new THREE.Float32BufferAttribute(
-        [0, s, 0, s2, 2, s2, 0, s, 2, s2, 2, s], 2));
-      geo.computeVertexNormals();
-      road.push(norm(geo));
-    }
-    // The truss sides: chords top and bottom, a vertical at each panel point,
-    // and the diagonal that makes it a truss rather than a ladder.
-    for (const side of [-1, 1]) {
-      const w = side * halfW;
-      const a0 = at(s, w, y0), a1 = at(s2, w, y1);
-      const b0 = at(s, w, y0 + TRUSS_D), b1 = at(s2, w, y1 + TRUSS_D);
-      steel.push(...strand([a0, a1], 0.58, true));
-      steel.push(...strand([b0, b1], 0.58, true));
-      steel.push(...strand([a0, b0], 0.34, true));
-      steel.push(...strand([a0, b1], 0.26, true));
-      steel.push(...strand([b0, a1], 0.26, true));
-      const m0 = at(s, w, y0 + TRUSS_D * 0.5), m1 = at(s2, w, y1 + TRUSS_D * 0.5);
-      steel.push(...strand([m0, m1], 0.30, true));
-    }
-  }
+  // Two roadways: the lower one on the bottom chord and the upper one on top of
+  // the truss, which is the thing nobody ever remembers about this bridge.
+  const run = stiffeningTruss({
+    at, h, s0, s1, step: 12, halfW: DECK_W / 2, depth: dep,
+    decks: [0, dep], chord: 0.58,
+  });
+  road.push(...run.road);
+  steel.push(...run.steel);
 
   // ---- towers ------------------------------------------------------------
   //
@@ -291,6 +241,24 @@ export function buildMBridge(spec) {
       const top = cableY(s), deck = h(s) + TRUSS_D;
       if (top - deck < 1.5) continue;
       steel.push(...strand([at(s, off, top), at(s, off, deck)], 0.09, true));
+    }
+  }
+
+  // ---- approach bents ----------------------------------------------------
+  for (const [from, to, dir] of [[anchorA - 20, s0, -1], [anchorB + 20, s1, 1]]) {
+    for (let v = from; dir > 0 ? v < to : v > to; v += dir * 34) {
+      const y = h(v);
+      if (y < GROUND.land + 1.5) continue;
+      for (const o of [-DECK_W / 2 + 5, DECK_W / 2 - 5]) {
+        steel.push(...strand([at(v, o, GROUND.land), at(v, o, y)], 0.8, true));
+      }
+      steel.push(...strand(
+        [at(v, -DECK_W / 2 + 4, y - 0.4), at(v, DECK_W / 2 - 4, y - 0.4)], 0.48, true));
+      if (y > GROUND.land + 14) {
+        const m = GROUND.land + (y - GROUND.land) * 0.5;
+        steel.push(...strand(
+          [at(v, -DECK_W / 2 + 5, m), at(v, DECK_W / 2 - 5, m)], 0.32, true));
+      }
     }
   }
 

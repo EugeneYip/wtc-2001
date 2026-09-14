@@ -2301,6 +2301,11 @@ def main():
     manhattan = build_bridge(
         land, extract="manhattan", span=448.1, label="manhattan bridge",
         pick=lambda t: t.get("name", "").startswith("Manhattan Bridge"))
+    # 1,600 ft, the longest span of the three. This one's carriageways do carry
+    # its name, so it gets the same query and the same axis-finding as the
+    # Brooklyn Bridge, and none of the averaging the Manhattan Bridge needed.
+    williamsburg = build_bridge(
+        land, extract="williamsburg", span=487.7, label="williamsburg bridge")
     liberty = build_liberty(land)
     ellis = build_ellis(land)
     governors = build_governors(land)
@@ -2316,6 +2321,10 @@ def main():
     if manhattan:
         print("  manhattan bridge      : run %.0f m, towers at %s"
               % (manhattan["s1"] - manhattan["s0"], manhattan["towers"]))
+    if williamsburg:
+        print("  williamsburg bridge   : run %.0f m, towers at %s, shore %s"
+              % (williamsburg["s1"] - williamsburg["s0"], williamsburg["towers"],
+                 williamsburg["shore"]))
     if liberty:
         print("  statue of liberty     : star of %d, facing grid %.1f deg "
               "(true %.1f), %d trees"
@@ -2360,6 +2369,7 @@ def main():
         "land": land,
         "bridge": bridge,
         "manhattan": manhattan,
+        "williamsburg": williamsburg,
         "liberty": liberty,
         "ellis": ellis,
         "governors": governors,
