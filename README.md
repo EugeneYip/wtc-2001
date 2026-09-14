@@ -991,7 +991,8 @@ St George, which takes them close along the west side of Governors Island, and
 they run as a pair half a trip apart so they pass each other in mid-harbour.
 The excursion boats run Battery Park to Liberty Island and Battery Park to
 Ellis. Those are the real runs, and now that there is something at both ends of
-each they may as well go there. The sinusoid that drives them was already
+each they may as well go there — as far as the water goes, anyway; see below
+for how long it took to notice that they were going further than that. The sinusoid that drives them was already
 right for it: a boat slows, turns and gathers way again at the end of her run,
 which is what a ferry does at a terminal.
 
@@ -1016,6 +1017,60 @@ the light rather than sitting under it.
 **11 draw calls and 18,956 triangles** for the whole fleet with the shadow pass
 counted, against eight before. Two hundred triangles buys a boat that is a
 boat.
+
+**The whole fleet was steering the same course.** Thirty-eight boats, each
+headed along the longest clear bearing it could find, which is a good rule and
+was being asked a question it could not answer. Bearings were tried at twelve
+fixed angles thirty degrees apart, and ties went to whichever was tried first;
+the probe that measured the clear run stopped looking at nine hundred metres,
+which is less than a third of the way across the Upper Bay. So out in open
+water every bearing came back with the same answer, the first one always won,
+and the count says the rest:
+
+    17 of 38 vessels heading 60 degrees
+     7 of 38 heading 0
+     6 of 38 heading 90
+    32 of 38 with the same track length to the metre — 840 m, the cap
+
+Thirty of thirty-eight on four parallel tracks. From the deck it read as a
+convoy in formation, and it had been doing that since the boats went in.
+
+The probe now runs to the full reach and the bearing is **drawn rather than
+argmaxed**, weighted by the sixth power of the clear run, then jittered inside
+its own cell. The sixth power is the whole trick: in the Hudson, where one
+bearing is four times any other, it is four thousand to one and a boat still
+lines up with the river; in the middle of the bay, where they are all much of a
+muchness, she goes where she likes. Fourteen headings now, nine in the
+commonest, and twenty different track lengths between 190 m and 2,515 m.
+
+**Then the longer runs started going aground.** The old nine-hundred-metre cap
+had been hiding two things. A probe striding a hundred metres at a time steps
+clean over a pier finger and reports water on the far side of it, so the chosen
+bearing is measured again at twenty-five. And the land mask samples the
+coastline at its cell centres, so a cell whose centre is in the water can still
+have forty metres of bulkhead in the corner of it — the mask is grown by one
+cell now, which costs sixty metres of sea-room everywhere and answers the
+question the callers are actually asking. Seven tracks touched land before;
+none do.
+
+**Four of those seven were the ferries, and they were worse.** A dock is on
+land, which is the whole difficulty with saying a boat goes to one, and the
+runs were being pulled back by a flat forty metres from a hand-placed
+coordinate. The Liberty boat finished fifty-seven metres inside the island. The
+Ellis boat finished a hundred and thirty metres in, which put the end of every
+run inside the Main Building — a boat parked in the Registry Room, twice a
+minute, since the day the routes went in. Each route is now walked in from both
+ends until the water starts, against the same coastline the rest of the model
+is built on, so they stop off the landing instead of in it.
+
+**And a pushed barge no longer makes her own wake.** A wake starts half a
+length astern; a deck barge's half length is forty-six metres and the tug
+pushing her sits fifty-nine back, so the barge was laying fifty-five to two
+hundred metres of broken water straight over the boat doing the pushing. The
+tug makes the wake for both of them, which is also what happens.
+
+Placing the fleet costs 23 ms warm and 59 ms cold, mask and geometry included —
+the bearing search is four times the work it was and none of it shows.
 
 **The Brooklyn waterfront.** The far bank of the East River was a flat plane
 with a street grain painted on it, and the reason given here for years was that

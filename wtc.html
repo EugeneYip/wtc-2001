@@ -64396,7 +64396,26 @@ function vessels(land, count = 16, reach = 2600) {
   const M = 60;                                  // metres per mask cell
   const pad = reach + 1200;
   const nc = Math.ceil((pad * 2) / M) + 1;
-  const mask = rasterise(land.map((p) => p.p), -pad, -pad, M, nc, nc);
+  const raw = rasterise(land.map((p) => p.p), -pad, -pad, M, nc, nc);
+  // Grown by one cell. The mask samples the coastline at its cell centres, so
+  // a cell whose centre is in the water can still have forty metres of pier in
+  // the corner of it — and a track that ends where the mask says water then
+  // finishes with its bow in a bulkhead. Dilating costs sixty metres of
+  // sea-room everywhere and answers the question the callers are really
+  // asking, which is whether there is land *near* here.
+  const mask = new Uint8Array(nc * nc);
+  for (let j = 0; j < nc; j++) {
+    for (let i = 0; i < nc; i++) {
+      let v = 0;
+      for (let dj = -1; dj <= 1 && !v; dj++) {
+        const jj = Math.min(nc - 1, Math.max(0, j + dj));
+        for (let di = -1; di <= 1; di++) {
+          if (raw[jj * nc + Math.min(nc - 1, Math.max(0, i + di))]) { v = 1; break; }
+        }
+      }
+      mask[j * nc + i] = v;
+    }
+  }
   const onLand = (x, z) => {
     const i = Math.round((x + pad) / M), j = Math.round((z + pad) / M);
     // Outside the mask is open water, which is what the far harbour is.
@@ -64406,11 +64425,21 @@ function vessels(land, count = 16, reach = 2600) {
   const clear = (x, z, margin) => !(onLand(x, z) ||
     (margin > 0 && (onLand(x + margin, z) || onLand(x - margin, z) ||
                     onLand(x, z + margin) || onLand(x, z - margin))));
-  const runLength = (x, z, ang) => {
-    for (let d = 120; d <= 900; d += 120) {
+  // How far there is to run on a bearing before the water stops.
+  //
+  // This used to stop looking at nine hundred metres, which is less than a
+  // third of the way across the Upper Bay — so out in open water every bearing
+  // came back with the same answer and the search below had nothing to choose
+  // between. Probed to the full reach it measures the harbour instead of the
+  // probe. The return is the first *sampled* point on land, so it can overrun
+  // the true edge by one step; the track is cut back by more than a step to
+  // pay for that.
+  const STEP = 100;
+  const runLength = (x, z, ang, step = STEP) => {
+    for (let d = step; d <= reach; d += step) {
       if (onLand(x + Math.cos(ang) * d, z + Math.sin(ang) * d)) return d;
     }
-    return 900;
+    return reach;
   };
 
   const picks = [];
@@ -64420,10 +64449,22 @@ function vessels(land, count = 16, reach = 2600) {
   for (const r of ROUTES) {
     const kind = FLEET.find((k) => k.name === r.kind);
     if (!kind) continue;
-    const mid = [(r.a[0] + r.b[0]) / 2, (r.a[1] + r.b[1]) / 2];
-    const half = Math.hypot(r.b[0] - r.a[0], r.b[1] - r.a[1]) / 2;
-    picks.push({ x: mid[0], z: mid[1], kind, half: half - 40, phase: r.phase,
-                 ang: Math.atan2(r.b[1] - r.a[1], r.b[0] - r.a[0]) });
+    const ang = Math.atan2(r.b[1] - r.a[1], r.b[0] - r.a[0]);
+    const ux = Math.cos(ang), uz = Math.sin(ang);
+    const len = Math.hypot(r.b[0] - r.a[0], r.b[1] - r.a[1]);
+    // A dock is on land, which is the whole difficulty with saying a boat
+    // goes to one. Run in from each end until the water starts: pulling the
+    // whole track back by a flat forty metres left the Liberty and Ellis boats
+    // finishing a hundred and thirty metres inland, and the Ellis one spent
+    // the end of every run inside the Main Building. The coastline is the most
+    // carefully built thing in this model and it can simply be asked.
+    let s0 = 0, s1 = len;
+    while (s0 < s1 && !clear(r.a[0] + ux * s0, r.a[1] + uz * s0, 45)) s0 += 20;
+    while (s1 > s0 && !clear(r.a[0] + ux * s1, r.a[1] + uz * s1, 45)) s1 -= 20;
+    if (s1 - s0 < 200) continue;
+    const m = (s0 + s1) / 2;
+    picks.push({ x: r.a[0] + ux * m, z: r.a[1] + uz * m, kind,
+                 half: (s1 - s0) / 2, phase: r.phase, ang });
   }
 
   // Weighted so the harbour is mostly small craft, which is what it is.
@@ -64439,21 +64480,57 @@ function vessels(land, count = 16, reach = 2600) {
     const z = (rand() * 2 - 1) * reach;
     if (!clear(x, z, 150)) continue;
     if (picks.some((p) => Math.hypot(p.x - x, p.z - z) < 240)) continue;
-    // Head along the longest clear bearing, so vessels line up with channels.
-    let best = 0, bestRun = -1;
-    for (let k = 0; k < 12; k++) {
-      const a = (k / 12) * Math.PI * 2;
+    // Head along a clear bearing, so vessels line up with channels.
+    //
+    // Taking the single longest one and breaking ties by whichever was tried
+    // first was a mistake nobody could see until the boats were counted:
+    // twelve bearings, thirty degrees apart, and in open water they all
+    // measure the same, so the first one always won. Seventeen of
+    // thirty-eight vessels were heading sixty degrees, seven were on zero and
+    // six on ninety — the harbour was a convoy on four parallel tracks, and
+    // thirty-two of them had the same track length as well.
+    //
+    // So the bearing is drawn rather than argmaxed, weighted by the sixth
+    // power of the clear run. In the Hudson, where one bearing is four times
+    // the others, the sixth power is four thousand to one and she still lines
+    // up with the river. In the middle of the bay, where they are all much of
+    // a muchness, she goes where she likes.
+    const B = 24;
+    const runs = [], weights = [];
+    let sum = 0;
+    for (let k = 0; k < B; k++) {
+      const a = (k / B) * Math.PI * 2;
       const run = runLength(x, z, a) + runLength(x, z, a + Math.PI);
-      if (run > bestRun) { bestRun = run; best = a; }
+      runs.push(run);
+      const wgt = Math.pow(run / (reach * 2), 6);
+      weights.push(wgt);
+      sum += wgt;
     }
-    const fwd = runLength(x, z, best), back = runLength(x, z, best + Math.PI);
+    let pick = rand() * sum, bi = 0;
+    for (; bi < B - 1; bi++) { pick -= weights[bi]; if (pick <= 0) break; }
+    // Jitter inside the bearing's own cell, so two boats that chose the same
+    // one are not on the same line.
+    const best = ((bi / B) * Math.PI * 2) + (rand() - 0.5) * (Math.PI * 2 / B);
+    // A hundred metres is close enough to choose a bearing and far too coarse
+    // to end a run on: the mask is sixty metres a cell, so a probe striding a
+    // hundred at a time can step clean over a pier finger and hand back water
+    // on the far side of it. The chosen bearing is measured again at
+    // twenty-five, which is inside the mask's own resolution.
+    const FINE = 25;
+    const fwd = runLength(x, z, best, FINE);
+    const back = runLength(x, z, best + Math.PI, FINE);
     const kind = roll();
     picks.push({ x, z, ang: best, kind,
-                 half: Math.max(60, Math.min(fwd, back) - 60) });
+                 half: Math.max(60, Math.min(fwd, back) - FINE - 60) });
     // A barge on its own is a barge adrift. Put a tug on the stern of it,
     // pushing, which is how nearly everything moves in this harbour.
     if (kind.name === 'deck-barge' && picks.length < count) {
       const tug = FLEET.find((k) => k.name === 'tug');
+      // The tug astern makes the wake for both of them. A barge is a box
+      // being shoved: left with one of her own it lay across the tug pushing
+      // her, because a wake starts half a length astern and this one's half
+      // length is forty-six metres and the tug is fifty-nine back.
+      picks[picks.length - 1].pushed = true;
       picks.push({ x, z, ang: best, kind: tug, pushing: kind,
                    half: picks[picks.length - 1].half });
     }
@@ -64513,7 +64590,7 @@ function vessels(land, count = 16, reach = 2600) {
     const slot = byKind.get(p.kind);
     return {
       x: p.x, z: p.z, ang: p.ang, kind: p.kind, half: p.half,
-      mesh: slot.mesh, slot: slot.next++,
+      mesh: slot.mesh, slot: slot.next++, pushed: !!p.pushed,
       // A tug pushing a barge sits on her stern and keeps station there.
       lead: p.pushing ? -(p.pushing.l / 2 + p.kind.l / 2 - 2.5) : 0,
       // Peak speed about five metres a second, whatever the run length.
@@ -64575,10 +64652,14 @@ function animateVessels(hulls, t) {
     // The wake belongs to the speed, not to the boat. Kept to a few boat
     // lengths and a couple of beams: at nine lengths and three beams it was a
     // white sheet half a kilometre long lying on the harbour.
-    const speed = Math.abs(vel);
+    const speed = k.pushed ? 0 : Math.abs(vel);
     _vp.set(x - Math.cos(heading) * k.kind.l * 0.5, GROUND.sea + 0.13,
             z - Math.sin(heading) * k.kind.l * 0.5);
-    _vs.set(k.kind.l * (0.6 + 1.6 * speed), 1, k.kind.w * (0.45 + 0.6 * speed));
+    // A pushed barge has none of her own: see the note where the tug is put
+    // on her stern. Scaled to nothing rather than skipped, because every
+    // instance in the buffer has to be written every frame.
+    _vs.set(k.pushed ? 1e-4 : k.kind.l * (0.6 + 1.6 * speed), 1,
+            k.pushed ? 1e-4 : k.kind.w * (0.45 + 0.6 * speed));
     _vm.compose(_vp, _vq, _vs);
     wakes.setMatrixAt(i, _vm);
 
