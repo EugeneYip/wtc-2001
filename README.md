@@ -230,7 +230,7 @@ radius and simply absent outside it, because a rank is only worth having if it
 is continuous. Nothing parked is a cab. Among the moving traffic there are step
 vans and buses as well as cars, and a slot may carry a second vehicle close
 behind the first, because traffic bunches at the lights rather than spacing
-itself evenly.
+itself evenly, and a third of what is moving is a cab.
 
 **What makes a vehicle read as one.** Every car, van and bus was two or three
 flat-sided boxes sitting on the road with nothing under them, and from across
@@ -246,6 +246,36 @@ separate ones. Down the side — which is every view of a parked car there is �
 the two are identical, and it halves what wheels cost on three thousand
 instances. Square on from in front, low down, the block reads as solid where
 two wheels should be; there is no light under there to give it away.
+
+**But the comment above that code said "bonnet, cabin, boot" and there was
+neither a bonnet nor a boot.** The body was one slab the whole length of the
+car with the glass sitting on top of it, so from any angle the silhouette was
+a shoe box with a hat on. A car's waistline steps — low over the bonnet and the
+boot, high through the doors — and that step is most of what makes a box read
+as a car at twenty metres, more than the tuck-in and more than the wheels.
+Three levels now: sills the whole length whose top *is* the two decks, a
+shoulder only as long as the cabin, and the glass above that. Twelve triangles
+more, on a geometry of forty-eight.
+
+The tyres were 0.10 black, which is the same value as the shadow a car parked
+on a shaded street is standing in, so the wheels vanished into a dark smear and
+the vehicle floated on it. They are 0.17 now — still a tyre, and no longer the
+same colour as the absence of light.
+
+**And a yellow car is not a cab.** A third of the moving traffic down here was
+painted the cab yellow and left otherwise identical to everything else, which
+from across the street is a yellow saloon. What says cab — and at night is the
+only part of one you can see — is the box on the roof. So the cabs are decided
+rather than rolled out of the paint pool: the yellow comes out of the general
+colours, a third of the moving cars are cabs by construction, and each one gets
+a medallion light on the roof that lights after dark, because a cab with its
+light on is looking for a fare. **213 of them, 1 draw call, 2,556 triangles.**
+
+The whole ground fleet — 3,577 cars, 728 vans, 53 buses and every lamp on them
+— costs **0.8 ms of a 17.4 ms frame** at street level, which is where it is
+most of it. This round added a fifth to the car's triangle count and none of
+that showed: the frame here has been fill-bound rather than geometry-bound
+since it was first measured.
 
 **And the boats were rafts.** A vessel was a single cuboid with the bow corners
 pulled in: twelve triangles, and from anywhere close it read as a piece of dock

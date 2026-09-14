@@ -118,6 +118,13 @@ export const DETAIL_MATS = {
     color: 0x5e1a15, roughness: 0.35, metalness: 0.1,
     emissive: new THREE.Color(0xff2a12), emissiveIntensity: 0,
   }),
+  // The box on a cab's roof. Lit after dark, which is what it is for — a cab
+  // with its medallion light on is looking for a fare, and at fifty metres on
+  // a dark street it is the only part of the vehicle you can see.
+  cabLight: new THREE.MeshStandardMaterial({
+    color: 0xe4c766, roughness: 0.45, metalness: 0.10,
+    emissive: new THREE.Color(0xffd36a), emissiveIntensity: 0,
+  }),
   lampPost: new THREE.MeshStandardMaterial({
     color: 0x33383d, roughness: 0.58, metalness: 0.42,
   }),
@@ -347,10 +354,14 @@ export function trees(parks, extraSites, avoid) {
 // Traffic
 // ---------------------------------------------------------------------------
 
+// Cabs are decided rather than rolled for now — see traffic() — so this is
+// everything on the street that is not one.
 const CAR_COLORS = [
-  0xf2c230, 0xf2c230, 0xf2c230,       // yellow cabs, over-represented on purpose
   0xd8d8d8, 0xb4b7ba, 0x2e3236, 0x8e1b1b, 0x1d3f6e, 0x36503a,
 ];
+const CAB_YELLOW = 0xf2c230;
+// About a third of what moves through Lower Manhattan on a weekday morning.
+const CAB_SHARE = 0.34;
 // Nothing parked is a cab: they are the one thing on the street that never is.
 const PARKED_COLORS = [
   0xd8d8d8, 0xc6c8c9, 0xb4b7ba, 0x8d9095, 0x2e3236, 0x3c4045,
@@ -426,14 +437,26 @@ function shells() {
   const axle = (x, r, w) => box(r * 2, r * 2, w, x, r, TYRE);
   const BODY = [1, 1, 1];                    // takes the instance colour
   const GLASS = [0.13, 0.15, 0.18];
-  const TYRE = [0.10, 0.10, 0.11];
+  // Not black. At 0.10 the wheels were the same value as the shadow the car
+  // is standing in and the whole vehicle floated on a dark smear.
+  const TYRE = [0.17, 0.17, 0.18];
   const DARK = [0.28, 0.28, 0.29];
   return {
-    // A saloon: bonnet, cabin, boot, up on 0.64 m wheels.
+    // A saloon.
+    //
+    // The comment above this used to say "bonnet, cabin, boot" and there was
+    // no bonnet and no boot: one slab the whole length of the car with the
+    // glass sitting on top of it, so from any angle the silhouette was a shoe
+    // box with a hat on. A car's waistline steps — it is low over the bonnet
+    // and the boot and high through the doors — and that step is most of what
+    // makes a box read as a car at twenty metres. Three levels now: sills the
+    // whole length whose top is the two decks, a shoulder only as long as the
+    // cabin, and the glass above that.
     car: mergeGeometries([
-      axle(1.38, 0.32, 1.72), axle(-1.34, 0.32, 1.72),
-      wedge(4.40, 0.68, 1.86, 0, 0.76, BODY, 1.0, 0.96),
-      wedge(2.46, 0.44, 1.72, -0.18, 1.32, GLASS, 0.68, 0.88, -0.16),
+      axle(1.32, 0.32, 1.76), axle(-1.30, 0.32, 1.76),
+      wedge(4.44, 0.44, 1.86, 0, 0.63, BODY, 1.0, 0.96),
+      wedge(2.84, 0.26, 1.80, -0.12, 0.98, BODY, 1.0, 0.98),
+      wedge(2.30, 0.34, 1.68, -0.16, 1.28, GLASS, 0.72, 0.88, -0.14),
     ]),
     // A step van, the workhorse of every delivery street down here.
     van: mergeGeometries([
@@ -488,6 +511,12 @@ export function traffic(roads, limit = 420, avoid, deck = 0) {
   }));
   const headGeo = lampPair(2.22, 0.16, 0.34, 0.62);
   const tailGeo = lampPair(-2.22, 0.14, 0.26, 0.66);
+  // The medallion box, sitting on the roof just aft of the windscreen header.
+  const roofGeo = (() => {
+    const g = new THREE.BoxGeometry(0.74, 0.17, 0.30);
+    g.translate(0.34, 1.53, 0);
+    return norm(g);
+  })();
 
   // Candidate slots. Traffic bunches at the lights rather than spacing itself
   // evenly, so a slot may carry a second vehicle close behind the first.
@@ -516,6 +545,14 @@ export function traffic(roads, limit = 420, avoid, deck = 0) {
   const buses = new THREE.InstancedMesh(G.bus, DETAIL_MATS.car, Math.ceil(cap * 0.09));
   const heads = new THREE.InstancedMesh(headGeo, DETAIL_MATS.headlight, cap);
   const tails = new THREE.InstancedMesh(tailGeo, DETAIL_MATS.tail, cap);
+  // A cab is not a car that happens to be yellow. What says cab at fifty
+  // metres — and what is the only part of one you can see at night — is the
+  // box on the roof, so the cabs are decided here rather than falling out of
+  // the paint pool, and each one gets its own.
+  const roofs = new THREE.InstancedMesh(roofGeo, DETAIL_MATS.cabLight,
+                                        Math.ceil(cap * (CAB_SHARE + 0.1)));
+  const roofOf = new Int32Array(cap).fill(-1);
+  let nRoof = 0;
   // Receiving matters more than casting down here. Most of these streets are
   // in the shade of something for most of the day, and a car that only casts
   // is a car lit by a sun the street it is parked on cannot see.
@@ -552,7 +589,13 @@ export function traffic(roads, limit = 420, avoid, deck = 0) {
       cars.setMatrixAt(nCar, m);
       heads.setMatrixAt(nCar, m);
       tails.setMatrixAt(nCar, m);
-      cars.setColorAt(nCar, col.setHex(CAR_COLORS[Math.floor(rand() * CAR_COLORS.length)]));
+      const cab = rand() < CAB_SHARE;
+      cars.setColorAt(nCar, col.setHex(
+        cab ? CAB_YELLOW : CAR_COLORS[Math.floor(rand() * CAR_COLORS.length)]));
+      if (cab && nRoof < roofs.count) {
+        roofs.setMatrixAt(nRoof, m);
+        roofOf[nCar] = nRoof++;
+      }
       which = 'car'; slot = nCar++;
     }
     if (run) moving.push({ ...run, which, slot, seg: 0 });
@@ -593,7 +636,8 @@ export function traffic(roads, limit = 420, avoid, deck = 0) {
   cars.count = heads.count = tails.count = nCar;
   vans.count = nVan;
   buses.count = nBus;
-  for (const im of [cars, vans, buses, heads, tails]) {
+  roofs.count = nRoof;
+  for (const im of [cars, vans, buses, heads, tails, roofs]) {
     im.instanceMatrix.needsUpdate = true;
     if (im.instanceColor) im.instanceColor.needsUpdate = true;
   }
@@ -602,10 +646,11 @@ export function traffic(roads, limit = 420, avoid, deck = 0) {
   buses.name = 'traffic-buses';
   heads.name = 'traffic-headlights';
   tails.name = 'traffic-tails';
+  roofs.name = 'traffic-cab-lights';
   cars.userData.moving = moving;
-  cars.userData.fleet = { vans, buses, heads, tails, deck };
+  cars.userData.fleet = { vans, buses, heads, tails, roofs, roofOf, deck };
   animateTraffic(cars, 0);
-  return [cars, vans, buses, heads, tails];
+  return [cars, vans, buses, heads, tails, roofs];
 }
 
 const _tm = new THREE.Matrix4();
@@ -632,7 +677,7 @@ const _tup = new THREE.Vector3(0, 1, 0);
 export function animateTraffic(cars, t) {
   const moving = cars && cars.userData.moving;
   if (!moving || !moving.length) return;
-  const { vans, buses, heads, tails, deck } = cars.userData.fleet;
+  const { vans, buses, heads, tails, roofs, roofOf, deck } = cars.userData.fleet;
   for (const k of moving) {
     const { pts, cum, total } = k.path;
     let d = (k.s0 + k.dir * k.speed * t) % total;
@@ -664,9 +709,13 @@ export function animateTraffic(cars, t) {
       cars.setMatrixAt(k.slot, _tm);
       heads.setMatrixAt(k.slot, _tm);
       tails.setMatrixAt(k.slot, _tm);
+      const r = roofOf[k.slot];
+      if (r >= 0) roofs.setMatrixAt(r, _tm);
     }
   }
-  for (const im of [cars, vans, buses, heads, tails]) im.instanceMatrix.needsUpdate = true;
+  for (const im of [cars, vans, buses, heads, tails, roofs]) {
+    im.instanceMatrix.needsUpdate = true;
+  }
 }
 
 /**

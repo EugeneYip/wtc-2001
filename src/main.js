@@ -310,6 +310,7 @@ function applyTime(hour) {
   DETAIL_MATS.lampHead.emissiveIntensity = lit * 2.2;
   DETAIL_MATS.headlight.emissiveIntensity = lit * 2.4;
   DETAIL_MATS.tail.emissiveIntensity = lit * 1.5;
+  DETAIL_MATS.cabLight.emissiveIntensity = lit * 1.8;
   DETAIL_MATS.signalLens.emissiveIntensity = 0.9 + lit * 1.9;
   BRIDGE_MATS.lamp.emissiveIntensity = lit * 2.4;
   VESSEL_MATS.navLight.emissiveIntensity = lit * 4.2;
