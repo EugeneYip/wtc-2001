@@ -1130,8 +1130,23 @@ export function landTexture() {
     // Street grain, and only where the land is built up. Drawn as lines over
     // the whole tile it ran dead straight from one tile into the next and the
     // far shore came out as graph paper; masked by the same noise that decides
-    // what is built, it breaks the way a real grid breaks.
+    // what is built, it was supposed to break the way a real grid breaks.
+    //
+    // It did not. `u` comes off a noise whose mean is a half and is then
+    // stretched by two from a threshold of a fifth, so it is above 0.6 over
+    // most of the tile and the mask let every line through. Pulled out and
+    // tiled two by two, this texture is a cloud of mottling with a perfectly
+    // regular twelve by five grid of unbroken dark rules across it, edge to
+    // edge — which is the graph paper the note above says it is not, and it
+    // reads as exactly that over ten kilometres of shore.
+    //
+    // So the grain gets a mask of its own, off the same noise but gated hard
+    // rather than stretched soft. Where that noise is in its top third the
+    // grain is there; everywhere else there is none. Those patches are a few
+    // hundred metres across, which is the length a street grid actually runs
+    // before something interrupts it.
     const gx = i % N, gy = (i / N) | 0;
+    const gate = Math.min(1, Math.max(0, (urban[i] - 0.56) * 5.5));
     // Wobbled by the same noise, so the lines are not dead straight and do not
     // run unbroken from one tile into the next.
     const near = (v, pitch, jitter) => {
@@ -1141,7 +1156,24 @@ export function landTexture() {
     const wob = (g - 0.5) * 7;
     // Kept to a grain. At a third it read as graph paper laid over the shore,
     // which is worse than the cloud it replaced.
-    shade *= 1 - Math.max(near(gx, N / 12, wob), near(gy, N / 5, -wob)) * 0.17 * u;
+    //
+    // Offset by half a pitch, which is the whole of the fix for a line that
+    // was drawn across ten kilometres of shore every 860 m. Both pitches
+    // divide the tile exactly — twelve lines one way and five the other — so
+    // a line's centre landed on the tile's own edge, and the wrap is not
+    // symmetric about it: the last column of the tile is 1.3 px from that
+    // centre and gets almost no darkening, and the first column of the next
+    // tile is on it and gets all of it. Measured off the texture, the step
+    // across the seam was 12.7 levels in x and 7.1 in y against interior
+    // steps of 4.2 and 0.25, and both edge rows came out about fifteen levels
+    // darker than the middle. Wrapped and minified over the far shore that is
+    // a perfectly straight unbroken line every tile in both directions — the
+    // graph paper this grain was reduced to a whisper to avoid, reintroduced
+    // by its own phase. Half a pitch puts the lines in the middle of the tile
+    // where the jitter can break them and the seam falls on nothing.
+    const px2 = N / 12, py2 = N / 5;
+    shade *= 1 - Math.max(near(gx + px2 / 2, px2, wob),
+                          near(gy + py2 / 2, py2, -wob)) * 0.17 * gate;
     img.data[i * 4] = Math.min(255, col[0] * shade);
     img.data[i * 4 + 1] = Math.min(255, col[1] * shade);
     img.data[i * 4 + 2] = Math.min(255, col[2] * shade);

@@ -77,6 +77,13 @@ Relief on the far shores is placed from the named hills around the harbour,
 which OpenStreetMap carries with real elevations, and from the Palisades, which
 it maps as a cliff line. The gentle undulation between them is invented.
 
+The ground those shores are drawn on is a procedural texture and not imagery.
+The mottling in it is noise, and the faint street grain over the built-up parts
+is a grain at roughly the pitch of a city block rather than a plan of any
+street: it is there so that flat land at a distance reads as a city instead of
+a bank of low cloud, and no block, road or building is claimed by it. The tile
+repeats every 860 m, and across a wide shot the repeat is visible.
+
 ## Software
 
 - [three.js](https://threejs.org) r160 — MIT. Vendored under `vendor/`,

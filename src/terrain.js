@@ -214,8 +214,37 @@ export function buildRelief(relief, landPolys, material, keepOff, built) {
     }
   }
 
-  const pos = [], uv = [];
-  const cell = (i, j) => [at(i), height[j * N + i], at(j)];
+  // Built with its corners shared between the cells that meet at them, and
+  // indexed, which is the whole difference between a landscape and a field of
+  // facets.
+  //
+  // This used to push three fresh vertices per triangle — 92,466 of them for
+  // 30,822 triangles, every grid corner duplicated four or five times — and
+  // then call computeVertexNormals. That function averages the faces meeting
+  // at a *vertex*, and if no two triangles share one there is nothing to
+  // average: every triangle came out with its own face normal, and all 2,000
+  // sampled had three identical normals, which is flat shading by accident.
+  //
+  // The tilts involved are small — 0.78 degrees on average, 8.9 at the most —
+  // and that is exactly why it was easy to miss. A degree of normal under a
+  // fifty-two degree sun is about a one per cent step in brightness, which is
+  // nothing on its own and a clearly visible crease when it happens along
+  // every line of a 170 m grid across ten kilometres of shore. Raise the
+  // contrast on a frame of the Jersey flats and the grid is simply there,
+  // drawn in dark lines.
+  //
+  // Sharing the corners also takes the vertex count down by about two thirds,
+  // so this is cheaper as well as right.
+  const pos = [], uv = [], idx = [];
+  const vert = new Int32Array(N * N).fill(-1);
+  const corner = (i, j) => {
+    const k = j * N + i;
+    if (vert[k] >= 0) return vert[k];
+    const x = at(i), z = at(j);
+    pos.push(x, height[k], z);
+    uv.push(x, z);
+    return (vert[k] = pos.length / 3 - 1);
+  };
   let kept = 0;
   for (let j = 0; j < N - 1; j++) {
     for (let i = 0; i < N - 1; i++) {
@@ -232,11 +261,9 @@ export function buildRelief(relief, landPolys, material, keepOff, built) {
       const inl = Math.min(inland[j * N + i], inland[j * N + i + 1],
                            inland[(j + 1) * N + i], inland[(j + 1) * N + i + 1]);
       if (inl < SHORE_FADE[0] + 0.04) continue;
-      const a = cell(i, j), b = cell(i + 1, j);
-      const c = cell(i + 1, j + 1), d = cell(i, j + 1);
-      for (const [p, q, r] of [[a, c, b], [a, d, c]]) {
-        for (const v of [p, q, r]) { pos.push(v[0], v[1], v[2]); uv.push(v[0], v[2]); }
-      }
+      const a = corner(i, j), b = corner(i + 1, j);
+      const c = corner(i + 1, j + 1), d = corner(i, j + 1);
+      idx.push(a, c, b, a, d, c);
       kept++;
     }
   }
@@ -245,6 +272,7 @@ export function buildRelief(relief, landPolys, material, keepOff, built) {
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
   g.computeVertexNormals();
   const m = new THREE.Mesh(g, material);
   // Two centimetres over the flat land.

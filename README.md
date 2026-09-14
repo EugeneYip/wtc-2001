@@ -835,6 +835,88 @@ coastal plain seen from ninety metres up really does present an almost straight
 horizon. From the towers, where you look down on the land, it is the difference
 between terrain and a plate.
 
+**And the far shore was ruled into squares.** Two separate faults, found by
+raising the contrast on a frame of the Jersey flats until the pattern that
+had been sitting there all along was legible.
+
+*The relief was flat-shaded, and nobody had asked for that.* It was built as
+three fresh vertices per triangle — 92,466 of them for 30,822 triangles, every
+grid corner duplicated four or five times — and then handed to
+`computeVertexNormals`. That function averages the faces meeting at a *vertex*,
+and if no two triangles share one there is nothing to average: measured, all
+2,000 sampled triangles came back with three identical normals, which is flat
+shading by accident rather than by choice. The tilts are small — 0.78 degrees
+on average and 8.9 at the most — which is exactly why it survived: one degree
+of normal under a fifty-two degree sun is a one per cent step in brightness,
+nothing at all on its own and a visible crease when it runs along every line
+of a 170 m grid for ten kilometres. Sharing the corners and indexing the mesh
+fixes it, takes the vertex count down to 16,266, and leaves 356 of those 2,000
+triangles legitimately flat — the ones in the shore band where the height is
+still zero and the neighbours really are level.
+
+Honestly reported: on its own that changed 4.3 per cent of a frame by more
+than one level out of 255, with a mean of 2.3 where it changed and a maximum
+of 8. It is right, it is cheaper, and it is not what was drawing the grid.
+
+*What was drawing the grid was one line of arithmetic in the ground texture.*
+The far-shore ground carries a faint street grain — twelve lines one way and
+five the other across an 860 m tile, so about 72 m by 172 m, which is roughly
+a city block and is the right idea. Both pitches divide the tile exactly, so a
+line's centre landed on the tile's own edge, and the wrap is not symmetric
+about it: the last column of the tile sits 1.3 px from that centre and takes
+almost no darkening while the first column of the next tile sits on it and
+takes all of it. Measured off the texture, the step across the seam was 12.7
+levels in x and 7.1 in y against interior steps of 4.2 and 0.25, and both edge
+rows came out about fifteen levels darker than the middle. Wrapped over ten
+kilometres of shore that is a dead straight unbroken dark line every tile, in
+both directions. Offsetting the grain by half a pitch puts the lines in the
+middle of the tile, where they belong, and takes the seam to 0.04 and 0.03 —
+smaller than the texture's own interior variation, which is what seamless
+means.
+
+*And the mask that was supposed to break the lines never bit.* The note beside
+this code has said for a long time that drawing the grain as lines across the
+whole tile "ran dead straight from one tile into the next and the far shore
+came out as graph paper", and that masking it by the noise that decides what is
+built "breaks the way a real grid breaks". It does not. That mask comes off a
+noise whose mean is a half and is then stretched by two from a threshold of a
+fifth, so it is above 0.6 over most of the tile and lets every line through.
+Pulled out and tiled two by two, the texture is a cloud of mottling with a
+perfectly regular twelve-by-five grid of unbroken rules ruled across it, edge
+to edge. The comment described the intention and the code did the thing the
+comment was warning about — the same shape of fault as the two sky ramps that
+ran backwards.
+
+So the grain now gets a mask of its own off the same noise, gated hard instead
+of stretched soft: where that noise is in its top third the grain is there and
+everywhere else there is none. The patches are a few hundred metres across,
+which is about how far a street grid runs before something interrupts it. The
+twelve-cycle component of the texture drops from 0.81 to 0.20, and the two
+texture fixes together change 18.8 per cent of a wide frame by more than one
+level and 8.0 per cent by more than four.
+
+*Three isolation tests, because the first two answers were wrong.* Hiding the
+relief left the grid exactly where it was, so it was not the relief. Hiding the
+flat land left it too, because both surfaces read the same texture. Turning the
+ground map off made it vanish — but that also took the land from a mean of 57
+to 96, which is bright enough to wash a two-level pattern out, so it proved
+nothing until the tone was matched back and the grid was still gone. Turning
+mipmapping off entirely and dropping anisotropy to one changed nothing either,
+which ruled out the sampler. Only then was it worth pulling the texture out of
+the running page, tiling it two by two, and looking at it — which took about a
+second and showed the answer immediately. That should have been the first
+thing, not the fifth.
+
+What is *still* there and is recorded rather than fixed: at 860 m the tile
+repeats, and the strongest periodic content in the texture is its own noise at
+one and two cycles per tile — 860 m and 430 m, at amplitudes of 2.7 and 4.8
+levels. Across a wide shot that reads as one cloud pattern laid down over and
+over. The tile has already been enlarged once for this reason, from 620 m, and
+enlarging it again trades the repeat against the resolution of the grain.
+Breaking it properly wants a second modulating layer at a much larger scale,
+which is a change to how the ground is shaded rather than to what is drawn on
+it.
+
 **The bridge, looked at properly.** Three things were wrong with it, all of
 them the kind that only show when you go and stand next to the thing.
 
@@ -874,10 +956,12 @@ used to be a band of constant colour, which meant it had an outer edge as hard
 as its inner one: from the air that second edge drew a bright turquoise line
 round every coast, pier and island, and the harbour read as a map with its
 borders highlighted. The land beyond the mapped blocks carries a street grain,
-masked by the same noise that decides what is built up. Without it, soft
-mottling on a flat plane read from a distance as a bank of low cloud rather
-than as a city — but it is a grain and not a plan, and no buildings are
-invented on it. Both waterfronts now carry real buildings instead, extracted
+gated by the noise that decides what is built up — gated hard, so it appears
+in patches a few hundred metres across and not as a rule across everything;
+see *the far shore was ruled into squares*, above, for what happens when that
+gate is too soft. Without any grain at all, soft mottling on a flat plane read
+from a distance as a bank of low cloud rather than as a city — but it is a
+grain and not a plan, and no buildings are invented on it. Both waterfronts now carry real buildings instead, extracted
 from OpenStreetMap like everything else; the grain is what is left beyond them.
 
 **The Brooklyn Bridge.** Its Manhattan end is a kilometre east of the site and
